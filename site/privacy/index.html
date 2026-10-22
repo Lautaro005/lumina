@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumina privacy policy</title>
+<meta name="description" content="Lumina has no servers, accounts or telemetry. What stays on your computer and the few cases where Lumina uses the network.">
+<link rel="canonical" href="https://lautaro005.github.io/lumina/privacy/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2b4fa8">
+<meta property="og:title" content="Lumina privacy policy">
+<meta property="og:description" content="Lumina has no servers, accounts or telemetry. What stays on your computer and the few cases where Lumina uses the network.">
+<meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.0">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="doc-cover">
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="../" aria-label="Lumina home">
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        lumina
+      </a>
+      <nav class="topnav" aria-label="Main">
+        <a class="keep" href="../docs/">Docs</a>
+        <a href="../changelog/">Changelog</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/">Security</a>
+        <a class="gh" href="https://github.com/Lautaro005/lumina">GitHub</a>
+        <a class="cta keep" href="../#install">Install</a>
+      </nav>
+    </header>
+  </div>
+</div>
+<main id="main" class="doc">
+  <div class="wrap">
+    <article class="page">
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#summary">In short</a><a href="#on-device">What stays on your computer</a><a href="#network">When Lumina uses the network</a><a href="#recording">Recording other people</a><a href="#control">Your control</a><a href="#website">This website</a><a href="#children">Children</a><a href="#changes">Changes and contact</a></nav></aside>
+      <div class="doc-body">
+        <header><h1>Privacy policy</h1><p>What stays on your computer, and the few times Lumina uses the network.</p></header>
+        <div class="prose">
+<p><b>Effective October 22, 2026.</b> This policy covers the Lumina app (the local server, the web interface, the desktop app and the <code>lumina</code> command) and this website.</p>
+<h2 id="summary">In short</h2>
+<ul>
+<li>Lumina has no servers, no accounts and no telemetry. The author receives nothing about you or your use.</li>
+<li>Your recordings, transcripts, notes, summaries, embeddings, chats and indexed files stay on your computer.</li>
+<li>Lumina connects to the internet only to download models and updates, to search the web when you turn web search on, and to reach a model server you configure.</li>
+</ul>
+<h2 id="on-device">What stays on your computer</h2>
+<p>Lumina processes audio and text with models that run on your device (Parakeet, Canary, Whisper, Silero VAD, EmbeddingGemma 2, Gemma 4 through llama.cpp, Kokoro). It stores everything in its data folder, <code>~/.lumina/data</code> by default: the SQLite database with meetings, transcripts, notes and chats, the ChromaDB search index, downloaded models, uploaded files, settings and logs. Audio is transcribed as it arrives and is not saved as an audio file, except recordings you import yourself, which are copied into <code>uploads/</code>.</p>
+<p>The Lumina server listens only on <code>127.0.0.1</code> and refuses requests from other machines and from websites open in your browser. The MCP server is available to agents you set up on the same computer; the HTTP endpoint requires a token.</p>
+<h2 id="network">When Lumina uses the network</h2>
+<table>
+<thead><tr><th>What</th><th>When</th><th>Sent to</th><th>What is sent</th></tr></thead>
+<tbody>
+<tr><td>Model downloads</td><td>When you click Download (or install with <code>--models</code>)</td><td>Hugging Face, GitHub</td><td>A standard download request (your IP address and the file requested)</td></tr>
+<tr><td>Install and update</td><td>When you run the installer or <code>lumina update</code></td><td>GitHub, astral.sh (uv), PyPI</td><td>Standard download requests</td></tr>
+<tr><td>Web search</td><td>Only for chat messages sent with Web search on (off by default)</td><td>DuckDuckGo, or your SearXNG</td><td>The text of your question</td></tr>
+<tr><td>Notes model</td><td>When Lumina writes notes or answers, if you chose a server that is not on this computer</td><td>The server you configured</td><td>Your notes, the transcript and matching passages from your sources</td></tr>
+</tbody>
+</table>
+<p>Ollama, LM Studio and the built-in Gemma 4 run on your computer, so nothing leaves it when you use them. Third-party services have their own privacy policies.</p>
+<h2 id="recording">Recording other people</h2>
+<p>Lumina can record the other participants of a call through your computer's audio. Laws on recording conversations differ by country and state; some require everyone's consent. Tell the people you meet with when you record them. Lumina never starts recording on its own: it records only after you click <b>Start listening</b> and stops when you pause or end the meeting.</p>
+<h2 id="control">Your control</h2>
+<ul>
+<li>Delete a meeting, a source or a chat from the app; it is removed from the database and the search index.</li>
+<li>Delete downloaded models from Settings.</li>
+<li>Remove everything by deleting the data folder. <code>lumina uninstall</code> removes the command and the app and keeps your data until you delete it.</li>
+</ul>
+<h2 id="website">This website</h2>
+<p>The website is a static site hosted on GitHub Pages. It uses no cookies, no analytics and no third-party scripts or fonts. The only thing stored in your browser is your light/dark preference if you change it. GitHub, as the host, may process technical data such as your IP address to serve the pages, under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>.</p>
+<h2 id="children">Children</h2>
+<p>Lumina does not collect data from anyone, including children.</p>
+<h2 id="changes">Changes and contact</h2>
+<p>Changes to this policy are listed in the <a href="../changelog/">changelog</a> and in the repository history. Questions: open an issue on <a href="https://github.com/Lautaro005/lumina/issues">GitHub</a>; security problems go to the <a href="../security/">security policy</a>.</p>
+        </div>
+      </div>
+    </article>
+  </div>
+</main>
+<footer class="site">
+  <div class="wrap">
+    <span>Lumina 0.1.0 · Free to use, not to sell</span>
+    <nav aria-label="Footer">
+      <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
+      <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
+      <button class="theme-toggle" type="button" data-theme-toggle>Light / dark</button>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/site.js?v=0.1.0" defer></script>
+</body>
+</html>

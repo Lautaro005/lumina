@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumina changelog</title>
+<meta name="description" content="What changed in each version of Lumina.">
+<link rel="canonical" href="https://lautaro005.github.io/lumina/changelog/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2b4fa8">
+<meta property="og:title" content="Lumina changelog">
+<meta property="og:description" content="What changed in each version of Lumina.">
+<meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.0">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="doc-cover">
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="../" aria-label="Lumina home">
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        lumina
+      </a>
+      <nav class="topnav" aria-label="Main">
+        <a class="keep" href="../docs/">Docs</a>
+        <a href="../changelog/">Changelog</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/">Security</a>
+        <a class="gh" href="https://github.com/Lautaro005/lumina">GitHub</a>
+        <a class="cta keep" href="../#install">Install</a>
+      </nav>
+    </header>
+  </div>
+</div>
+<main id="main" class="doc">
+  <div class="wrap">
+    <article class="page">
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
+      <div class="doc-body">
+        <header><h1>Changelog</h1><p>What changed in each version. Lumina follows semantic versioning.</p></header>
+        <div class="prose">
+<p>All notable changes to Lumina are listed here. The format follows <a href="https://keepachangelog.com/">Keep a Changelog</a> and the
+project uses <a href="https://semver.org/">Semantic Versioning</a>.</p>
+<h2 id="0-1-0-2026-10-22"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.0">0.1.0</a> - 2026-10-22</h2>
+<p>First release.</p>
+<h3>Meetings</h3>
+<ul>
+<li>Live transcription of the microphone (&quot;You&quot;) and the computer&#39;s audio (&quot;Others&quot;: Zoom, Meet, Teams…), on the CPU.
+macOS captures system audio with ScreenCaptureKit; Windows with WASAPI loopback; Linux with the PulseAudio/PipeWire
+monitor.</li>
+<li>Speech models: <strong>Parakeet TDT 0.6B v3</strong> (25 European languages, detects the language), <strong>Canary 1B v2</strong> (same 25
+languages, follows the language you choose) and <strong>Whisper</strong> tiny to large-v3-turbo (99 languages). Silero VAD cuts the
+audio into utterances; words show up as they are spoken.</li>
+<li>Transcription language selector with <strong>Automatic</strong> plus every supported language. With &quot;Automatic&quot; engine, Lumina
+picks Parakeet for automatic detection, Canary for a fixed European language and Whisper for the rest.</li>
+<li>Cornell-style notes: your shorthand in the cue column, <strong>Enhanced notes</strong> aligned row by row, extra points Lumina
+noticed, and the summary (overview, decisions, action items, open questions, topics) at the foot of the page.</li>
+<li>Live Enhance during the meeting (automatic or <strong>Enhance now</strong>) and a final pass when the meeting ends; automatic
+meeting titles.</li>
+<li><strong>Live assistance</strong>: questions asked in the meeting that your sources can answer get a short, cited answer card.</li>
+<li>Pause, resume, end; import an audio or video recording; full transcript with search; tags; filters by text, tag and
+date.</li>
+<li>Export to Markdown, plain text, SubRip subtitles (<code>.srt</code>) and JSON.</li>
+</ul>
+<h3>Knowledge</h3>
+<ul>
+<li><strong>EmbeddingGemma 2</strong> (8-bit ONNX, 768 dimensions, truncatable to 512/256/128) downloaded from the app, running in
+process.</li>
+<li><strong>ChromaDB</strong> collections for documents, meetings and notes; meetings are indexed when they end.</li>
+<li>Sources: files, folders watched for changes (watchdog), uploads and notes. PDF, DOCX, PPTX, XLSX, Markdown, text,
+HTML, CSV, JSON and code. Tags per source.</li>
+<li>Chat over everything with numbered citations, history, an optional <strong>Web search</strong> toggle (DuckDuckGo or SearXNG) and
+&quot;Ask about this meeting&quot;.</li>
+</ul>
+<h3>Models</h3>
+<ul>
+<li>Notes model: <strong>Gemma 4 E2B, E4B or 12B</strong> (4-bit GGUF) run by a pinned llama.cpp server (<code>b11823</code>), or <strong>Ollama</strong>,
+<strong>LM Studio</strong> or any OpenAI-compatible server. Ollama and LM Studio are detected automatically.</li>
+<li>Every model shows its size, license and memory needs before downloading; downloads resume and can be cancelled.</li>
+<li>Optional read-aloud with <strong>Kokoro 82M</strong> or the system voice.</li>
+</ul>
+<h3>Agents</h3>
+<ul>
+<li>MCP server with <code>search_knowledge</code>, <code>list_sources</code>, <code>get_document</code>, <code>add_note</code>, <code>query_meetings</code> and <code>get_meeting</code>,
+over stdio (<code>lumina mcp</code>) and HTTP (<code>/mcp</code>, bearer token). Ready-made snippets for Claude Desktop, Claude Code and
+Cursor in Settings → Agents.</li>
+</ul>
+<h3>App and install</h3>
+<ul>
+<li>One-line install: <code>curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh</code> (macOS, Linux) and
+<code>irm https://lautaro005.github.io/lumina/install.ps1 | iex</code> (Windows). <code>lumina</code> opens the browser, <code>lumina app</code> the
+desktop app.</li>
+<li>Desktop app (Tauri 2) with a tray icon; it starts and stops the local server.</li>
+<li>First-run setup: interface language, meeting language, notes model and downloads.</li>
+<li>English and Spanish interface; light and dark themes.</li>
+<li>Website with documentation, privacy policy, security policy, changelog, <code>llms.txt</code> and sitemap.</li>
+</ul>
+<h3>Known limits</h3>
+<ul>
+<li>Installers are not code-signed or notarized yet: macOS may ask you to confirm the first launch, Windows SmartScreen may
+warn.</li>
+<li>No speaker diarization beyond You / Others.</li>
+<li>The Linux desktop build is x86-64 only; other Linux machines use <code>lumina</code> in the browser.</li>
+</ul>
+        </div>
+      </div>
+    </article>
+  </div>
+</main>
+<footer class="site">
+  <div class="wrap">
+    <span>Lumina 0.1.0 · Free to use, not to sell</span>
+    <nav aria-label="Footer">
+      <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
+      <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
+      <button class="theme-toggle" type="button" data-theme-toggle>Light / dark</button>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/site.js?v=0.1.0" defer></script>
+</body>
+</html>

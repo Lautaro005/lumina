@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Lumina",
+  "mainBinaryName": "lumina-app",
+  "version": "0.1.0",
+  "identifier": "app.lumina.desktop",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["appimage", "deb", "nsis", "app", "dmg"],
+    "category": "Productivity",
+    "shortDescription": "Local-first meeting notes and knowledge base",
+    "longDescription": "Lumina listens to your meetings and classes, transcribes them on your computer, turns your shorthand into full notes and answers questions from your files. No account; nothing leaves the device.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "infoPlist": "Info.plist",
+      "dmg": {
+        "windowSize": {
+          "width": 540,
+          "height": 380
+        }
+      }
+    }
+  }
+}

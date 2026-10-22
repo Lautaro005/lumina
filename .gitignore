@@ -1,0 +1,15 @@
+.venv/
+.devdata/
+__pycache__/
+*.pyc
+node_modules/
+web/dist/
+target/
+.DS_Store
+.impeccable/live/
+.impeccable/review/
+.impeccable/decision/
+data/
+.claude/
+.impeccable/build/
+.impeccable/questions/

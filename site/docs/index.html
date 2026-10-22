@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumina docs · Install, meetings, languages, models, MCP</title>
+<meta name="description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
+<link rel="canonical" href="https://lautaro005.github.io/lumina/docs/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2b4fa8">
+<meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
+<meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
+<meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.0">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="doc-cover">
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="../" aria-label="Lumina home">
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        lumina
+      </a>
+      <nav class="topnav" aria-label="Main">
+        <a class="keep" href="../docs/">Docs</a>
+        <a href="../changelog/">Changelog</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/">Security</a>
+        <a class="gh" href="https://github.com/Lautaro005/lumina">GitHub</a>
+        <a class="cta keep" href="../#install">Install</a>
+      </nav>
+    </header>
+  </div>
+</div>
+<main id="main" class="doc">
+  <div class="wrap">
+    <article class="page">
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#install">Install</a><a href="#first-run">First run</a><a href="#meetings">Meetings</a><a href="#languages">Languages and transcription</a><a href="#models">Notes model</a><a href="#sources">Sources</a><a href="#chat">Chat and web search</a><a href="#speech">Read aloud</a><a href="#agents">Agents (MCP)</a><a href="#data">Your data</a><a href="#commands">Commands</a><a href="#troubleshooting">Troubleshooting</a><a href="#source">Build from source</a></nav></aside>
+      <div class="doc-body">
+        <header><h1>Documentation</h1><p>Everything Lumina does, how to set it up and where your data lives.</p></header>
+        <div class="prose">
+<h2 id="install">Install</h2>
+<p><b>macOS or Linux.</b> Open Terminal and paste:</p>
+<pre class="code">curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh</pre>
+<p><b>Windows.</b> Open PowerShell and paste:</p>
+<pre class="code">irm https://lautaro005.github.io/lumina/install.ps1 | iex</pre>
+<p>The installer puts Lumina in <code>~/.lumina</code> (your data goes in <code>~/.lumina/data</code>), installs Python and the dependencies with <a href="https://docs.astral.sh/uv/">uv</a>, adds the <code>lumina</code> command and installs the desktop app from the latest release. It needs <code>git</code>; nothing else has to be installed first. Running it again updates Lumina.</p>
+<table>
+<thead><tr><th>Option</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>--no-app</code></td><td>Skip the desktop app; use Lumina in the browser.</td></tr>
+<tr><td><code>--build-app</code></td><td>Build the desktop app from source (needs Rust and Node.js).</td></tr>
+<tr><td><code>--models</code></td><td>Also download the base models now (EmbeddingGemma 2, Silero VAD, Parakeet v3, about 1 GB).</td></tr>
+<tr><td><code>LUMINA_HOME=/path</code></td><td>Install somewhere other than <code>~/.lumina</code>.</td></tr>
+</tbody>
+</table>
+<p>Pass options like this: <code>curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh -s -- --models</code>.</p>
+<div class="note"><b>Linux:</b> the microphone needs PortAudio (<code>sudo apt install libportaudio2</code> on Debian and Ubuntu, <code>sudo dnf install portaudio</code> on Fedora). The desktop app needs FUSE 2 for AppImages; without it the <code>lumina app</code> command runs it from a temporary extraction.</div>
+<div class="note warn">Lumina 0.1 installers are not code-signed yet. macOS may ask you to confirm the first launch (right-click → Open); Windows SmartScreen may show a warning (More info → Run anyway).</div>
+
+<h2 id="first-run">First run</h2>
+<p>Type <code>lumina</code> (opens your browser) or <code>lumina app</code> (opens the desktop app). Lumina walks you through four steps:</p>
+<ol>
+<li><b>Interface language</b>: English or Spanish (automatic follows your system).</li>
+<li><b>Meeting language</b>: the language people speak in your meetings, or <i>Automatic</i>. See <a href="#languages">Languages</a>.</li>
+<li><b>Notes model</b>: Gemma 4 inside Lumina (E2B, E4B or 12B), or Ollama or LM Studio if you already use them.</li>
+<li><b>Downloads</b>: each model shows its size and license. You can start using Lumina while they finish.</li>
+</ol>
+
+<h2 id="meetings">Meetings</h2>
+<h3>Recording</h3>
+<p>Click <b>New meeting</b>, then <b>Start listening</b>. Lumina records two sources:</p>
+<ul>
+<li><b>You</b>: your microphone (pick it in Settings → Transcription).</li>
+<li><b>Others</b>: your computer's audio, so the other people in Zoom, Meet, Teams or any call are captured. Turn it off in Settings if you only want the microphone.</li>
+</ul>
+<p>The red margin line moves while Lumina is listening, with the elapsed time on top. <b>Pause</b> stops recording without ending the meeting; <b>End meeting</b> stops it and writes the summary. You can resume a finished meeting later; new audio is appended.</p>
+<h3>Your notes and enhanced notes</h3>
+<p>Type short cues in the left column while you listen, one idea per line: <i>budget Q3, cut?</i>, <i>pricing page date</i>. Press Enter for a new line. Lumina writes the full note for each cue on the same row, using only what was said, and adds a few rows marked <b>Lumina</b> for important points you did not write down.</p>
+<p>During the meeting this happens every 45 seconds or so once there is enough new speech (Settings → Transcription → <i>Enhance notes during the meeting</i>), or when you click <b>Enhance now</b>. A final pass runs when the meeting ends. New or changed notes are briefly highlighted.</p>
+<h3>Summary</h3>
+<p>At the foot of the page: an overview, decisions, action items with owners and dates, open questions and topics. Lumina also titles the meeting if you did not. The meeting, its notes and its transcript are then added to your knowledge base.</p>
+<h3>Live assistance</h3>
+<p>When someone asks a question (Lumina recognises questions in English, Spanish, Portuguese, French, German and Italian) and your sources contain an answer, a yellow card appears with a short answer you can say out loud and where it came from. Turn it off in Settings → Transcription.</p>
+<h3>Import, search and export</h3>
+<ul>
+<li><b>Import a recording</b> (Meetings page): any audio or video file is transcribed and summarised like a live meeting.</li>
+<li><b>Full transcript</b>: the bottom strip opens the whole transcript with search.</li>
+<li><b>Export</b>: Markdown (notes, summary and transcript), plain text, SubRip subtitles (<code>.srt</code>) or JSON.</li>
+<li><b>Tags and filters</b>: tag meetings and filter the list by text, tag or date.</li>
+</ul>
+
+<h2 id="languages">Languages and transcription</h2>
+<p>Settings → Transcription → <b>Language spoken in meetings</b> has <i>Automatic</i> and every language the selected model supports. Automatic detection can guess wrong on short or mixed audio, so choose the language when you know it.</p>
+<table>
+<thead><tr><th>Speech model</th><th>Languages</th><th>Language choice</th><th>Size</th></tr></thead>
+<tbody>
+<tr><td><b>Automatic</b> (default)</td><td>all below</td><td>Parakeet when the language is automatic, Canary for a chosen European language, Whisper for any other language</td><td>downloads what it needs</td></tr>
+<tr><td>Parakeet TDT 0.6B v3</td><td>25 European</td><td>always detects it</td><td>670 MB</td></tr>
+<tr><td>Canary 1B v2</td><td>25 European</td><td>follows your choice</td><td>1.0 GB</td></tr>
+<tr><td>Whisper tiny · base · small · medium · large-v3-turbo</td><td>99</td><td>automatic or your choice</td><td>75 MB – 1.6 GB</td></tr>
+</tbody>
+</table>
+<p>The 25 European languages: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish, Swedish and Ukrainian.</p>
+<p>Silero VAD (2 MB) detects speech; Lumina transcribes each utterance when the speaker pauses and shows the words while they are still talking (turn that off with <i>Show words as they are spoken</i> on slow machines).</p>
+
+<h2 id="models">Notes model</h2>
+<p>Settings → Notes model → <b>Who writes the notes</b>:</p>
+<ul>
+<li><b>Gemma 4 on this computer.</b> Choose E2B (2.8 GB, for 8 GB of memory), E4B (4.6 GB, 12 GB) or 12B (7.2 GB, 16 GB). Lumina downloads the model and a pinned llama.cpp server and starts it when needed. On Apple Silicon it uses the GPU.</li>
+<li><b>Ollama.</b> Lumina finds it on <code>127.0.0.1:11434</code> and lists your models.</li>
+<li><b>LM Studio.</b> Start its local server; Lumina finds it on <code>127.0.0.1:1234</code>.</li>
+<li><b>Another OpenAI-compatible server.</b> Any address and model name, with an optional API key.</li>
+</ul>
+<p><b>Test</b> sends a one-word prompt and shows how long it took.</p>
+
+<h2 id="sources">Sources</h2>
+<p>Sources are what Lumina searches when it writes notes, answers questions or helps live. Meetings are added on their own when they end.</p>
+<ul>
+<li><b>Add folder</b> or <b>Add files</b> opens your system's file chooser; you can also paste a path or drop files on the page.</li>
+<li>Folders are <b>watched</b>: new, changed and deleted files are re-indexed automatically. Hidden folders, <code>node_modules</code> and <code>.git</code> are skipped.</li>
+<li><b>New note</b> writes a note straight into the knowledge base.</li>
+<li>Formats: PDF, DOCX, PPTX, XLSX, Markdown, text, HTML, CSV, JSON and source code. Files larger than 60 MB are skipped.</li>
+<li><b>Try a search</b> shows which passages match a question and how closely.</li>
+</ul>
+<p>Lumina splits documents into passages of about 500 tokens (keeping each passage's heading), embeds them with EmbeddingGemma 2 and stores them in ChromaDB. Settings → Knowledge lets you shorten the vectors to 512, 256 or 128 dimensions to save disk.</p>
+
+<h2 id="chat">Chat and web search</h2>
+<p><b>Ask Lumina</b> answers from your meetings, notes and files and cites each passage with a number; the numbers in the left column link to the meeting or show the passage. Chats are saved in History. <b>Ask about this meeting</b> (meeting menu) starts a chat that always includes that meeting.</p>
+<p>The <b>Web search</b> toggle adds results from DuckDuckGo, or from your own SearXNG (Settings → Knowledge). It is off by default because it sends your question to the search engine.</p>
+
+<h2 id="speech">Read aloud</h2>
+<p>Notes and answers have <b>Read aloud</b>. The system voice works with no download; Kokoro 82M (120 MB, Settings → Read aloud) sounds more natural in English, Spanish, French, Italian, Portuguese, Japanese, Chinese and Hindi.</p>
+
+<h2 id="agents">Agents (MCP)</h2>
+<p>Lumina is an MCP server, so agents can use your meetings and files.</p>
+<table>
+<thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>search_knowledge</code></td><td>Semantic search over files, meetings and notes</td></tr>
+<tr><td><code>list_sources</code></td><td>Files, folders and notes with their status</td></tr>
+<tr><td><code>get_document</code></td><td>Full text of a source, or of a meeting (<code>meeting:&lt;id&gt;</code>)</td></tr>
+<tr><td><code>add_note</code></td><td>Save a note into the knowledge base</td></tr>
+<tr><td><code>query_meetings</code></td><td>List meetings by text and date</td></tr>
+<tr><td><code>get_meeting</code></td><td>Notes, enhanced notes, summary and transcript of one meeting</td></tr>
+</tbody>
+</table>
+<p><b>Claude Code:</b></p>
+<pre class="code">claude mcp add lumina -- lumina mcp</pre>
+<p><b>Claude Desktop, Cursor and other stdio clients:</b></p>
+<pre class="code">{ "mcpServers": { "lumina": { "command": "lumina", "args": ["mcp"] } } }</pre>
+<p><b>Clients that connect to a URL:</b> <code>http://127.0.0.1:47770/mcp</code> with the header <code>Authorization: Bearer &lt;token&gt;</code>. Settings → Agents shows the token and ready-to-copy snippets with the full path to <code>lumina</code>.</p>
+
+<h2 id="data">Your data</h2>
+<p>Everything is in the data folder, <code>~/.lumina/data</code> (Windows: <code>%USERPROFILE%\.lumina\data</code>; change it with <code>LUMINA_DATA</code>):</p>
+<ul>
+<li><code>lumina.db</code>: meetings, transcripts, notes, chats and the list of sources (SQLite)</li>
+<li><code>chroma/</code>: the search index</li>
+<li><code>models/</code> and <code>bin/</code>: downloaded models and the llama.cpp server</li>
+<li><code>uploads/</code>: files you uploaded and imported recordings</li>
+<li><code>settings.json</code>: your settings and the MCP token (readable only by you)</li>
+<li><code>logs/</code>: logs, useful when something fails</li>
+</ul>
+<p>Back up the folder to keep everything. See the <a href="../privacy/">privacy policy</a> for what ever leaves your computer.</p>
+
+<h2 id="commands">Commands</h2>
+<table>
+<tbody>
+<tr><td><code>lumina</code></td><td>Open Lumina in the browser (the server runs in that terminal; Ctrl+C stops it)</td></tr>
+<tr><td><code>lumina app</code></td><td>Open the desktop app (window and tray icon)</td></tr>
+<tr><td><code>lumina serve --port 47770</code></td><td>Run the server without opening the browser</td></tr>
+<tr><td><code>lumina mcp</code></td><td>MCP server over stdio</td></tr>
+<tr><td><code>lumina models</code></td><td>List models; <code>lumina models download parakeet-v3</code> downloads one</td></tr>
+<tr><td><code>lumina doctor</code></td><td>Check microphones, the system-audio helper, models and model servers</td></tr>
+<tr><td><code>lumina update</code></td><td>Update the code, the dependencies and the desktop app</td></tr>
+<tr><td><code>lumina uninstall</code></td><td>Remove the command and the desktop app; your data stays</td></tr>
+</tbody>
+</table>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3>No sound from the microphone</h3>
+<p>macOS: System Settings → Privacy &amp; Security → Microphone → allow Lumina (desktop app) or your terminal (browser). Windows: Settings → Privacy → Microphone. Then pick the device in Settings → Transcription and run <code>lumina doctor</code>.</p>
+<h3>"Others" stays silent</h3>
+<p>macOS: allow Lumina or your terminal in System Settings → Privacy &amp; Security → <b>Screen &amp; System Audio Recording</b>, then start again. The helper needs the Xcode command line tools (<code>xcode-select --install</code>). Linux: make sure PulseAudio or PipeWire is running (<code>pactl info</code>).</p>
+<h3>Enhanced notes do not appear</h3>
+<p>Check Settings → Notes model → <b>Test</b>. For Gemma 4, the first start loads the model (up to a minute on slow disks). For Ollama or LM Studio, make sure the server is running and has a model.</p>
+<h3>Port 47770 is busy</h3>
+<p>Run <code>lumina serve --port 47771</code>, or set <code>LUMINA_PORT=47771</code>.</p>
+
+<h2 id="source">Build from source</h2>
+<pre class="code">git clone https://github.com/Lautaro005/lumina &amp;&amp; cd lumina
+uv sync
+(cd web &amp;&amp; npm install &amp;&amp; npm run build)
+uv run lumina</pre>
+<p>Desktop app: <code>cd apps/desktop &amp;&amp; npm install &amp;&amp; npm run tauri build</code>. Tests: <code>uv run pytest</code> and <code>cargo test</code> in <code>apps/desktop/src-tauri</code>. See <a href="https://github.com/Lautaro005/lumina/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+        </div>
+      </div>
+    </article>
+  </div>
+</main>
+<footer class="site">
+  <div class="wrap">
+    <span>Lumina 0.1.0 · Free to use, not to sell</span>
+    <nav aria-label="Footer">
+      <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
+      <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
+      <button class="theme-toggle" type="button" data-theme-toggle>Light / dark</button>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/site.js?v=0.1.0" defer></script>
+</body>
+</html>

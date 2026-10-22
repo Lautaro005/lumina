@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumina · Meeting notes that write themselves, on your computer</title>
+<meta name="description" content="Lumina transcribes your meetings and classes on your computer, turns your shorthand into full notes and answers questions from your files. Free, no account, macOS, Windows and Linux.">
+<link rel="canonical" href="https://lautaro005.github.io/lumina/">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="alternate" type="text/plain" title="llms.txt" href="llms.txt">
+<meta name="theme-color" content="#2b4fa8">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Lumina · Meeting notes that write themselves, on your computer">
+<meta property="og:description" content="Live transcription, enhanced notes, summaries and chat over your files. Everything stays on your device.">
+<meta property="og:url" content="https://lautaro005.github.io/lumina/">
+<meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="assets/fonts/source-serif-4-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css?v=0.1.0">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Lumina","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Linux","softwareVersion":"0.1.0","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Local-first meeting notes and knowledge base: live transcription, enhanced notes, summaries, RAG chat and an MCP server, all on your device.","url":"https://lautaro005.github.io/lumina/","downloadUrl":"https://github.com/Lautaro005/lumina/releases/latest","license":"https://github.com/Lautaro005/lumina/blob/main/LICENSE"}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="cover">
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Lumina home">
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        lumina
+      </a>
+      <nav class="topnav" aria-label="Main">
+        <a href="#features">Features</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#models">Models</a>
+        <a href="#agents">Agents</a>
+        <a class="keep" href="docs/">Docs</a>
+        <a class="gh" href="https://github.com/Lautaro005/lumina">GitHub</a>
+        <a class="cta keep" href="#install">Install</a>
+      </nav>
+    </header>
+
+    <article class="sheet" aria-labelledby="title">
+      <div class="sheet-head">
+        <div class="sheet-meta"><span>Weekly review</span><i class="sep"></i><span>Thu 22 Oct, 10:30</span><i class="sep"></i><span>English · Spanish · 97 more</span></div>
+        <h1 id="title">Notes that write themselves, on your computer.</h1>
+        <p class="lead">Lumina listens to your meetings and classes, turns the shorthand you type into the notes you meant to take, and answers questions from your own files. No account. Nothing leaves your device.</p>
+      </div>
+
+      <div class="cornell live" data-demo aria-label="Example: your notes on the left, Lumina's enhanced notes on the right">
+        <span class="clock" aria-hidden="true"><i></i>Listening <span data-clock>12:41</span></span>
+        <div class="colheads" aria-hidden="true"><span>Your notes</span><span>Enhanced notes</span></div>
+        <div class="crow"><div class="c" data-cue>Q3 budget, cut?</div><div class="b" data-body><ul><li>Julián proposes cutting marketing by 10% to fund two support hires.</li><li>Marta wants the impact on leads before Friday.</li></ul></div></div>
+        <div class="crow"><div class="c" data-cue>pricing page → when</div><div class="b" data-body><ul><li>New pricing page goes live <b>November 5</b>.</li><li>Owner: Marta Gómez. Team plan stays at USD 29 per seat.</li></ul></div></div>
+        <div class="crow"><div class="c" data-cue>annual plan?</div><div class="b" data-body><ul><li>Open question: offer a discounted annual plan? Nobody decided; revisit next sync.</li></ul></div></div>
+      </div>
+      <div class="ticker" aria-hidden="true"><b>Transcript</b><div class="line"><span class="who" data-who>Ana</span><span data-line>Do we need an annual plan with a discount?</span></div></div>
+
+      <div class="foot" id="install">
+        <div class="c">
+          <h2>Install in one line</h2>
+          <p>Free. macOS, Windows and Linux. Runs on any recent laptop, no GPU needed.</p>
+        </div>
+        <div class="b" data-install>
+          <div class="tabs" role="tablist" aria-label="Operating system">
+            <button role="tab" data-os="unix" aria-selected="true">macOS · Linux</button>
+            <button role="tab" data-os="win" aria-selected="false">Windows</button>
+          </div>
+          <div class="cmd">
+            <code data-cmd><span class="p">$ </span>curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh</code>
+            <button class="copy" type="button"><span>Copy</span></button>
+          </div>
+          <p class="after" data-after>Paste it in <b>Terminal</b>. Then type <code>lumina</code> to open it, or <code>lumina app</code> for the desktop app.</p>
+          <div class="facts">
+            <span class="chip ok">Transcribed on this device</span>
+            <span class="chip blue">No account</span>
+            <span class="chip">Version 0.1.0</span>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>
+
+<main id="main">
+  <section id="features" aria-labelledby="f-title">
+    <div class="wrap">
+      <article class="page list">
+        <header class="page-head">
+          <h2 id="f-title">You write a few words. Lumina writes the rest.</h2>
+          <p>Laid out like the Cornell method: your cues on the left of the red margin line, Lumina's notes on the right, the summary at the foot.</p>
+        </header>
+        <div class="cornell">
+          <div class="crow"><div class="c">Listens<small>mic + computer audio</small></div><div class="b"><p>Records your microphone as <b>You</b> and the computer's audio as <b>Others</b>, so a Zoom, Meet or Teams call is captured from both sides. Words appear as they are spoken.</p></div></div>
+          <div class="crow"><div class="c">Writes your notes<small>Live Enhance</small></div><div class="b"><p>Type “budget?” and Lumina writes who proposed what, with the numbers. Each enhanced note sits on the same line as your cue, and points you did not write down are added underneath.</p></div></div>
+          <div class="crow"><div class="c">Sums it up<small>when the meeting ends</small></div><div class="b"><p>An overview, the decisions, the action items with their owners, the open questions and a title. Export to Markdown, text, subtitles or JSON.</p></div></div>
+          <div class="crow"><div class="c">Helps live<small>Live assistance</small></div><div class="b">
+            <p>When someone asks a question your documents can answer, a short answer with its source appears beside your notes.</p>
+            <div class="assist-demo"><q>Who owns the pricing page?</q><p>Marta Gómez owns it; it goes live on November 5 <span class="cite">1</span></p><span>From 1. pricing-plan-2027.md</span></div>
+          </div></div>
+          <div class="crow"><div class="c">Knows your files<small>sources</small></div><div class="b"><p>Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, or whole folders. Lumina indexes them with EmbeddingGemma 2 and re-indexes a folder when its files change.</p></div></div>
+          <div class="crow"><div class="c">Answers questions<small>chat</small></div><div class="b"><p>Ask “what did we decide about pricing?” across every meeting and file. Every answer cites the passages it used <span class="cite">1</span> <span class="cite">2</span>. Web search is there when you want it, off by default.</p></div></div>
+          <div class="crow"><div class="c">Works with your agents<small>MCP</small></div><div class="b"><p>Claude, Cursor, Codex or any MCP client can search your meetings and files, read a transcript or save a note.</p></div></div>
+          <div class="crow"><div class="c">Reads aloud<small>optional</small></div><div class="b"><p>Hear your notes or an answer with a natural Kokoro voice, or the one your system already has.</p></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="languages" aria-labelledby="l-title">
+    <div class="wrap">
+      <article class="page">
+        <header class="page-head">
+          <h2 id="l-title">Say which language. Or let it detect it.</h2>
+          <p>Automatic detection can guess wrong on short or mixed audio, so the language is a setting, not a guess.</p>
+        </header>
+        <div class="cornell">
+          <div class="crow"><div class="c">Language spoken in meetings</div><div class="b">
+            <div class="select-demo" aria-hidden="true">
+              <div class="fake"><span>Spanish</span><span style="color:var(--rule)">▾</span></div>
+              <div class="langs">
+                <span class="lang auto">Automatic</span><span class="lang on">Spanish</span><span class="lang on">English</span><span class="lang">Portuguese</span><span class="lang">French</span><span class="lang">German</span><span class="lang">Italian</span><span class="lang">Dutch</span><span class="lang">Polish</span><span class="lang">Ukrainian</span><span class="lang">Russian</span><span class="lang">Swedish</span><span class="lang">Greek</span><span class="lang">Czech</span><span class="lang">Romanian</span><span class="lang">+ 84 with Whisper</span>
+              </div>
+            </div>
+          </div></div>
+          <div class="crow"><div class="c">Which model listens</div><div class="b"><p><b>Automatic</b> uses Parakeet when the language is automatic, Canary when you pick one of 25 European languages (it follows your choice instead of guessing) and Whisper for any of its 99 languages.</p></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="privacy" aria-labelledby="p-title">
+    <div class="wrap">
+      <article class="page">
+        <header class="page-head">
+          <h2 id="p-title">What leaves your computer</h2>
+          <p>Lumina has no servers and no accounts. The local server answers only to this computer.</p>
+        </header>
+        <div class="privacy-grid">
+          <div><h3 class="never">Never</h3><p>Audio, transcripts, notes, summaries, embeddings, chats, your files. No telemetry.</p></div>
+          <div><h3>Once</h3><p>Model downloads from Hugging Face and GitHub, with the size and license shown first.</p></div>
+          <div><h3>When you turn it on</h3><p>Web search sends your question to DuckDuckGo or your own SearXNG. Off by default.</p></div>
+          <div><h3>When you point it there</h3><p>If you connect a model server that is not on this computer, prompts go to it. Ollama and LM Studio run locally.</p></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="models" aria-labelledby="m-title">
+    <div class="wrap">
+      <article class="page">
+        <header class="page-head">
+          <h2 id="m-title">Small open models, picked to run on an ordinary laptop</h2>
+          <p>Choose Gemma 4 inside Lumina, or the Ollama and LM Studio models you already have.</p>
+        </header>
+        <div class="scroll-x">
+          <table class="ledger">
+            <thead><tr><th scope="col">Job</th><th scope="col">Model</th><th scope="col">Size</th><th scope="col">License</th></tr></thead>
+            <tbody>
+              <tr><td>Transcription</td><td><b>Parakeet TDT 0.6B v3</b><small>25 European languages, detects the language, fast on any CPU</small></td><td class="n">670 MB</td><td class="n">CC-BY-4.0</td></tr>
+              <tr><td>Fixed language</td><td><b>Canary 1B v2</b><small>Same 25 languages, follows the language you choose</small></td><td class="n">1.0 GB</td><td class="n">CC-BY-4.0</td></tr>
+              <tr><td>Any language</td><td><b>Whisper</b> tiny → large-v3-turbo<small>99 languages; tiny for very small machines</small></td><td class="n">75 MB – 1.6 GB</td><td class="n">MIT</td></tr>
+              <tr><td>Search</td><td><b>EmbeddingGemma 2</b><small>100+ languages, 768 dimensions</small></td><td class="n">350 MB</td><td class="n">Apache-2.0</td></tr>
+              <tr><td>Notes and answers</td><td><b>Gemma 4</b> E2B · E4B · 12B<small>Pick by memory: 8, 12 or 16 GB. Or use Ollama or LM Studio</small></td><td class="n">2.8 / 4.6 / 7.2 GB</td><td class="n">Apache-2.0</td></tr>
+              <tr><td>Read aloud</td><td><b>Kokoro 82M</b><small>Optional; 8 languages</small></td><td class="n">120 MB</td><td class="n">Apache-2.0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="agents" aria-labelledby="a-title">
+    <div class="wrap">
+      <article class="page">
+        <header class="page-head">
+          <h2 id="a-title">Give your agents a memory of your meetings</h2>
+          <p>Lumina is an MCP server: search_knowledge, list_sources, get_document, add_note, query_meetings and get_meeting.</p>
+        </header>
+        <div class="cornell">
+          <div class="crow"><div class="c">Claude Code</div><div class="b"><div class="code-wrap"><pre class="code" id="mcp1">claude mcp add lumina -- lumina mcp</pre><button class="copy" data-copy="mcp1" type="button"><span>Copy</span></button></div></div></div>
+          <div class="crow"><div class="c">Claude Desktop, Cursor<small>stdio</small></div><div class="b"><div class="code-wrap"><pre class="code" id="mcp2">{ "mcpServers": { "lumina": { "command": "lumina", "args": ["mcp"] } } }</pre><button class="copy" data-copy="mcp2" type="button"><span>Copy</span></button></div></div></div>
+          <div class="crow"><div class="c">Any client with a URL<small>HTTP</small></div><div class="b"><p><code>http://127.0.0.1:47770/mcp</code> with the token from Settings → Agents. It answers only on this computer.</p></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="compare" aria-labelledby="c-title">
+    <div class="wrap">
+      <article class="page">
+        <header class="page-head">
+          <h2 id="c-title">An open alternative to Google AI Edge Foresight</h2>
+          <p>Same idea: notes and answers from on-device models. Built to run anywhere and to work with your tools.</p>
+        </header>
+        <div class="scroll-x">
+          <table class="ledger">
+            <thead><tr><th scope="col"></th><th scope="col">Lumina</th><th scope="col">Foresight</th></tr></thead>
+            <tbody>
+              <tr><td>Systems</td><td><b>macOS, Windows, Linux</b></td><td>macOS</td></tr>
+              <tr><td>Who writes the notes</td><td><b>Gemma 4, or your Ollama / LM Studio model</b></td><td>Gemma 4</td></tr>
+              <tr><td>Agents</td><td><b>MCP server included</b></td><td>—</td></tr>
+              <tr><td>Source code</td><td><b>On GitHub</b></td><td>Closed</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="faq" aria-labelledby="q-title">
+    <div class="wrap">
+      <article class="page">
+        <header class="page-head"><h2 id="q-title">Questions</h2></header>
+        <details class="faq"><summary>Does it need a GPU or a fast computer?</summary><div>No. Transcription and search run on the CPU of any recent laptop. Gemma 4 E2B needs about 8 GB of memory in total; on Apple Silicon it uses the GPU automatically. With less memory, connect a smaller model through Ollama or LM Studio.</div></details>
+        <details class="faq"><summary>How does it hear the other people in a call?</summary><div>It records your computer's audio as “Others”: ScreenCaptureKit on macOS (it asks for the Screen &amp; System Audio Recording permission once), WASAPI loopback on Windows and the PulseAudio/PipeWire monitor on Linux. Your microphone is “You”.</div></details>
+        <details class="faq"><summary>Does it work offline?</summary><div>Yes, after the first download. Only web search (off by default) and model downloads use the internet.</div></details>
+        <details class="faq"><summary>Is it free? Can I use it at work?</summary><div>Yes, it is free to use, change and share, including at work. What the license does not allow is selling Lumina or a product or service whose value comes from it (Apache-2.0 with the Commons Clause).</div></details>
+        <details class="faq"><summary>Does it tell speakers apart?</summary><div>It separates you (microphone) from everyone else (computer audio). Telling apart several people in the same stream is planned.</div></details>
+      </article>
+    </div>
+  </section>
+
+  <section class="close" aria-labelledby="close-title">
+    <div class="wrap">
+      <div class="page">
+        <div>
+          <h2 id="close-title">Your next meeting can take its own notes.</h2>
+          <p>Install it, type <code style="color:#fff">lumina</code>, pick your language. That is the whole setup.</p>
+        </div>
+        <div class="b" data-install style="display:grid;gap:12px">
+          <div class="tabs" role="tablist" aria-label="Operating system">
+            <button role="tab" data-os="unix" aria-selected="true">macOS · Linux</button>
+            <button role="tab" data-os="win" aria-selected="false">Windows</button>
+          </div>
+          <div class="cmd"><code data-cmd></code><button class="copy" type="button"><span>Copy</span></button></div>
+          <p class="after" data-after></p>
+          <p class="after">Or download an installer from <a href="https://github.com/Lautaro005/lumina/releases/latest">GitHub Releases</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>Lumina 0.1.0 · Free to use, not to sell · Made by Lautaro Silva Sikora</span>
+    <nav aria-label="Footer">
+      <a href="docs/">Docs</a>
+      <a href="changelog/">Changelog</a>
+      <a href="privacy/">Privacy</a>
+      <a href="security/">Security</a>
+      <a href="llms.txt">llms.txt</a>
+      <a href="https://github.com/Lautaro005/lumina">GitHub</a>
+      <button class="theme-toggle" type="button" data-theme-toggle>Light / dark</button>
+    </nav>
+  </div>
+</footer>
+<script src="assets/site.js?v=0.1.0" defer></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" role="img" aria-labelledby="t d">
+  <title id="t">Lumina</title>
+  <desc id="d">A Cornell note page: your short notes on the left of a red margin line, Lumina's enhanced notes on the right.</desc>
+  <rect width="1280" height="420" fill="#2b4fa8"/>
+  <g transform="translate(96 54)">
+    <rect width="1088" height="312" rx="10" fill="#ffffff"/>
+    <text x="40" y="66" font-family="Georgia, 'Times New Roman', serif" font-size="40" font-weight="700" fill="#1e2430">lumina</text>
+    <text x="210" y="64" font-family="Helvetica, Arial, sans-serif" font-size="19" fill="#4a5568">Notes that write themselves, on your computer.</text>
+    <rect x="0" y="94" width="1088" height="3" fill="#3a6fd8"/>
+    <rect x="352" y="97" width="3" height="215" fill="#d9453b"/>
+    <g font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#1e2430">
+      <text x="40" y="146">Q3 budget, cut?</text>
+      <text x="40" y="222">pricing page date</text>
+    </g>
+    <line x1="0" y1="186" x2="1088" y2="186" stroke="#edf1f9" stroke-width="2"/>
+    <g font-family="Georgia, 'Times New Roman', serif" font-size="20" fill="#1e2430">
+      <text x="388" y="146">• Julián proposes a 10% cut to marketing to fund two support hires.</text>
+      <text x="388" y="222">• Goes live November 5th. Owner: Marta Gómez.</text>
+    </g>
+    <rect x="388" y="258" width="250" height="30" rx="15" fill="#fff7cc"/>
+    <text x="404" y="279" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#5c4a00">Transcribed on this device</text>
+    <rect x="652" y="258" width="200" height="30" rx="15" fill="#edf3ff"/>
+    <text x="668" y="279" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#2b5bc0">No account · No cloud</text>
+  </g>
+</svg>

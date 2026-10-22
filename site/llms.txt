@@ -1,0 +1,35 @@
+# Lumina
+
+> Lumina is a free, source-available, local-first meeting notes and knowledge base app for macOS, Windows and Linux, and an open alternative to Google AI Edge Foresight. It records the microphone and the computer's audio, transcribes live on the CPU, turns the user's shorthand into enhanced notes aligned line by line (Cornell layout), writes a summary (overview, decisions, action items, open questions), answers questions in meetings from the user's documents (live assistance), indexes files and folders, offers a chat with citations over everything, and exposes the knowledge base to AI agents through an MCP server. No account, no telemetry; everything runs on the device.
+
+Key facts:
+
+- Install on macOS/Linux: `curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh`. On Windows (PowerShell): `irm https://lautaro005.github.io/lumina/install.ps1 | iex`. Start with `lumina` (browser) or `lumina app` (desktop app with tray icon).
+- Current version: 0.1.0 (October 22, 2026).
+- License: Apache-2.0 with the Commons Clause: free to use, modify and share, not to sell.
+- Speech models: Parakeet TDT 0.6B v3 (25 European languages, auto-detects), Canary 1B v2 (same 25 languages, follows the chosen language), Whisper tiny to large-v3-turbo (99 languages), Silero VAD. The transcription language is a setting with "Automatic" plus every supported language.
+- Embeddings: EmbeddingGemma 2 (8-bit ONNX, 768 dimensions, truncatable to 512/256/128), downloaded from the app. Vector store: ChromaDB (collections documents, meetings, notes).
+- Notes model: Gemma 4 E2B, E4B or 12B (4-bit GGUF) run by llama.cpp inside Lumina, or Ollama, LM Studio or any OpenAI-compatible server.
+- Optional read-aloud: Kokoro 82M or the system voice. Optional web search in chat: DuckDuckGo or SearXNG, off by default.
+- MCP tools: search_knowledge, list_sources, get_document, add_note, query_meetings, get_meeting. stdio: `lumina mcp` (e.g. `claude mcp add lumina -- lumina mcp`). HTTP: `http://127.0.0.1:47770/mcp` with a bearer token from Settings → Agents.
+- Stack: Python (FastAPI) server on 127.0.0.1:47770, React + TypeScript interface, Tauri 2 desktop shell. Data folder: `~/.lumina/data`.
+- System audio: ScreenCaptureKit on macOS, WASAPI loopback on Windows, PulseAudio/PipeWire monitor on Linux.
+- Interface languages: English and Spanish.
+
+## Docs
+
+- [Documentation](https://lautaro005.github.io/lumina/docs/): install, first run, meetings, languages and transcription, notes model, sources, chat, read aloud, MCP, data, commands, troubleshooting, build from source
+- [Install](https://lautaro005.github.io/lumina/docs/#install): one-line installers and options
+- [Languages](https://lautaro005.github.io/lumina/docs/#languages): which speech model handles which language
+- [Agents (MCP)](https://lautaro005.github.io/lumina/docs/#agents): tools and client configuration
+
+## Project
+
+- [Changelog](https://lautaro005.github.io/lumina/changelog/): what changed in each version
+- [Privacy policy](https://lautaro005.github.io/lumina/privacy/): what stays on the device and when the network is used
+- [Security policy](https://lautaro005.github.io/lumina/security/): how to report vulnerabilities privately
+- [Source code](https://github.com/Lautaro005/lumina): repository, README and issues
+
+## Optional
+
+- [Releases](https://github.com/Lautaro005/lumina/releases): desktop installers for every version

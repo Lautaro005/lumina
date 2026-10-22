@@ -1,0 +1,187 @@
+import { useEffect, useState } from "react";
+import { FileText, Folder, FolderOpen, NotebookPen, RefreshCw, Search, StickyNote, Trash2, Upload, X } from "lucide-react";
+import { api, fmtBytes, type Source } from "../api";
+import { useT, type Key } from "../i18n";
+import { useStore } from "../store";
+
+const statusChip: Record<string, string> = { ready: "ok", error: "err", indexing: "blue", pending: "", skipped: "warn" };
+
+export default function Sources() {
+  const t = useT();
+  const status = useStore((s) => s.status)!;
+  const toast = useStore((s) => s.toast);
+  const [rows, setRows] = useState<Source[]>([]);
+  const [path, setPath] = useState("");
+  const [watch, setWatch] = useState(true);
+  const [over, setOver] = useState(false);
+  const [note, setNote] = useState<{ title: string; text: string } | null>(null);
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<any[] | null>(null);
+  const [tagDraft, setTagDraft] = useState<Record<string, string>>({});
+
+  const load = () => api.sources().then(setRows).catch(() => {});
+  useEffect(() => {
+    load();
+    const on = () => load();
+    window.addEventListener("lumina:kb", on);
+    return () => window.removeEventListener("lumina:kb", on);
+  }, []);
+
+  const add = async (p: string) => {
+    if (!p.trim()) return;
+    try {
+      await api.addSource(p.trim(), watch);
+      setPath("");
+      load();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
+  const pick = async (type: "file" | "folder") => {
+    const r = await api.pick(type).catch(() => ({ path: "" }));
+    if (r.path) add(r.path);
+  };
+  const upload = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (!list.length) return;
+    try {
+      await api.upload(list);
+      load();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
+  const runSearch = async () => {
+    if (!q.trim()) return;
+    try {
+      setHits(await api.search(q));
+    } catch (e) {
+      toast((e as Error).message, "warn");
+    }
+  };
+  const setTags = async (s: Source, tags: string[]) => {
+    await api.patchSource(s.id, { tags });
+    load();
+  };
+
+  const top = rows.filter((r) => !r.parent);
+  const children = (id: string) => rows.filter((r) => r.parent === id);
+  const Icon = (k: string) => (k === "folder" ? Folder : k === "note" ? StickyNote : FileText);
+
+  return (
+    <div className="view">
+      <div className="view-head">
+        <div>
+          <h1>{t("sources.title")}</h1>
+          <p className="lead">{t("sources.lead")}</p>
+        </div>
+      </div>
+
+      <div className="sources-grid">
+        <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+          {!status.embeddings_ready && <div className="callout warn">{t("sources.needEmbeddings")}</div>}
+          <div className={`dropzone ${over ? "over" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
+            onDrop={(e) => { e.preventDefault(); setOver(false); upload(e.dataTransfer.files); }}>
+            <div className="addbar">
+              <button className="btn primary" onClick={() => pick("folder")}><FolderOpen size={16} /> {t("sources.addFolder")}</button>
+              <button className="btn" onClick={() => pick("file")}><Upload size={16} /> {t("sources.addFiles")}</button>
+              <button className="btn" onClick={() => setNote({ title: "", text: "" })}><NotebookPen size={16} /> {t("sources.newNote")}</button>
+              <label className="switch" style={{ marginLeft: "auto" }}>
+                <input type="checkbox" role="switch" checked={watch} onChange={(e) => setWatch(e.target.checked)} />
+                <span>{t("sources.watch")}</span>
+              </label>
+            </div>
+            <form className="addbar" onSubmit={(e) => { e.preventDefault(); add(path); }}>
+              <input className="input" style={{ flex: 1 }} placeholder={t("sources.path")} value={path} onChange={(e) => setPath(e.target.value)} aria-label={t("sources.path")} />
+              <button className="btn" type="submit" disabled={!path.trim()}>{t("sources.add")}</button>
+            </form>
+            <div className="hint">{over ? t("sources.drop") : t("sources.counts", status.kb)}</div>
+          </div>
+
+          {note && (
+            <form className="panel" style={{ padding: 16, display: "grid", gap: 10 }}
+              onSubmit={async (e) => { e.preventDefault(); await api.addNote(note.title || "Note", note.text); setNote(null); load(); }}>
+              <input className="input" placeholder={t("sources.noteTitle")} value={note.title} onChange={(e) => setNote({ ...note, title: e.target.value })} autoFocus />
+              <textarea className="input" rows={6} placeholder={t("sources.noteText")} value={note.text} onChange={(e) => setNote({ ...note, text: e.target.value })} />
+              <div className="actions" style={{ justifyContent: "flex-end" }}>
+                <button type="button" className="btn ghost" onClick={() => setNote(null)}>{t("common.cancel")}</button>
+                <button type="submit" className="btn primary" disabled={!note.text.trim()}>{t("common.save")}</button>
+              </div>
+            </form>
+          )}
+
+          {top.length === 0 ? (
+            <div className="panel empty"><p style={{ maxWidth: "60ch" }}>{t("sources.empty")}</p></div>
+          ) : (
+            <table className="table">
+              <tbody>
+                {top.map((s) => {
+                  const kids = children(s.id);
+                  const I = Icon(s.kind);
+                  const ready = kids.filter((k) => k.status === "ready").length;
+                  const st = s.kind === "folder" ? (kids.some((k) => k.status === "indexing" || k.status === "pending") ? "indexing" : "ready") : s.status;
+                  return (
+                    <tr key={s.id}>
+                      <td>
+                        <div className="src-row">
+                          <span className="kind-ic"><I size={17} /></span>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontWeight: 700 }}>{s.title}</div>
+                            {s.path && <div className="src-path">{s.path}</div>}
+                            <div className="t-tags">
+                              <span className={`chip ${statusChip[st] ?? ""}`}>{t(`sources.status.${st}` as Key)}</span>
+                              <span className="chip">
+                                {s.kind === "folder" ? `${ready}/${kids.length} ${t("sources.files")}` : `${s.chunks} ${t("sources.chunks")}`}
+                                {s.kind === "file" && s.size ? ` · ${fmtBytes(s.size)}` : ""}
+                              </span>
+                              {s.tags.map((x) => (
+                                <span key={x} className="tag">{x}<button aria-label={`${t("common.remove")} ${x}`} onClick={() => setTags(s, s.tags.filter((y) => y !== x))}><X size={12} /></button></span>
+                              ))}
+                              <input className="input" style={{ height: 24, width: 120, fontSize: 12.5 }} placeholder={`+ ${t("common.addTag")}`}
+                                value={tagDraft[s.id] || ""} aria-label={t("common.addTag")}
+                                onChange={(e) => setTagDraft({ ...tagDraft, [s.id]: e.target.value })}
+                                onKeyDown={(e) => {
+                                  const v = (tagDraft[s.id] || "").trim();
+                                  if (e.key === "Enter" && v && !s.tags.includes(v)) { setTags(s, [...s.tags, v]); setTagDraft({ ...tagDraft, [s.id]: "" }); }
+                                }} />
+                            </div>
+                            {s.error && s.status === "error" && <div className="hint" style={{ color: "var(--margin-ink)", marginTop: 6 }}>{s.error}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ width: 1 }}>
+                        <div className="row-actions">
+                          <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={t("sources.reindex")} onClick={() => api.reindex(s.id).then(load)}><RefreshCw size={15} /></button>
+                          {s.path && <button className="btn sm ghost icon" title={t("sources.reveal")} aria-label={t("sources.reveal")} onClick={() => api.reveal(s.id)}><FolderOpen size={15} /></button>}
+                          <button className="btn sm ghost icon danger" title={t("common.remove")} aria-label={t("common.remove")} onClick={() => api.deleteSource(s.id).then(load)}><Trash2 size={15} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <aside className="side">
+          <form className="panel" onSubmit={(e) => { e.preventDefault(); runSearch(); }}>
+            <h2>{t("sources.test")}</h2>
+            <div className="search-wrap" style={{ maxWidth: "none" }}>
+              <Search size={16} />
+              <input className="input" placeholder={t("sources.testPlaceholder")} value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            {hits && hits.length === 0 && <p className="hint">—</p>}
+            {hits && hits.map((h) => (
+              <div key={h.id} className="hit">
+                <b>{h.title} <span className="chip blue" style={{ height: 18, fontSize: 11 }}>{Math.round(h.score * 100)}%</span></b>
+                <p>{h.text}</p>
+              </div>
+            ))}
+          </form>
+        </aside>
+      </div>
+    </div>
+  );
+}

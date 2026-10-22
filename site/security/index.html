@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumina security policy</title>
+<meta name="description" content="How to report a vulnerability in Lumina privately, what is in scope and how Lumina protects your data.">
+<link rel="canonical" href="https://lautaro005.github.io/lumina/security/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2b4fa8">
+<meta property="og:title" content="Lumina security policy">
+<meta property="og:description" content="How to report a vulnerability in Lumina privately, what is in scope and how Lumina protects your data.">
+<meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.0">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="doc-cover">
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="../" aria-label="Lumina home">
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        lumina
+      </a>
+      <nav class="topnav" aria-label="Main">
+        <a class="keep" href="../docs/">Docs</a>
+        <a href="../changelog/">Changelog</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/">Security</a>
+        <a class="gh" href="https://github.com/Lautaro005/lumina">GitHub</a>
+        <a class="cta keep" href="../#install">Install</a>
+      </nav>
+    </header>
+  </div>
+</div>
+<main id="main" class="doc">
+  <div class="wrap">
+    <article class="page">
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#supported-versions">Supported versions</a><a href="#reporting-a-vulnerability">Reporting a vulnerability</a><a href="#security-model">Security model</a><a href="#scope">Scope</a></nav></aside>
+      <div class="doc-body">
+        <header><h1>Security policy</h1><p>Report vulnerabilities privately on GitHub. This page mirrors SECURITY.md in the repository.</p></header>
+        <div class="prose">
+<p>Lumina records meetings, keeps transcripts, notes and an index of your files on your computer, runs local models and
+exposes that knowledge to AI agents over MCP. That is private material, so security reports are taken seriously and
+handled privately.</p>
+<h2 id="supported-versions">Supported versions</h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Supported</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0.1.x</code> (latest: <code>0.1.0</code>)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Older</td>
+<td>❌ — please update with <code>lumina update</code></td>
+</tr>
+</tbody></table>
+<h2 id="reporting-a-vulnerability">Reporting a vulnerability</h2>
+<p><strong>Do not open a public issue, discussion or pull request for security problems.</strong></p>
+<p>Report privately through GitHub: open the repository&#39;s <strong>Security</strong> tab →
+<a href="https://github.com/Lautaro005/lumina/security/advisories/new"><strong>Report a vulnerability</strong></a>.</p>
+<p>Please include:</p>
+<ul>
+<li>What is affected (server, web UI, desktop app, MCP server, install scripts, website) and the version or commit</li>
+<li>Your operating system and how you installed Lumina (<code>install.sh</code>, <code>install.ps1</code>, from source)</li>
+<li>Which features are involved (recording, system audio, sources and folder watching, chat and web search, MCP over stdio
+or HTTP, model downloads, Ollama / LM Studio / OpenAI-compatible server)</li>
+<li>Steps to reproduce, a proof of concept or logs (remove transcripts, tokens and personal data first)</li>
+<li>The impact you expect (what an attacker can do)</li>
+</ul>
+<h3>What to expect</h3>
+<ul>
+<li>Acknowledgement within <strong>7 days</strong></li>
+<li>An initial assessment within <strong>14 days</strong></li>
+<li>A fix or mitigation plan for confirmed issues, coordinated with you before anything is disclosed</li>
+<li>Credit in the advisory and the changelog, if you want it</li>
+</ul>
+<p>Please allow a reasonable time for a fix before public disclosure (90 days by default, shorter when an issue is already
+being exploited).</p>
+<h2 id="security-model">Security model</h2>
+<ul>
+<li><strong>Local only.</strong> The server binds to <code>127.0.0.1</code>. Requests whose <code>Host</code> header is not <code>127.0.0.1:&lt;port&gt;</code> or
+<code>localhost:&lt;port&gt;</code> are refused (protects against DNS rebinding), and browser requests from any other origin are refused
+(protects against websites you visit calling the API).</li>
+<li><strong>MCP.</strong> Over stdio, the agent runs <code>lumina mcp</code> as your user. Over HTTP (<code>/mcp</code>), every request needs the bearer token
+shown in Settings → Agents; the token is stored in <code>settings.json</code> with <code>0600</code> permissions.</li>
+<li><strong>Data.</strong> Everything lives in the data folder (<code>~/.lumina/data</code> by default): <code>lumina.db</code> (SQLite), <code>chroma/</code> (vector
+index), <code>models/</code>, <code>uploads/</code>, <code>logs/</code> and <code>settings.json</code>. Nothing is sent anywhere by default. No telemetry
+(ChromaDB&#39;s telemetry is turned off).</li>
+<li><strong>What leaves the computer, and only when you ask:</strong> model downloads from Hugging Face and GitHub, web search queries
+when the chat&#39;s Web search toggle is on (DuckDuckGo or your SearXNG), and prompts sent to an Ollama, LM Studio or
+OpenAI-compatible server you configure (which may be remote if you point it at one).</li>
+<li><strong>Untrusted text.</strong> Transcripts, files, web results and MCP inputs are data. The chat and assistance prompts tell the
+model so, and Lumina&#39;s models cannot run commands or tools: the worst a prompt injection can do is change what an answer
+says.</li>
+<li><strong>The desktop app</strong> loads only the local UI, opens every other link in your browser and gives the page no app
+commands.</li>
+</ul>
+<h2 id="scope">Scope</h2>
+<p>In scope:</p>
+<ul>
+<li>Any way for a website, another user on the machine or a remote host to reach the Lumina API, the WebSocket or <code>/mcp</code>
+without the token</li>
+<li>Reading or writing files outside the data folder or the sources you added (path traversal in uploads, exports, the
+file picker or <code>get_document</code>)</li>
+<li>Leaks of transcripts, notes, the MCP token or an OpenAI-compatible API key (logs, UI, network)</li>
+<li>The installers (<code>install.sh</code>, <code>install.ps1</code>) or the <code>lumina update</code> flow fetching or running something other than this
+repository and its GitHub releases</li>
+<li>Model downloads written outside <code>models/</code> or <code>bin/</code>, or archives that escape their folder when extracted</li>
+<li>Recording that starts without a user action, or keeps running after <strong>End meeting</strong></li>
+<li>The macOS system-audio helper capturing anything other than audio</li>
+<li>Supply-chain issues in the GitHub Actions workflows or the website</li>
+</ul>
+<p>Out of scope:</p>
+<ul>
+<li>Answers that are wrong, incomplete or manipulated by the content you indexed (model quality, not a vulnerability)</li>
+<li>Problems in third-party servers you connect (Ollama, LM Studio, SearXNG, OpenAI-compatible APIs) or in the models</li>
+<li>Attacks that need an already compromised user account or administrator access to the computer</li>
+<li>Installers not being code-signed or notarized by Apple or Microsoft (known; tracked in the changelog)</li>
+<li>Hardening suggestions without a concrete impact</li>
+</ul>
+<p>Thank you for helping keep Lumina and its users safe.</p>
+        </div>
+      </div>
+    </article>
+  </div>
+</main>
+<footer class="site">
+  <div class="wrap">
+    <span>Lumina 0.1.0 · Free to use, not to sell</span>
+    <nav aria-label="Footer">
+      <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
+      <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
+      <button class="theme-toggle" type="button" data-theme-toggle>Light / dark</button>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/site.js?v=0.1.0" defer></script>
+</body>
+</html>

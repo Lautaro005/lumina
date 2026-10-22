@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  desktop:
+    name: Desktop (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-22.04
+            args: --bundles appimage,deb
+          - name: windows-x64
+            os: windows-latest
+            args: --bundles nsis
+          - name: macos-universal
+            os: macos-latest
+            args: --target universal-apple-darwin --bundles app,dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf build-essential
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - run: npm ci
+        working-directory: apps/desktop
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: v__VERSION__
+          releaseName: Lumina v__VERSION__
+          releaseBody: |
+            Install from a terminal:
+
+            - macOS / Linux: `curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh`
+            - Windows (PowerShell): `irm https://lautaro005.github.io/lumina/install.ps1 | iex`
+
+            Then run `lumina` (browser) or `lumina app` (desktop). The desktop app needs the install above: it runs the
+            local Lumina server. What's new: https://lautaro005.github.io/lumina/changelog/
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+      - name: Attach the macOS app as .app.tar.gz (used by install.sh)
+        if: runner.os == 'macOS'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          cd apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos
+          tar -czf "Lumina_${VERSION}_universal.app.tar.gz" Lumina.app
+          gh release upload "v${VERSION}" "Lumina_${VERSION}_universal.app.tar.gz" --clobber -R "${{ github.repository }}"
