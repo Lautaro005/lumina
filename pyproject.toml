@@ -1,6 +1,6 @@
 [project]
 name = "lumina"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local-first meeting notes and knowledge base: live transcription, enhanced notes, RAG chat and an MCP server, all on your device."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -29,6 +29,7 @@ dependencies = [
   "mcp>=1.2",
   "python-multipart>=0.0.12",
   "kokoro-onnx>=0.4",
+  "ai-edge-litert>=2.2; sys_platform != 'darwin' or platform_machine == 'arm64'",
 ]
 
 

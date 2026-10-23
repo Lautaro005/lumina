@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-2b4fa8">
+  <img alt="Version 0.1.1" src="https://img.shields.io/badge/version-0.1.1-2b4fa8">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -48,7 +48,7 @@ plus the notes model). After that it works offline.
 | | |
 |---|---|
 | 🎙️ **Listens** | Records your microphone (**You**) and your computer's audio (**Others**: Zoom, Meet, Teams…) and transcribes both live, on the CPU. |
-| ✍️ **Writes your notes** | You type short cues while you listen. Lumina writes the full note for each one, line by line, and adds the points you missed. |
+| ✍️ **Writes your notes** | You type short cues while you listen. Lumina writes the full note for each one and adds the points you missed. Three views: side by side, Cornell rows, or one at a time. |
 | 📋 **Sums it up** | When the meeting ends you get an overview, decisions, action items and open questions, and an automatic title. |
 | 💡 **Helps live** | When someone asks a question your documents can answer, a short answer with its source appears beside your notes. |
 | 📚 **Knows your files** | Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, or whole folders it keeps up to date. |
@@ -56,8 +56,10 @@ plus the notes model). After that it works offline.
 | 🤖 **Works with your agents** | Claude, Cursor, Codex or any MCP client can search your meetings and files through Lumina's MCP server. |
 | 🔊 **Reads aloud** | Notes and answers can be read with a natural voice (Kokoro) or your system voice. |
 
-The layout follows the **Cornell note-taking method**: your words in the left column, Lumina's in the body, the summary at
-the foot. The red margin line between them comes alive while Lumina is listening.
+**Meeting notes views** (Settings → General): **Side by side** (default) puts your shorthand on the left and the live
+enhanced notes on the right; **Cornell rows** follows the Cornell note-taking method, your words in the left column and
+Lumina's beside each one, with the red margin line coming alive while Lumina listens; **One at a time** gives you a wide
+page with a switch. The summary always sits at the foot.
 
 ## Private by design
 
@@ -77,6 +79,7 @@ downloads.
 | Transcription (default) | **Parakeet TDT 0.6B v3** (NVIDIA, 8-bit) | 670 MB | Very fast on any CPU, 25 European languages including English and Spanish, detects the language by itself. |
 | Transcription, fixed language | **Canary 1B v2** (NVIDIA, 8-bit) | 1.0 GB | Same 25 languages, but follows the language you choose, so it never guesses wrong. |
 | Transcription, any language | **Whisper** tiny → large-v3-turbo | 75 MB – 1.6 GB | 99 languages; `tiny` for very small machines. |
+| Transcription, experimental | **EmbeddingGemma 2 speech** (community reader on EmbeddingGemma 2's audio encoder) | 980 MB | English only, about 4 % WER on read speech, no punctuation, CPU through `ai-edge-litert`. Opt-in; "Automatic" never picks it. |
 | Speech detection | **Silero VAD** | 2 MB | Knows when someone is speaking. |
 | Search | **EmbeddingGemma 2** (Google, 8-bit) | 350 MB | The same embedding model Google Foresight uses, 100+ languages. |
 | Notes and answers | **Gemma 4 E2B / E4B / 12B** (Google, 4-bit) | 2.8 / 4.6 / 7.2 GB | Choose by how much memory you have. Or use **Ollama** or **LM Studio** instead. |
@@ -86,6 +89,8 @@ downloads.
 supports. If you know the language, choose it: automatic detection can guess wrong on short or mixed audio. With the
 default "Automatic" model setting, Lumina uses Parakeet for automatic detection, Canary when you pick a European language,
 and Whisper for any other language.
+
+Settings → Models lists everything grouped by what it does: chat and notes, transcription, embeddings and read aloud.
 
 **Already use Ollama or LM Studio?** Lumina finds them on their usual ports and lists their models. Any other
 OpenAI-compatible server works too.

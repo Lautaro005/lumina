@@ -3,6 +3,35 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-10-23
+
+### Added
+- **Three views for meeting notes**, chosen in Settings → General (with a small drawing of each so you can see what you
+  pick): **Side by side** (the new default: your shorthand notes on the left, the live enhanced notes on the right, like
+  Google AI Edge Foresight), **Cornell rows** (the 0.1.0 layout: every line of your notes with its expanded note beside
+  it) and **One at a time** (a wide page with a switch between your notes and the enhanced ones).
+- **EmbeddingGemma 2 as a speech option (experimental).** EmbeddingGemma 2 is an embedding model and does not
+  transcribe by itself, but its audio encoder plus a small community reader
+  ([`mlboydaisuke/EmbeddingGemma-2-Transcribe-LiteRT`](https://huggingface.co/mlboydaisuke/EmbeddingGemma-2-Transcribe-LiteRT),
+  Apache-2.0) does: about 4 % word error rate on English read speech, runs on the CPU through `ai-edge-litert`. Pick it
+  in Settings → Transcription → Speech model. English only, no punctuation, each phrase appears when the speaker pauses
+  (no live partial words), about 1 GB. It is never chosen by "Automatic".
+- **Models grouped by what they do** in Settings → Models: Chat and notes, Transcription, Embeddings and Read aloud,
+  each with how many are downloaded.
+- **A real harness for the chat** (`lumina/chat.py`): a structured system prompt (grounding, citation, language,
+  style and prompt-injection rules), follow-up questions rewritten into standalone searches, retrieval that keeps at most
+  two chunks per file or meeting and drops near-duplicates, a character budget per source and for the whole context,
+  a digest of recent meetings for questions like "what happened in the last meeting?", the full notes of the meeting a
+  chat is about, tagged sources that cannot close their own tag, trimmed history without stale citation numbers, and a
+  clean-up pass that merges `[1, 2]` into `[1][2]` and removes citations to sources that do not exist.
+
+### Changed
+- **New chat design**: minimal and quiet. A centred column, your messages as soft bubbles, answers as plain text, sources
+  as small chips under each answer (click to open the meeting or link), a floating composer and a greeting with
+  suggestions on an empty chat.
+- The default notes view is now **Side by side**. Choose **Cornell rows** in Settings → General to keep the old one.
+- `ai-edge-litert` is a new dependency (Windows, Linux and Apple Silicon Macs; Intel Macs keep every other model).
+
 ## [0.1.0] - 2026-10-22
 
 First release.

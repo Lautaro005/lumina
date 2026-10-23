@@ -31,6 +31,7 @@ KOKORO_LANGS = {"en-us": "a", "en-gb": "b", "es": "e", "fr-fr": "f", "hi": "h", 
                 "pt-br": "p", "cmn": "z"}
 
 LLAMA_BUILD = "b11823"
+EG2_STT = "embeddinggemma-2-stt"
 
 
 @dataclass
@@ -105,6 +106,16 @@ def _items() -> list[Item]:
             note="Same 25 languages, but you choose the language, so it never guesses wrong.",
         ),
     ]
+    items.append(Item(
+        "embeddinggemma-2-stt", "stt", "EmbeddingGemma 2 speech (experimental)",
+        589_273_696 + 386_726_384 + 1_737_588, "Apache-2.0",
+        "mlboydaisuke/EmbeddingGemma-2-Transcribe-LiteRT (EmbeddingGemma 2 audio encoder + reader)",
+        repo="mlboydaisuke/EmbeddingGemma-2-Transcribe-LiteRT",
+        files=["eg2_audio_f16safe_fp16w_w30.tflite", "reader_w30.tflite", "vocab.txt"],
+        languages=["en"], ram_gb=3.0,
+        note="Community speech reader on top of EmbeddingGemma 2's audio tower. English only, no punctuation, "
+             "about 4 % WER on read speech. Needs the ai-edge-litert package.",
+    ))
     whisper = {
         "tiny": ("Systran/faster-whisper-tiny", 75_538_270, 0.4),
         "base": ("Systran/faster-whisper-base", 145_217_532, 0.5),
@@ -161,6 +172,7 @@ def installed(item_id: str) -> bool:
 def stt_choice(engine: str, language: str, whisper_size: str) -> str:
     """Which speech model to use for an engine setting and a language setting.
 
+    "embeddinggemma" is never picked by "auto": it is an experimental English-only option.
     "auto" picks Parakeet when the language is automatic, Canary when a European language is fixed
     (Canary obeys the language you choose; Parakeet always detects it), and Whisper otherwise.
     """
@@ -170,6 +182,8 @@ def stt_choice(engine: str, language: str, whisper_size: str) -> str:
         return "canary-1b-v2"
     if engine == "whisper":
         return f"whisper-{whisper_size}"
+    if engine == "embeddinggemma":
+        return EG2_STT
     if language in ("", "auto"):
         return "parakeet-v3"
     if language in EU25:
@@ -182,4 +196,6 @@ def languages_for(engine: str, whisper_size: str = "small") -> list[str]:
         return EU25
     if engine == "whisper":
         return WHISPER_LANGS
+    if engine == "embeddinggemma":
+        return ["en"]
     return WHISPER_LANGS  # auto can route any language to Whisper

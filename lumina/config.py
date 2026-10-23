@@ -58,7 +58,7 @@ DEFAULTS: dict[str, Any] = {
     "openai_key": "",
     "temperature": 0.3,
     # transcription
-    "stt_engine": "auto",  # auto | parakeet | canary | whisper
+    "stt_engine": "auto",  # auto | parakeet | canary | whisper | embeddinggemma
     "whisper_size": "small",  # tiny | base | small | medium | large-v3-turbo
     "stt_language": "auto",  # auto or an ISO 639-1 code
     "mic_device": None,
@@ -68,6 +68,7 @@ DEFAULTS: dict[str, Any] = {
     "auto_enhance": True,
     "enhance_interval": 45,
     "live_assistance": True,
+    "notes_view": "columns",  # columns (Foresight style) | rows (Cornell) | tabs
     # knowledge
     "embedding_dim": 768,
     "watched_folders": [],

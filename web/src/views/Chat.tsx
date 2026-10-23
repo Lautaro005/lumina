@@ -1,29 +1,64 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, BookOpen, FileText, Globe, Plus, StickyNote, Trash2, Volume2 } from "lucide-react";
+import { ArrowUp, BookOpen, Check, Copy, FileText, Globe, Plus, StickyNote, Trash2, Volume2 } from "lucide-react";
 import { api, sendChat, type ChatT, type Message } from "../api";
-import { CopyButton, Markdown, guessLang, speak } from "../components";
+import { Markdown, guessLang, speak } from "../components";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 
 type Live = { text: string; sources: any[]; status: string } | null;
 
-function SourceCue({ s, n }: { s: any; n: number }) {
+const MAX_CHIPS = 4;
+
+function SourceChip({ s, n }: { s: any; n: number }) {
   const go = useStore((st) => st.go);
   const Icon = s.kind === "web" ? Globe : s.kind === "meetings" || s.kind === "meeting" ? BookOpen : s.kind === "notes" ? StickyNote : FileText;
   const open = () => {
     if (s.url) window.open(s.url, "_blank", "noopener");
     else if (s.meeting_id) go(`/meeting/${s.meeting_id}`);
   };
+  const clickable = !!(s.url || s.meeting_id);
   return (
-    <div className="a-cue">
+    <button type="button" className="src-chip" onClick={open} disabled={!clickable} title={s.snippet ? `${s.title}\n\n${s.snippet}` : s.title}>
       <span className="cite">{n}</span>
-      <div style={{ minWidth: 0 }}>
-        <b title={s.title}>
-          <Icon size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-          {s.url || s.meeting_id ? <a href="#" onClick={(e) => { e.preventDefault(); open(); }}>{s.title || s.url}</a> : s.title}
-        </b>
-        {s.snippet && <small>{s.snippet.slice(0, 120)}…</small>}
-      </div>
+      <Icon size={13} />
+      <span className="src-chip-title">{s.title || s.url || "—"}</span>
+    </button>
+  );
+}
+
+function Sources({ list, numbers }: { list: any[]; numbers?: number[] }) {
+  const t = useT();
+  const [all, setAll] = useState(false);
+  if (!list.length) return null;
+  const shown = all ? list : list.slice(0, MAX_CHIPS);
+  return (
+    <div className="src-chips" aria-label={t("chat.sources")}>
+      {shown.map((s, i) => <SourceChip key={i} s={s} n={numbers ? numbers[i] : i + 1} />)}
+      {!all && list.length > MAX_CHIPS && (
+        <button type="button" className="src-more" onClick={() => setAll(true)}>{t("chat.moreSources", { n: list.length - MAX_CHIPS })}</button>
+      )}
+    </div>
+  );
+}
+
+function AnswerTools({ text, kokoro }: { text: string; kokoro: boolean }) {
+  const t = useT();
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setDone(true);
+      setTimeout(() => setDone(false), 1500);
+    } catch { /* clipboard blocked */ }
+  };
+  return (
+    <div className="a-tools">
+      <button type="button" className="tool" onClick={copy} aria-label={t("chat.copy")} title={t("chat.copy")}>
+        {done ? <Check size={15} /> : <Copy size={15} />}
+      </button>
+      <button type="button" className="tool" onClick={() => speak(text, guessLang(text, t.lang), kokoro)} aria-label={t("common.readAloud")} title={t("common.readAloud")}>
+        <Volume2 size={15} />
+      </button>
     </div>
   );
 }
@@ -52,7 +87,7 @@ export default function Chat({ chatId }: { chatId?: string }) {
   }, [messages.length, live?.text]);
   useEffect(() => {
     const el = box.current;
-    if (el) { el.style.height = "0px"; el.style.height = `${Math.min(200, el.scrollHeight)}px`; }
+    if (el) { el.style.height = "0px"; el.style.height = `${Math.min(180, el.scrollHeight)}px`; }
   }, [draft]);
 
   const send = async (text = draft) => {
@@ -89,12 +124,29 @@ export default function Chat({ chatId }: { chatId?: string }) {
   };
 
   const kokoro = status.settings.tts_engine === "kokoro" && status.tts_ready;
+  const empty = messages.length === 0 && !live;
+
+  const composer = (
+    <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
+      <div className="composer-box">
+        <textarea ref={box} rows={1} value={draft} placeholder={t("chat.placeholder")} aria-label={t("chat.placeholder")}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
+        <div className="composer-tools">
+          <button type="button" className="web-toggle" aria-pressed={web} title={t("chat.webHint")} onClick={() => setWeb(!web)}>
+            <Globe size={15} /> {t("chat.web")}
+          </button>
+          <button type="submit" className="send" aria-label={t("chat.send")} disabled={!draft.trim() || !!live}><ArrowUp size={18} /></button>
+        </div>
+      </div>
+    </form>
+  );
+
   return (
     <div className="chat">
       <nav className="chat-list" aria-label={t("chat.history")}>
-        <button className="btn primary" onClick={() => go("/chat")}><Plus size={16} /> {t("chat.new")}</button>
-        <h2>{t("chat.history")}</h2>
-        {chats.length === 0 && <p className="hint" style={{ padding: "0 10px" }}>{t("chat.noChats")}</p>}
+        <button className="chat-new" onClick={() => go("/chat")}><Plus size={16} /> {t("chat.new")}</button>
+        {chats.length === 0 && <p className="hint" style={{ padding: "8px 10px" }}>{t("chat.noChats")}</p>}
         {chats.map((c) => (
           <div key={c.id} className="chat-item" role="button" tabIndex={0} aria-current={c.id === chatId}
             onClick={() => go(`/chat/${c.id}`)} onKeyDown={(e) => e.key === "Enter" && go(`/chat/${c.id}`)}>
@@ -104,61 +156,46 @@ export default function Chat({ chatId }: { chatId?: string }) {
         ))}
       </nav>
 
-      <section className="convo">
-        <div className="convo-scroll" ref={scroller}>
-          <div className="convo-inner">
-            {messages.length === 0 && !live && (
-              <div className="empty" style={{ paddingTop: "12vh" }}>
-                <h2>{t("chat.title")}</h2>
-                <p style={{ maxWidth: "52ch" }}>{t("chat.empty")}</p>
-                <div className="suggest">
-                  {(["chat.suggest1", "chat.suggest2", "chat.suggest3"] as const).map((k) => (
-                    <button key={k} className="btn" onClick={() => send(t(k))}>{t(k)}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {messages.map((m) => m.role === "user" ? (
-              <div key={m.id} className="q">{m.content}</div>
-            ) : (
-              <article key={m.id} className="a">
-                <div className="a-cues" aria-label={t("chat.sources")}>
-                  {m.sources.map((s: any) => <SourceCue key={s.n} s={s} n={s.n} />)}
-                </div>
-                <div className="a-body">
-                  <Markdown text={m.content} cites />
-                  <div className="a-tools">
-                    <CopyButton text={m.content} />
-                    <button className="btn sm ghost" onClick={() => speak(m.content, guessLang(m.content, t.lang), kokoro)}><Volume2 size={14} /> {t("common.readAloud")}</button>
-                  </div>
-                </div>
-              </article>
-            ))}
-            {live && (
-              <article className="a" aria-busy="true">
-                <div className="a-cues">
-                  {live.sources.slice(0, 8).map((s, i) => <SourceCue key={i} s={s} n={i + 1} />)}
-                </div>
-                <div className="a-body">
-                  {live.text ? <Markdown text={live.text} cites className="md typing" /> : <p className="placeholder-line">{t("chat.searching")}</p>}
-                </div>
-              </article>
-            )}
-          </div>
-        </div>
-        <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
-          <div className="composer-box">
-            <textarea ref={box} rows={1} value={draft} placeholder={t("chat.placeholder")} aria-label={t("chat.placeholder")}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
-            <div className="composer-tools">
-              <button type="button" className="btn sm web-toggle" aria-pressed={web} title={t("chat.webHint")} onClick={() => setWeb(!web)}>
-                <Globe size={15} /> {t("chat.web")}
-              </button>
-              <button type="submit" className="btn primary icon" aria-label={t("chat.send")} disabled={!draft.trim() || !!live}><ArrowUp size={18} /></button>
+      <section className={`convo ${empty ? "is-empty" : ""}`}>
+        {empty ? (
+          <div className="convo-hero">
+            <h1>{t("chat.greeting")}</h1>
+            <p>{t("chat.empty")}</p>
+            {composer}
+            <div className="suggest">
+              {(["chat.suggest1", "chat.suggest2", "chat.suggest3"] as const).map((k) => (
+                <button key={k} type="button" onClick={() => send(t(k))}>{t(k)}</button>
+              ))}
             </div>
           </div>
-        </form>
+        ) : (
+          <>
+            <div className="convo-scroll" ref={scroller}>
+              <div className="convo-inner">
+                {messages.map((m) => m.role === "user" ? (
+                  <div key={m.id} className="q">{m.content}</div>
+                ) : (
+                  <article key={m.id} className="a">
+                    <div className="a-body"><Markdown text={m.content} cites /></div>
+                    <Sources list={m.sources} numbers={m.sources.map((s: any) => s.n)} />
+                    <AnswerTools text={m.content} kokoro={kokoro} />
+                  </article>
+                ))}
+                {live && (
+                  <article className="a" aria-busy="true">
+                    <div className="a-body">
+                      {live.text
+                        ? <Markdown text={live.text} cites className="md typing" />
+                        : <p className="thinking">{t("chat.searching")}<i /><i /><i /></p>}
+                    </div>
+                    <Sources list={live.sources} />
+                  </article>
+                )}
+              </div>
+            </div>
+            {composer}
+          </>
+        )}
       </section>
     </div>
   );

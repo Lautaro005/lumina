@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.0">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.1">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -75,9 +75,15 @@
 <li><b>You</b>: your microphone (pick it in Settings → Transcription).</li>
 <li><b>Others</b>: your computer's audio, so the other people in Zoom, Meet, Teams or any call are captured. Turn it off in Settings if you only want the microphone.</li>
 </ul>
-<p>The red margin line moves while Lumina is listening, with the elapsed time on top. <b>Pause</b> stops recording without ending the meeting; <b>End meeting</b> stops it and writes the summary. You can resume a finished meeting later; new audio is appended.</p>
+<p>While Lumina is listening you see a <b>Live</b> badge with the elapsed time (in the Cornell rows view, the red margin line moves too). <b>Pause</b> stops recording without ending the meeting; <b>End meeting</b> stops it and writes the summary. You can resume a finished meeting later; new audio is appended.</p>
 <h3>Your notes and enhanced notes</h3>
-<p>Type short cues in the left column while you listen, one idea per line: <i>budget Q3, cut?</i>, <i>pricing page date</i>. Press Enter for a new line. Lumina writes the full note for each cue on the same row, using only what was said, and adds a few rows marked <b>Lumina</b> for important points you did not write down.</p>
+<p>Settings → General → <b>Meeting notes view</b> has three layouts, each with a small drawing so you can see what you pick:</p>
+<ul>
+<li><b>Side by side</b> (default): your shorthand notes on the left, the live enhanced notes on the right, like Google AI Edge Foresight. Each panel has a Copy button.</li>
+<li><b>Cornell rows</b>: every line of your notes has its expanded note on the same row, with the red margin line between them.</li>
+<li><b>One at a time</b>: a wide page with a switch between your notes and the enhanced ones.</li>
+</ul>
+<p>Type short cues while you listen, one idea per line while you listen, one idea per line: <i>budget Q3, cut?</i>, <i>pricing page date</i>. Press Enter for a new line. Lumina writes the full note for each cue, using only what was said, and adds a few notes marked <b>Lumina</b> for important points you did not write down.</p>
 <p>During the meeting this happens every 45 seconds or so once there is enough new speech (Settings → Transcription → <i>Enhance notes during the meeting</i>), or when you click <b>Enhance now</b>. A final pass runs when the meeting ends. New or changed notes are briefly highlighted.</p>
 <h3>Summary</h3>
 <p>At the foot of the page: an overview, decisions, action items with owners and dates, open questions and topics. Lumina also titles the meeting if you did not. The meeting, its notes and its transcript are then added to your knowledge base.</p>
@@ -100,12 +106,15 @@
 <tr><td>Parakeet TDT 0.6B v3</td><td>25 European</td><td>always detects it</td><td>670 MB</td></tr>
 <tr><td>Canary 1B v2</td><td>25 European</td><td>follows your choice</td><td>1.0 GB</td></tr>
 <tr><td>Whisper tiny · base · small · medium · large-v3-turbo</td><td>99</td><td>automatic or your choice</td><td>75 MB – 1.6 GB</td></tr>
+<tr><td>EmbeddingGemma 2 speech <i>(experimental)</i></td><td>English only</td><td>English</td><td>980 MB</td></tr>
 </tbody>
 </table>
 <p>The 25 European languages: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish, Swedish and Ukrainian.</p>
+<p><b>EmbeddingGemma 2 speech</b> is opt-in and experimental. EmbeddingGemma 2 is an embedding model, not a recogniser, but its audio encoder plus a small community reader (<code>mlboydaisuke/EmbeddingGemma-2-Transcribe-LiteRT</code>) transcribes English read speech at about 4 % word error rate on the CPU. It writes no punctuation and each phrase appears when the speaker pauses (no live partial words). It needs the <code>ai-edge-litert</code> package, which has no build for Intel Macs. &quot;Automatic&quot; never picks it.</p>
 <p>Silero VAD (2 MB) detects speech; Lumina transcribes each utterance when the speaker pauses and shows the words while they are still talking (turn that off with <i>Show words as they are spoken</i> on slow machines).</p>
 
-<h2 id="models">Notes model</h2>
+<h2 id="models">Models and the notes model</h2>
+<p>Settings → <b>Models</b> lists every model grouped by what it does: <b>Chat and notes</b>, <b>Transcription</b>, <b>Embeddings</b> and <b>Read aloud</b>, with how many of each are downloaded.</p>
 <p>Settings → Notes model → <b>Who writes the notes</b>:</p>
 <ul>
 <li><b>Gemma 4 on this computer.</b> Choose E2B (2.8 GB, for 8 GB of memory), E4B (4.6 GB, 12 GB) or 12B (7.2 GB, 16 GB). Lumina downloads the model and a pinned llama.cpp server and starts it when needed. On Apple Silicon it uses the GPU.</li>
@@ -127,7 +136,7 @@
 <p>Lumina splits documents into passages of about 500 tokens (keeping each passage's heading), embeds them with EmbeddingGemma 2 and stores them in ChromaDB. Settings → Knowledge lets you shorten the vectors to 512, 256 or 128 dimensions to save disk.</p>
 
 <h2 id="chat">Chat and web search</h2>
-<p><b>Ask Lumina</b> answers from your meetings, notes and files and cites each passage with a number; the numbers in the left column link to the meeting or show the passage. Chats are saved in History. <b>Ask about this meeting</b> (meeting menu) starts a chat that always includes that meeting.</p>
+<p><b>Ask Lumina</b> answers from your meetings, notes and files and cites each passage with a number; small source chips under each answer open the meeting or link. It rewrites follow-up questions into a standalone search, keeps the best passages from different files and meetings, and says plainly when your sources do not contain the answer. Chats are saved in History. <b>Ask about this meeting</b> (meeting menu) starts a chat that always includes that meeting.</p>
 <p>The <b>Web search</b> toggle adds results from DuckDuckGo, or from your own SearXNG (Settings → Knowledge). It is off by default because it sends your question to the search engine.</p>
 
 <h2 id="speech">Read aloud</h2>
@@ -201,7 +210,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.0 · Free to use, not to sell</span>
+    <span>Lumina 0.1.1 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -209,6 +218,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.0" defer></script>
+<script src="../assets/site.js?v=0.1.1" defer></script>
 </body>
 </html>

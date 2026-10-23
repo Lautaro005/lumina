@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina security policy">
 <meta property="og:description" content="How to report a vulnerability in Lumina privately, what is in scope and how Lumina protects your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.0">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.1">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -52,7 +52,7 @@ handled privately.</p>
 </tr>
 </thead>
 <tbody><tr>
-<td><code>0.1.x</code> (latest: <code>0.1.0</code>)</td>
+<td><code>0.1.x</code> (latest: <code>0.1.1</code>)</td>
 <td>✅</td>
 </tr>
 <tr>
@@ -97,7 +97,8 @@ when the chat&#39;s Web search toggle is on (DuckDuckGo or your SearXNG), and pr
 OpenAI-compatible server you configure (which may be remote if you point it at one).</li>
 <li><strong>Untrusted text.</strong> Transcripts, files, web results and MCP inputs are data. The chat and assistance prompts tell the
 model so, and Lumina&#39;s models cannot run commands or tools: the worst a prompt injection can do is change what an answer
-says.</li>
+says. Since 0.1.1 every source reaches the model inside a numbered <code>&lt;source&gt;</code> tag that its own text cannot close or reopen, and the answer is cleaned of leaked tags and of citations to sources that do not exist.</li>
+<li><strong>Speech models.</strong> The optional EmbeddingGemma 2 speech files are downloaded from Hugging Face into <code>models/</code> and run in process with <code>ai-edge-litert</code>. They are LiteRT model files, not pickled Python.</li>
 <li><strong>The desktop app</strong> loads only the local UI, opens every other link in your browser and gives the page no app
 commands.</li>
 </ul>
@@ -132,7 +133,7 @@ repository and its GitHub releases</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.0 · Free to use, not to sell</span>
+    <span>Lumina 0.1.1 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -140,6 +141,6 @@ repository and its GitHub releases</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.0" defer></script>
+<script src="../assets/site.js?v=0.1.1" defer></script>
 </body>
 </html>

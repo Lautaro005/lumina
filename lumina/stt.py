@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .catalog import CATALOG, installed, stt_choice
+from .catalog import CATALOG, EG2_STT, installed, stt_choice
 from .config import settings
 
 log = logging.getLogger("lumina.stt")
@@ -47,7 +47,15 @@ class Engine:
                 raise NotReady(f"{CATALOG[model_id].label} is not downloaded yet")
             path = CATALOG[model_id].path
             self._model = None
-            if model_id.startswith("whisper"):
+            if model_id == EG2_STT:
+                from .eg2 import NotReady as Eg2NotReady
+                from .eg2 import Recognizer
+
+                try:
+                    self._model = Recognizer(path)
+                except Eg2NotReady as e:
+                    raise NotReady(str(e)) from e
+            elif model_id.startswith("whisper"):
                 from faster_whisper import WhisperModel
 
                 self._model = WhisperModel(str(path), device="auto", compute_type="int8")
@@ -72,6 +80,11 @@ class Engine:
     def fast(self) -> bool:
         return self.model_id in ("parakeet-v3", "whisper-tiny", "whisper-base", "canary-1b-v2")
 
+    @property
+    def partials_ok(self) -> bool:
+        """The EmbeddingGemma 2 reader re-reads a 30 s window per call, too heavy to re-decode every second."""
+        return self.model_id != EG2_STT
+
     def recognize(self, audio: np.ndarray, language: str = "auto") -> tuple[str, str]:
         """Returns (text, detected_or_forced_language)."""
         if audio.size < SR * 0.3:
@@ -80,6 +93,8 @@ class Engine:
             if self._model is None:
                 raise NotReady("speech model not loaded")
             lang = None if language in ("", "auto") else language
+            if self.model_id == EG2_STT:
+                return self._model.transcribe(audio), "en"
             if self.model_id.startswith("whisper"):
                 segs, info = self._model.transcribe(audio, language=lang, beam_size=1, vad_filter=False,
                                                     condition_on_previous_text=False, without_timestamps=True)
@@ -173,7 +188,7 @@ class Stream:
                 # ~700 ms pause ends the utterance; past 18 s a shorter breath is enough, and 30 s is the cap
                 if self.silence * Vad.HOP / SR > 0.7 or (dur > 18 and p < 0.3) or dur > 30:
                     self._finish()
-                elif settings.get("partials") and dur > 1.0 and now - self.last_partial > 1.1:
+                elif settings.get("partials") and engine.partials_ok and dur > 1.0 and now - self.last_partial > 1.1:
                     self.last_partial = now
                     self._job("partial")
             else:

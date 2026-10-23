@@ -22,7 +22,7 @@ from pydantic import BaseModel
 
 from . import __version__, chat, export, llm, tts
 from .audio import list_inputs
-from .catalog import CATALOG, EU25, WHISPER_LANGS, installed, stt_choice
+from .catalog import CATALOG, EU25, installed, languages_for, stt_choice
 from .config import DATA, UI_DIR, UPLOADS, settings, system_info
 from .db import db, new_id
 from .downloads import downloads
@@ -161,8 +161,8 @@ def create_app(port: int) -> FastAPI:
     @app.get("/api/languages")
     def languages(engine_name: str = "") -> dict[str, Any]:
         e = engine_name or settings.get("stt_engine")
-        langs = EU25 if e in ("parakeet", "canary") else WHISPER_LANGS
-        return {"engine": e, "languages": sorted(langs), "eu25": EU25, "auto": e != "canary",
+        langs = languages_for(e)
+        return {"engine": e, "languages": sorted(langs), "eu25": EU25, "auto": e not in ("canary", "embeddinggemma"),
                 "forced": e != "parakeet"}
 
     # --- models ----------------------------------------------------------------------------------

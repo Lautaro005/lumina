@@ -4,7 +4,7 @@ import {
   ScrollText, Search, Sparkles, Square, Trash2, Volume2, X,
 } from "lucide-react";
 import { api, fmtClock, type Block, type Meeting as M, type Segment } from "../api";
-import { Markdown, Meter, Popover, guessLang, speak, stopSpeaking } from "../components";
+import { CopyButton, Markdown, Meter, Popover, guessLang, speak, stopSpeaking } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
 
@@ -50,6 +50,8 @@ export default function MeetingView({ id }: { id: string }) {
   const go = useStore((s) => s.go);
   const toast = useStore((s) => s.toast);
   const [cues, setCues] = useState<string[]>([""]);
+  const [raw, setRaw] = useState("");
+  const [tab, setTab] = useState<"notes" | "enhanced">("notes");
   const [title, setTitle] = useState("");
   const [menu, setMenu] = useState<"" | "export" | "more">("");
   const [drawer, setDrawer] = useState(false);
@@ -65,6 +67,7 @@ export default function MeetingView({ id }: { id: string }) {
       if (!alive) return;
       setMeeting(m);
       setCues([...m.cues.split("\n").filter((x) => x.trim()), ""]);
+      setRaw(m.cues);
       setTitle(m.title);
     }).catch(() => { toast("Meeting not found", "error"); go("/meetings"); });
     return () => { alive = false; setMeeting(null); stopSpeaking(); };
@@ -94,6 +97,16 @@ export default function MeetingView({ id }: { id: string }) {
     useStore.setState((s) => (s.meeting && s.meeting.id === id ? { meeting: { ...s.meeting, cues: text } } : {}));
   }, 600);
   const saveTitle = useDebounced((v: string) => api.patchMeeting(id, { title: v }).catch(() => {}), 500);
+
+  const saveRaw = useDebounced((text: string) => {
+    const clean = text.split("\n").map((x) => x.trimEnd()).join("\n").trim();
+    api.patchMeeting(id, { cues: clean }).catch((e) => toast(e.message, "error"));
+    useStore.setState((s) => (s.meeting && s.meeting.id === id ? { meeting: { ...s.meeting, cues: clean } } : {}));
+  }, 600);
+  const updateRaw = (v: string) => {
+    setRaw(v);
+    saveRaw(v);
+  };
 
   const updateCue = (i: number, v: string) => {
     const next = cues.slice();
@@ -206,6 +219,7 @@ export default function MeetingView({ id }: { id: string }) {
 
   const assists = m?.assists || [];
   const showGutter = status.settings.live_assistance || assists.length > 0;
+  const view = (["columns", "rows", "tabs"] as const).find((v) => v === status.settings.notes_view) || "columns";
 
   if (!m) return <div className="empty"><Loader2 className="spin" /></div>;
 
@@ -328,49 +342,56 @@ export default function MeetingView({ id }: { id: string }) {
             )}
           </header>
 
-          <div className={`cornell ${recording ? "live" : paused ? "paused" : ""}`}>
-            {(recording || paused) && (
-              <span className="margin-clock" aria-live="off"><i className="dot" />{recording ? t("meeting.listening") : t("meeting.paused")} {fmtClock(elapsed)}</span>
-            )}
-            <div className="col-heads">
-              <div>{t("meeting.cues")}</div>
-              <div>
-                {t("meeting.notes")}
-                {blocks.length > 0 && (
-                  <button className="btn sm ghost" onClick={readNotes} aria-pressed={speaking}>
-                    <Volume2 size={15} /> {speaking ? t("common.stop") : t("common.readAloud")}
-                  </button>
-                )}
-              </div>
-            </div>
-            {cues.map((cue, i) => {
-              const b = cue.trim() ? blockFor(cue, i) : undefined;
-              const fresh = !!b?.changed && Date.now() / 1000 - b.changed < 30;
-              return (
-                <div className="row" key={i}>
-                  <div className="cue">
-                    <AutoText value={cue} label={`${t("meeting.cues")} ${i + 1}`}
-                      placeholder={i === cues.length - 1 ? (cues.length === 1 ? t("meeting.cuePlaceholder") : "…") : ""}
-                      onChange={(v) => updateCue(i, v)} onKeyDown={onKey(i)} inputRef={(el) => { refs.current[i] = el; }} />
-                  </div>
-                  {b?.text ? (
-                    <div key={b.changed} className={`body ${fresh ? "fresh" : ""}`}><Markdown text={b.text} /></div>
-                  ) : (
-                    <div className="body muted">
-                      {cue.trim() ? (b ? t("meeting.nothingHeard") : "") : i === 0 && cues.length === 1 ? t("meeting.emptyBody") : ""}
-                    </div>
+          {view === "rows" ? (
+            <div className={`cornell ${recording ? "live" : paused ? "paused" : ""}`}>
+              {(recording || paused) && (
+                <span className="margin-clock" aria-live="off"><i className="dot" />{recording ? t("meeting.listening") : t("meeting.paused")} {fmtClock(elapsed)}</span>
+              )}
+              <div className="col-heads">
+                <div>{t("meeting.cues")}</div>
+                <div>
+                  {t("meeting.notes")}
+                  {blocks.length > 0 && (
+                    <button className="btn sm ghost" onClick={readNotes} aria-pressed={speaking}>
+                      <Volume2 size={15} /> {speaking ? t("common.stop") : t("common.readAloud")}
+                    </button>
                   )}
                 </div>
-              );
-            })}
-            {cues.length <= 1 && <div className="cue-hint">{t("meeting.cueHint")}</div>}
-            {autoBlocks.map((b, i) => (
-              <div className="row" key={`auto-${i}`}>
-                <div className="cue auto"><small>{t("meeting.lumina")}</small>{b.cue}</div>
-                <div key={b.changed} className={`body ${b.changed && Date.now() / 1000 - b.changed < 30 ? "fresh" : ""}`}><Markdown text={b.text} /></div>
               </div>
-            ))}
-          </div>
+              {cues.map((cue, i) => {
+                const b = cue.trim() ? blockFor(cue, i) : undefined;
+                const fresh = !!b?.changed && Date.now() / 1000 - b.changed < 30;
+                return (
+                  <div className="row" key={i}>
+                    <div className="cue">
+                      <AutoText value={cue} label={`${t("meeting.cues")} ${i + 1}`}
+                        placeholder={i === cues.length - 1 ? (cues.length === 1 ? t("meeting.cuePlaceholder") : "…") : ""}
+                        onChange={(v) => updateCue(i, v)} onKeyDown={onKey(i)} inputRef={(el) => { refs.current[i] = el; }} />
+                    </div>
+                    {b?.text ? (
+                      <div key={b.changed} className={`body ${fresh ? "fresh" : ""}`}><Markdown text={b.text} /></div>
+                    ) : (
+                      <div className="body muted">
+                        {cue.trim() ? (b ? t("meeting.nothingHeard") : "") : i === 0 && cues.length === 1 ? t("meeting.emptyBody") : ""}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {cues.length <= 1 && <div className="cue-hint">{t("meeting.cueHint")}</div>}
+              {autoBlocks.map((b, i) => (
+                <div className="row" key={`auto-${i}`}>
+                  <div className="cue auto"><small>{t("meeting.lumina")}</small>{b.cue}</div>
+                  <div key={b.changed} className={`body ${b.changed && Date.now() / 1000 - b.changed < 30 ? "fresh" : ""}`}><Markdown text={b.text} /></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <NotesPanels
+              view={view} tab={tab} setTab={setTab} raw={raw} onRaw={updateRaw} blocks={[...userBlocks, ...autoBlocks]}
+              recording={recording} paused={paused} elapsed={elapsed} speaking={speaking} onRead={readNotes}
+            />
+          )}
 
           <Summary m={m} />
         </article>
@@ -381,6 +402,68 @@ export default function MeetingView({ id }: { id: string }) {
       <Strip segments={segments} onOpen={() => setDrawer(true)} />
       {drawer && <TranscriptDrawer segments={segments} onClose={() => setDrawer(false)} />}
     </>
+  );
+}
+
+function NotesPanels({ view, tab, setTab, raw, onRaw, blocks, recording, paused, elapsed, speaking, onRead }: {
+  view: "columns" | "tabs"; tab: "notes" | "enhanced"; setTab: (t: "notes" | "enhanced") => void;
+  raw: string; onRaw: (v: string) => void; blocks: Block[]; recording: boolean; paused: boolean; elapsed: number;
+  speaking: boolean; onRead: () => void;
+}) {
+  const t = useT();
+  const showNotes = view === "columns" || tab === "notes";
+  const showEnhanced = view === "columns" || tab === "enhanced";
+  const enhancedText = blocks.filter((b) => b.text).map((b) => `${b.cue}: ${b.text}`).join("\n\n");
+  return (
+    <div className={`panels ${view} ${recording ? "live" : paused ? "paused" : ""}`}>
+      {view === "tabs" && (
+        <div className="seg-switch" role="tablist" aria-label={t("settings.notesView")}>
+          {(["notes", "enhanced"] as const).map((k) => (
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
+              {k === "notes" ? t("meeting.shorthand") : t("meeting.liveEnhanced")}
+            </button>
+          ))}
+        </div>
+      )}
+      {showNotes && (
+        <section className="panel notes-panel" aria-label={t("meeting.shorthand")}>
+          <header>
+            <h2>{t("meeting.shorthand")}</h2>
+            {(recording || paused) && (
+              <span className={`chip ${recording ? "ok" : "warn"}`}><i className="dot" />{recording ? t("meeting.live") : t("meeting.paused")} {fmtClock(elapsed)}</span>
+            )}
+            <CopyButton text={raw} />
+          </header>
+          <textarea className="shorthand" value={raw} spellCheck onChange={(e) => onRaw(e.target.value)}
+            placeholder={t("meeting.shorthandPlaceholder")} aria-label={t("meeting.shorthand")} />
+        </section>
+      )}
+      {showEnhanced && (
+        <section className="panel enhanced-panel" aria-label={t("meeting.liveEnhanced")}>
+          <header>
+            <h2><Sparkles size={14} /> {t("meeting.liveEnhanced")}</h2>
+            {blocks.length > 0 && (
+              <button className="btn sm ghost" onClick={onRead} aria-pressed={speaking}>
+                <Volume2 size={15} /> {speaking ? t("common.stop") : t("common.readAloud")}
+              </button>
+            )}
+            <CopyButton text={enhancedText} />
+          </header>
+          {blocks.some((b) => b.text) ? (
+            <ul className="enhanced-list">
+              {blocks.filter((b) => b.text).map((b, i) => (
+                <li key={`${b.cue}-${i}`} className={b.changed && Date.now() / 1000 - b.changed < 30 ? "fresh" : ""}>
+                  <b>{b.auto && <small>{t("meeting.lumina")} · </small>}{b.cue}</b>
+                  <Markdown text={b.text} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="placeholder-line">{t("meeting.enhancedEmpty")}</p>
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 

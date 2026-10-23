@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Info, Loader2, RefreshCw } from "lucide-react";
-import { api, type Model } from "../api";
+import { CheckCircle2, Columns2, Info, Loader2, Rows3, RefreshCw, StickyNote } from "lucide-react";
+import { api, type Job, type Model } from "../api";
 import { CopyButton, ModelRow, Switch, useModels, useSetting } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
@@ -11,6 +11,7 @@ export function sttFor(engine: string, language: string, size: string): string {
   if (engine === "parakeet") return "parakeet-v3";
   if (engine === "canary") return "canary-1b-v2";
   if (engine === "whisper") return `whisper-${size}`;
+  if (engine === "embeddinggemma") return "embeddinggemma-2-stt";
   if (!language || language === "auto") return "parakeet-v3";
   return EU25.includes(language) ? "canary-1b-v2" : `whisper-${size}`;
 }
@@ -25,7 +26,7 @@ export function LanguageSelect({ id }: { id?: string }) {
   const common = ["es", "en", "pt", "fr", "de", "it"].filter((x) => langs.includes(x));
   return (
     <select id={id} className="input" value={lang} onChange={(e) => setLang(e.target.value)}>
-      {engine !== "canary" && <option value="auto">{t("common.auto")}</option>}
+      {engine !== "canary" && engine !== "embeddinggemma" && <option value="auto">{t("common.auto")}</option>}
       <optgroup label="—">
         {common.map((c) => <option key={`c-${c}`} value={c}>{langName(c, t.lang)}</option>)}
       </optgroup>
@@ -33,6 +34,105 @@ export function LanguageSelect({ id }: { id?: string }) {
         {sorted.map((c) => <option key={c} value={c}>{langName(c, t.lang)}</option>)}
       </optgroup>
     </select>
+  );
+}
+
+const VIEWS = ["columns", "rows", "tabs"] as const;
+
+/** A small drawing of each layout so the choice is visible at a glance. */
+function ViewThumb({ kind }: { kind: (typeof VIEWS)[number] }) {
+  const ink = "var(--ink-3)", wash = "var(--blue-wash)", rule = "var(--rule)", red = "var(--margin)";
+  const lines = (x: number, y: number, w: number, n: number, c: string) =>
+    Array.from({ length: n }, (_, i) => <rect key={`${x}-${y}-${i}`} x={x} y={y + i * 7} width={i % 3 === 2 ? w * 0.6 : w} height="3" rx="1.5" fill={c} opacity="0.7" />);
+  return (
+    <svg className="view-thumb" viewBox="0 0 120 80" role="img" aria-hidden="true">
+      <rect x="1" y="1" width="118" height="78" rx="6" fill="var(--paper)" stroke="var(--rule-soft)" />
+      <rect x="1" y="1" width="118" height="12" rx="6" fill={wash} />
+      <rect x="8" y="5" width="30" height="3" rx="1.5" fill={rule} />
+      {kind === "columns" && (
+        <>
+          <line x1="60" y1="13" x2="60" y2="79" stroke="var(--rule-soft)" />
+          {lines(8, 20, 44, 6, ink)}
+          <rect x="68" y="19" width="12" height="3" rx="1.5" fill={rule} />
+          {lines(68, 26, 44, 5, ink)}
+        </>
+      )}
+      {kind === "rows" && (
+        <>
+          <line x1="42" y1="13" x2="42" y2="79" stroke={red} strokeWidth="1.5" />
+          {[0, 1, 2].map((i) => (
+            <g key={i}>
+              <rect x="8" y={21 + i * 19} width="26" height="3" rx="1.5" fill={rule} />
+              {lines(50, 19 + i * 19, 60, 2, ink)}
+              {i < 2 && <line x1="4" y1={34 + i * 19} x2="116" y2={34 + i * 19} stroke="var(--rule-soft)" />}
+            </g>
+          ))}
+        </>
+      )}
+      {kind === "tabs" && (
+        <>
+          <rect x="8" y="18" width="40" height="9" rx="4.5" fill={wash} stroke={rule} />
+          <rect x="52" y="18" width="40" height="9" rx="4.5" fill="none" stroke="var(--rule-soft)" />
+          {lines(8, 36, 104, 6, ink)}
+        </>
+      )}
+    </svg>
+  );
+}
+
+function NotesViewPicker() {
+  const t = useT();
+  const [view, setView] = useSetting<string>("notes_view");
+  const icons = { columns: Columns2, rows: Rows3, tabs: StickyNote } as const;
+  return (
+    <div className="field">
+      <span className="label" id="nv-label">{t("settings.notesView")}</span>
+      <div className="view-picker" role="radiogroup" aria-labelledby="nv-label">
+        {VIEWS.map((v) => {
+          const Icon = icons[v];
+          return (
+            <button key={v} type="button" role="radio" aria-checked={view === v} className="view-card" onClick={() => setView(v)}>
+              <ViewThumb kind={v} />
+              <b><Icon size={15} /> {t(`settings.view.${v}`)}</b>
+              <small>{t(`settings.view.${v}Hint` as "settings.view.columnsHint")}</small>
+            </button>
+          );
+        })}
+      </div>
+      <p className="hint">{t("settings.notesViewHint")}</p>
+    </div>
+  );
+}
+
+const GROUPS: { id: string; kinds: string[] }[] = [
+  { id: "chat", kinds: ["llm", "runtime"] },
+  { id: "stt", kinds: ["stt", "vad"] },
+  { id: "embedding", kinds: ["embedding"] },
+  { id: "tts", kinds: ["tts"] },
+];
+
+/** Every model, grouped by what it is used for. */
+function ModelGroups({ models, jobs }: { models: Model[]; jobs: Record<string, Job> }) {
+  const t = useT();
+  const have = useStore((s) => s.status?.models) || {};
+  return (
+    <div className="model-groups">
+      {GROUPS.map((g) => {
+        const list = models.filter((m) => g.kinds.includes(m.kind));
+        if (!list.length) return null;
+        const n = list.filter((m) => have[m.id]).length;
+        return (
+          <section key={g.id} className="model-group" aria-labelledby={`mg-${g.id}`}>
+            <header>
+              <h3 id={`mg-${g.id}`}>{t(`settings.group.${g.id}` as "settings.group.chat")}</h3>
+              <span className="chip">{t("settings.groupCount", { n, total: list.length })}</span>
+            </header>
+            <p className="hint">{t(`settings.group.${g.id}Hint` as "settings.group.chatHint")}</p>
+            <div className="models">{list.map((m) => <ModelRow key={m.id} model={m} job={jobs[m.id]} />)}</div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -106,7 +206,8 @@ export default function Settings() {
 
   const nav: [string, string][] = [
     ["general", t("settings.general")], ["transcription", t("settings.transcription")], ["generation", t("settings.generation")],
-    ["knowledge", t("settings.knowledge")], ["speech", t("settings.speech")], ["agents", t("settings.agents")], ["about", t("settings.about")],
+    ["knowledge", t("settings.knowledge")], ["speech", t("settings.speech")], ["models", t("settings.modelsNav")],
+    ["agents", t("settings.agents")], ["about", t("settings.about")],
   ];
 
   return (
@@ -134,6 +235,7 @@ export default function Settings() {
                 </select>
               </div>
             </div>
+            <NotesViewPicker />
           </Section>
 
           <Section id="transcription" title={t("settings.transcription")}>
@@ -148,10 +250,11 @@ export default function Settings() {
                 <select id="stt-engine" className="input" value={engine} onChange={(e) => {
                   const v = e.target.value;
                   setEngine(v);
+                  if (v === "embeddinggemma") setLang("en");
                   if (v === "canary" && lang === "auto") setLang(t.lang);
                   if ((v === "parakeet" || v === "canary") && lang !== "auto" && !EU25.includes(lang)) setLang(v === "canary" ? "en" : "auto");
                 }}>
-                  {(["auto", "parakeet", "canary", "whisper"] as const).map((x) => <option key={x} value={x}>{t(`settings.engine.${x}`).split(":")[0]}</option>)}
+                  {(["auto", "parakeet", "canary", "whisper", "embeddinggemma"] as const).map((x) => <option key={x} value={x}>{t(`settings.engine.${x}`).split(":")[0]}</option>)}
                 </select>
                 <p className="hint">{t(`settings.engine.${engine as "auto"}`)}</p>
               </div>
@@ -164,6 +267,7 @@ export default function Settings() {
                 </div>
               )}
             </div>
+            {engine === "embeddinggemma" && <div className="callout warn"><Info size={18} />{t("settings.experimentalNote")}</div>}
             {engine === "parakeet" && lang !== "auto" && <div className="callout warn"><Info size={18} />{t("settings.parakeetNote")}</div>}
             <div className="callout"><Info size={18} /><span>{t("settings.willUse")} <b>{byId(chosen)?.label || chosen}</b>.</span></div>
             <div className="models">{row(byId(chosen))}{row(byId("silero-vad"))}</div>
@@ -294,6 +398,11 @@ export default function Settings() {
             {ttsEngine === "kokoro" && <div className="models">{row(byId("kokoro"))}</div>}
           </Section>
 
+          <Section id="models" title={t("settings.models")}>
+            <p className="lead" style={{ marginTop: 0 }}>{t("settings.modelsLead")}</p>
+            <ModelGroups models={models} jobs={jobs} />
+          </Section>
+
           <Section id="agents" title={t("settings.agents")}>
             <p className="lead" style={{ marginTop: 0 }}>{t("settings.agentsLead")}</p>
             {agents && (
@@ -318,8 +427,6 @@ export default function Settings() {
               <div className="field"><span className="label">{t("settings.data")}</span><span className="src-path" style={{ fontSize: 14 }}>{status.system.data}</span></div>
             </div>
             <p className="hint">{t("settings.license")} <a href="https://github.com/Lautaro005/lumina" target="_blank" rel="noopener">github.com/Lautaro005/lumina</a></p>
-            <span className="label">{t("settings.models")}</span>
-            <div className="models">{models.map((m) => <ModelRow key={m.id} model={m} job={jobs[m.id]} />)}</div>
           </Section>
         </div>
       </div>

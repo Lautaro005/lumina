@@ -1,13 +1,13 @@
 # Lumina
 
-> Lumina is a free, source-available, local-first meeting notes and knowledge base app for macOS, Windows and Linux, and an open alternative to Google AI Edge Foresight. It records the microphone and the computer's audio, transcribes live on the CPU, turns the user's shorthand into enhanced notes aligned line by line (Cornell layout), writes a summary (overview, decisions, action items, open questions), answers questions in meetings from the user's documents (live assistance), indexes files and folders, offers a chat with citations over everything, and exposes the knowledge base to AI agents through an MCP server. No account, no telemetry; everything runs on the device.
+> Lumina is a free, source-available, local-first meeting notes and knowledge base app for macOS, Windows and Linux, and an open alternative to Google AI Edge Foresight. It records the microphone and the computer's audio, transcribes live on the CPU, turns the user's shorthand into enhanced notes aligned line by line (three views: side by side like Foresight, Cornell rows, or one at a time), writes a summary (overview, decisions, action items, open questions), answers questions in meetings from the user's documents (live assistance), indexes files and folders, offers a chat with citations over everything, and exposes the knowledge base to AI agents through an MCP server. No account, no telemetry; everything runs on the device.
 
 Key facts:
 
 - Install on macOS/Linux: `curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh`. On Windows (PowerShell): `irm https://lautaro005.github.io/lumina/install.ps1 | iex`. Start with `lumina` (browser) or `lumina app` (desktop app with tray icon).
-- Current version: 0.1.0 (October 22, 2026).
+- Current version: 0.1.1 (October 23, 2026).
 - License: Apache-2.0 with the Commons Clause: free to use, modify and share, not to sell.
-- Speech models: Parakeet TDT 0.6B v3 (25 European languages, auto-detects), Canary 1B v2 (same 25 languages, follows the chosen language), Whisper tiny to large-v3-turbo (99 languages), Silero VAD. The transcription language is a setting with "Automatic" plus every supported language.
+- Speech models: Parakeet TDT 0.6B v3 (25 European languages, auto-detects), Canary 1B v2 (same 25 languages, follows the chosen language), Whisper tiny to large-v3-turbo (99 languages), Silero VAD, plus an experimental English-only option built on EmbeddingGemma 2's audio encoder. The transcription language is a setting with "Automatic" plus every supported language.
 - Embeddings: EmbeddingGemma 2 (8-bit ONNX, 768 dimensions, truncatable to 512/256/128), downloaded from the app. Vector store: ChromaDB (collections documents, meetings, notes).
 - Notes model: Gemma 4 E2B, E4B or 12B (4-bit GGUF) run by llama.cpp inside Lumina, or Ollama, LM Studio or any OpenAI-compatible server.
 - Optional read-aloud: Kokoro 82M or the system voice. Optional web search in chat: DuckDuckGo or SearXNG, off by default.

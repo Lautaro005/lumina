@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.0`) | ✅ |
+| `0.1.x` (latest: `0.1.1`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -52,7 +52,10 @@ being exploited).
   OpenAI-compatible server you configure (which may be remote if you point it at one).
 - **Untrusted text.** Transcripts, files, web results and MCP inputs are data. The chat and assistance prompts tell the
   model so, and Lumina's models cannot run commands or tools: the worst a prompt injection can do is change what an answer
-  says.
+  says. Since 0.1.1 every source reaches the model inside a numbered `<source>` tag that its own text cannot close or
+  reopen, and the answer is cleaned of leaked tags and of citations to sources that do not exist.
+- **Speech models.** The optional EmbeddingGemma 2 speech files are downloaded from Hugging Face into `models/` and
+  run in process with `ai-edge-litert`. They are LiteRT model files, not pickled Python.
 - **The desktop app** loads only the local UI, opens every other link in your browser and gives the page no app
   commands.
 

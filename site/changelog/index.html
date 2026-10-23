@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina changelog">
 <meta property="og:description" content="What changed in each version of Lumina.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.0">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.1">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -36,12 +36,26 @@
 <main id="main" class="doc">
   <div class="wrap">
     <article class="page">
-      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
       <div class="doc-body">
         <header><h1>Changelog</h1><p>What changed in each version. Lumina follows semantic versioning.</p></header>
         <div class="prose">
 <p>All notable changes to Lumina are listed here. The format follows <a href="https://keepachangelog.com/">Keep a Changelog</a> and the
 project uses <a href="https://semver.org/">Semantic Versioning</a>.</p>
+<h2 id="0-1-1-2026-10-23"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.1">0.1.1</a> - 2026-10-23</h2>
+<h3>Added</h3>
+<ul>
+<li><strong>Three views for meeting notes</strong>, chosen in Settings → General with a small drawing of each: <strong>Side by side</strong> (the new default: your shorthand notes on the left, the live enhanced notes on the right, like Google AI Edge Foresight), <strong>Cornell rows</strong> (the 0.1.0 layout) and <strong>One at a time</strong> (a wide page with a switch between your notes and the enhanced ones).</li>
+<li><strong>EmbeddingGemma 2 as a speech option (experimental).</strong> EmbeddingGemma 2 is an embedding model and does not transcribe by itself, but its audio encoder plus a small community reader (<a href="https://huggingface.co/mlboydaisuke/EmbeddingGemma-2-Transcribe-LiteRT"><code>mlboydaisuke/EmbeddingGemma-2-Transcribe-LiteRT</code></a>, Apache-2.0) does: about 4 % word error rate on English read speech, on the CPU through <code>ai-edge-litert</code>. English only, no punctuation, each phrase appears when the speaker pauses, about 1 GB. Never chosen by &quot;Automatic&quot;.</li>
+<li><strong>Models grouped by what they do</strong> in Settings → Models: Chat and notes, Transcription, Embeddings and Read aloud.</li>
+<li><strong>A real harness for the chat</strong>: a structured system prompt (grounding, citations, language, style, prompt-injection rules), follow-up questions rewritten into standalone searches, retrieval without duplicates and with a budget per source, a digest of recent meetings, the full notes of the meeting a chat is about, tagged sources that cannot close their own tag, and a clean-up pass for citations.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li><strong>New chat design</strong>: minimal and quiet, with answers as plain text, sources as small chips and a floating composer.</li>
+<li>The default notes view is now <strong>Side by side</strong>; choose <strong>Cornell rows</strong> in Settings → General to keep the old one.</li>
+<li><code>ai-edge-litert</code> is a new dependency (Windows, Linux and Apple Silicon Macs; Intel Macs keep every other model).</li>
+</ul>
 <h2 id="0-1-0-2026-10-22"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.0">0.1.0</a> - 2026-10-22</h2>
 <p>First release.</p>
 <h3>Meetings</h3>
@@ -110,7 +124,7 @@ warn.</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.0 · Free to use, not to sell</span>
+    <span>Lumina 0.1.1 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -118,6 +132,6 @@ warn.</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.0" defer></script>
+<script src="../assets/site.js?v=0.1.1" defer></script>
 </body>
 </html>
