@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.1.1" src="https://img.shields.io/badge/version-0.1.1-2b4fa8">
+  <img alt="Version 0.1.2" src="https://img.shields.io/badge/version-0.1.2-2b4fa8">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -90,7 +90,7 @@ supports. If you know the language, choose it: automatic detection can guess wro
 default "Automatic" model setting, Lumina uses Parakeet for automatic detection, Canary when you pick a European language,
 and Whisper for any other language.
 
-Settings → Models lists everything grouped by what it does: chat and notes, transcription, embeddings and read aloud.
+Settings → Models lists everything grouped by what it does: chat and notes, transcription, embeddings and read aloud, and a **Running now** panel with a Stop button to free the memory of the local model whenever you want.
 
 **Already use Ollama or LM Studio?** Lumina finds them on their usual ports and lists their models. Any other
 OpenAI-compatible server works too.

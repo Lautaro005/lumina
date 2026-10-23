@@ -26,7 +26,10 @@ export type Status = {
   session: { meeting_id: string; paused: boolean; elapsed: number; sources: string[]; model: string } | null;
   kb: { documents: number; meetings: number; notes: number };
   port: number;
+  running: Running;
 };
+
+export type Running = { llm: boolean; llm_model: string; stt: boolean; stt_model: string; embeddings: boolean };
 
 export type Model = {
   id: string; kind: string; label: string; size: number; license: string; source: string;
@@ -121,6 +124,8 @@ export const api = {
   patchSource: (id: string, fields: Partial<Source>) => req<Source>("PATCH", `/api/sources/${id}`, fields),
   deleteSource: (id: string) => req("DELETE", `/api/sources/${id}`),
   reindex: (id: string) => req("POST", `/api/sources/${id}/reindex`),
+  stopRunning: (name: "llm" | "stt" | "embeddings") => req<{ running: Running }>("POST", `/api/running/${name}/stop`),
+  startLlm: () => req<{ running: Running }>("POST", "/api/running/llm/start"),
   reindexAll: () => req("POST", "/api/reindex"),
   reveal: (id: string) => req("POST", "/api/open", { id }),
   openPrivacy: (what: "mic" | "screen") => req("POST", "/api/open-privacy", { what }),

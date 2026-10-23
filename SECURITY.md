@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.1`) | ✅ |
+| `0.1.x` (latest: `0.1.2`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability

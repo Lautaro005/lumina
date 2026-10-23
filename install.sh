@@ -64,7 +64,21 @@ if [ -d "$DIR/.git" ]; then
     git -C "$DIR" pull --ff-only --quiet || warn "Could not update the code (local changes?). Continuing with what is there."
   fi
 elif [ -f "$DIR/pyproject.toml" ] && [ -f "$DIR/lumina/server.py" ]; then
-  say "Using the Lumina folder at $DIR"
+  if [ -n "${LUMINA_SKIP_PULL:-}" ]; then
+    say "Using the Lumina folder at $DIR"
+  else
+    # a copy without git history (older installs): fetch the current code once and keep your data, so that
+    # `lumina update` works from now on
+    say "Updating Lumina in $DIR (this copy has no git history, so it is replaced with the latest version)"
+    TMPCLONE="$(mktemp -d)"
+    if git clone --quiet --depth 1 --branch "$BRANCH" "$REPO" "$TMPCLONE/lumina"; then
+      rm -rf "$DIR/lumina/ui" "$DIR/site" "$DIR/web/src"
+      cp -R "$TMPCLONE/lumina/." "$DIR/"
+    else
+      warn "Could not download the latest code; continuing with what is in $DIR."
+    fi
+    rm -rf "$TMPCLONE"
+  fi
 elif [ -e "$DIR" ] && [ -n "$(find "$DIR" -mindepth 1 -maxdepth 1 ! -name data 2>/dev/null | head -n1)" ]; then
   fail "$DIR exists and is not a Lumina install. Move it, or set LUMINA_HOME=/another/folder."
 else

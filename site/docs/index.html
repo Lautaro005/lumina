@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.1">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.2">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -122,7 +122,8 @@
 <li><b>LM Studio.</b> Start its local server; Lumina finds it on <code>127.0.0.1:1234</code>.</li>
 <li><b>Another OpenAI-compatible server.</b> Any address and model name, with an optional API key.</li>
 </ul>
-<p><b>Test</b> sends a one-word prompt and shows how long it took.</p>
+<p><b>Test</b> sends a one-word prompt and shows how long it took. <b>Stop</b> frees the memory of the built-in model; it starts again by itself the next time Lumina needs it.</p>
+<p>Settings → Models → <b>Running now</b> shows what is loaded in memory (notes and chat model, speech model, search model), each with a Stop button, and <b>Start now</b> for the notes model so the first answer is not slow. The speech model cannot be stopped while a meeting is being recorded.</p>
 
 <h2 id="sources">Sources</h2>
 <p>Sources are what Lumina searches when it writes notes, answers questions or helps live. Meetings are added on their own when they end.</p>
@@ -194,6 +195,8 @@
 <p>macOS: allow Lumina or your terminal in System Settings → Privacy &amp; Security → <b>Screen &amp; System Audio Recording</b>, then start again. The helper needs the Xcode command line tools (<code>xcode-select --install</code>). Linux: make sure PulseAudio or PipeWire is running (<code>pactl info</code>).</p>
 <h3>Enhanced notes do not appear</h3>
 <p>Check Settings → Notes model → <b>Test</b>. For Gemma 4, the first start loads the model (up to a minute on slow disks). For Ollama or LM Studio, make sure the server is running and has a model.</p>
+<h3>Update says the same version</h3>
+<p>Installs made before 0.1.2 had no git history and were never refreshed. Run the install command above once more (or <code>lumina update</code>): since 0.1.2 it downloads the current code, keeps your <code>data/</code> folder and from then on <code>lumina update</code> works. The version is printed by <code>lumina version</code>.</p>
 <h3>Port 47770 is busy</h3>
 <p>Run <code>lumina serve --port 47771</code>, or set <code>LUMINA_PORT=47771</code>.</p>
 
@@ -210,7 +213,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.1 · Free to use, not to sell</span>
+    <span>Lumina 0.1.2 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -218,6 +221,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.1" defer></script>
+<script src="../assets/site.js?v=0.1.2" defer></script>
 </body>
 </html>

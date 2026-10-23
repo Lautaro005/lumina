@@ -54,6 +54,15 @@ class NoteIn(BaseModel):
 
 
 
+def running_models() -> dict[str, Any]:
+    """What is loaded in memory right now (the UI offers a Stop button for each)."""
+    return {
+        "llm": llm.builtin.running(), "llm_model": llm.builtin.model_id if llm.builtin.running() else "",
+        "stt": bool(engine.model_id), "stt_model": engine.model_id,
+        "embeddings": embedder.loaded,
+    }
+
+
 def create_app(port: int) -> FastAPI:
     mcp_app = mcp.streamable_http_app(streamable_http_path="/", host="127.0.0.1")
 
@@ -124,9 +133,36 @@ def create_app(port: int) -> FastAPI:
             "embeddings_ready": embedder.ready,
             "tts_ready": tts.available(),
             "session": sessions.state(),
+            "running": running_models(),
             "kb": kb.counts(),
             "port": port,
         }
+
+    @app.post("/api/running/{name}/stop")
+    def stop_running(name: str) -> dict[str, Any]:
+        """Frees the memory of a model Lumina loaded. It loads again by itself the next time it is needed."""
+        if name == "llm":
+            llm.builtin.stop()
+        elif name == "stt":
+            if sessions.state():
+                raise HTTPException(409, "A meeting is being recorded. End it first.")
+            engine.unload()
+        elif name == "embeddings":
+            embedder.unload()
+        else:
+            raise HTTPException(404, "unknown model")
+        return {"running": running_models()}
+
+    @app.post("/api/running/llm/start")
+    def start_llm() -> dict[str, Any]:
+        """Loads the built-in notes model now, so the first answer is not slow."""
+        if llm.effective_provider() != "builtin":
+            raise HTTPException(400, "The built-in model is not the one selected in Settings.")
+        try:
+            llm.builtin.ensure(settings.get("builtin_model"))
+        except llm.LLMError as e:
+            raise HTTPException(400, str(e)) from e
+        return {"running": running_models()}
 
     @app.post("/api/quit")
     async def quit_app(request: Request) -> dict:

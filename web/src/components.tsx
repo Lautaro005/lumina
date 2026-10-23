@@ -10,12 +10,12 @@ import { useStore } from "./store";
 export function Logo({ size = 28, onCover = true }: { size?: number; onCover?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect x="3" y="2" width="26" height="28" rx="3" fill={onCover ? "#ffffff" : "var(--paper)"} />
-      <rect x="3" y="9" width="26" height="2" fill="#3a6fd8" />
-      <rect x="12" y="11" width="2" height="19" fill="#d9453b" />
-      <rect x="16.5" y="15" width="9" height="1.6" rx="0.8" fill="#9db6ea" />
-      <rect x="16.5" y="19.5" width="7" height="1.6" rx="0.8" fill="#9db6ea" />
-      <rect x="6" y="15" width="4" height="1.6" rx="0.8" fill="#1e2430" />
+      <rect x="3.5" y="2.5" width="25" height="27" rx="4" fill={onCover ? "#ffffff" : "var(--paper)"} stroke="var(--rule-soft)" />
+      <rect x="4" y="9" width="24" height="1.6" fill="#7b9be0" />
+      <rect x="12" y="10.6" width="1.6" height="18.4" fill="#e0594f" />
+      <rect x="16.5" y="15" width="8" height="1.6" rx="0.8" fill="#b9c8ee" />
+      <rect x="16.5" y="19.5" width="6" height="1.6" rx="0.8" fill="#b9c8ee" />
+      <rect x="6.5" y="15" width="3.6" height="1.6" rx="0.8" fill="#20242c" />
     </svg>
   );
 }

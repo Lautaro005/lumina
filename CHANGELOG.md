@@ -3,6 +3,33 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-10-23
+
+### Fixed
+- **`lumina update` and the install command now really update.** Copies installed without git history (the first
+  installs) were never refreshed: the installer said "Using the Lumina folder" and kept the old code, so it kept
+  reporting `0.1.0`. The installer now downloads the current code once, keeps your `data/` folder and turns the folder
+  into a normal git checkout, so `lumina update` works from then on. Same fix in `install.ps1`.
+- **UI positioning.** The meeting header no longer squeezes the title under the buttons (the title has its own line,
+  the date, tags and actions sit below it and stack on narrow windows); the sidebar collapses to icons on windows
+  narrower than 1000 px so the chat has room; the meetings table no longer overflows on phone-width windows; panels of
+  the notes views lost stray rounded corners; the tag field is a small pill instead of a boxed input; the warning
+  banners are quieter.
+
+### Added
+- **Stop the local model from the app.** Settings → Models has a **Running now** panel with the notes and chat model
+  (Gemma 4 through llama.cpp), the speech model and the search model, each with a **Stop** button that frees its
+  memory (and **Start now** for the notes model). They start again by themselves the next time they are needed. The
+  speech model cannot be stopped while a meeting is being recorded. Settings → Notes model also has a Stop button.
+  New endpoints: `POST /api/running/{llm|stt|embeddings}/stop` and `POST /api/running/llm/start`; `/api/status` reports
+  what is running.
+
+### Changed
+- **A lighter, more minimal look.** The saturated blue sidebar is gone: a white sidebar with a quiet selected item, a
+  near-white desk, hairline borders instead of heavy blue rules, softer shadows, rounder corners, a soft blue used only
+  for links, focus and selection, and charcoal primary buttons. The dark theme follows with neutral greys instead of
+  navy.
+
 ## [0.1.1] - 2026-10-23
 
 ### Added

@@ -32,7 +32,20 @@ if (Test-Path (Join-Path $Dir '.git')) {
   Say "Updating Lumina in $Dir"
   git -C $Dir pull --ff-only --quiet
 } elseif (Test-Path (Join-Path $Dir 'pyproject.toml')) {
-  Say "Using the Lumina folder at $Dir"
+  if ($env:LUMINA_SKIP_PULL) {
+    Say "Using the Lumina folder at $Dir"
+  } else {
+    # a copy without git history (older installs): fetch the current code once and keep your data
+    Say "Updating Lumina in $Dir (this copy has no git history, so it is replaced with the latest version)"
+    $tmp = Join-Path $env:TEMP ("lumina-" + [guid]::NewGuid().ToString('N'))
+    git clone --quiet --depth 1 --branch $Branch $Repo $tmp
+    if ($LASTEXITCODE -eq 0) {
+      foreach ($old in 'lumina\ui', 'site', 'web\src') { Remove-Item (Join-Path $Dir $old) -Recurse -Force -ErrorAction SilentlyContinue }
+      Copy-Item (Join-Path $tmp '*') $Dir -Recurse -Force
+      Copy-Item (Join-Path $tmp '.git') $Dir -Recurse -Force
+    } else { Warn "Could not download the latest code; continuing with what is in $Dir." }
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+  }
 } else {
   Say "Downloading Lumina into $Dir"
   git clone --quiet --depth 1 --branch $Branch $Repo $Dir

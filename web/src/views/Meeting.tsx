@@ -309,7 +309,7 @@ export default function MeetingView({ id }: { id: string }) {
               {m.tags.map((tag) => (
                 <span key={tag} className="tag">{tag}<button aria-label={`${t("common.remove")} ${tag}`} onClick={() => removeTag(tag)}><X size={12} /></button></span>
               ))}
-              <input className="input" style={{ height: 26, width: 130, fontSize: 13 }} placeholder={`+ ${t("common.addTag")}`}
+              <input className="tag-input" placeholder={`+ ${t("common.addTag")}`}
                 value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} aria-label={t("common.addTag")}
                 onKeyDown={(e) => { if (e.key === "Enter") addTag(tagDraft); }} onBlur={() => tagDraft && addTag(tagDraft)} />
             </div>

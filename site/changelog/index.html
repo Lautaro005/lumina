@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina changelog">
 <meta property="og:description" content="What changed in each version of Lumina.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.1">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.2">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -36,12 +36,26 @@
 <main id="main" class="doc">
   <div class="wrap">
     <article class="page">
-      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-2-2026-10-23">0.1.2 - 2026-10-23</a><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
       <div class="doc-body">
         <header><h1>Changelog</h1><p>What changed in each version. Lumina follows semantic versioning.</p></header>
         <div class="prose">
 <p>All notable changes to Lumina are listed here. The format follows <a href="https://keepachangelog.com/">Keep a Changelog</a> and the
 project uses <a href="https://semver.org/">Semantic Versioning</a>.</p>
+<h2 id="0-1-2-2026-10-23"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.2">0.1.2</a> - 2026-10-23</h2>
+<h3>Fixed</h3>
+<ul>
+<li><strong><code>lumina update</code> and the install command now really update.</strong> Copies installed without git history (the first installs) were never refreshed and kept reporting <code>0.1.0</code>. The installer now downloads the current code once, keeps your <code>data/</code> folder and turns the folder into a normal git checkout. Same fix in <code>install.ps1</code>.</li>
+<li><strong>UI positioning.</strong> The meeting title has its own line instead of hiding under the buttons; the sidebar collapses to icons below 1000 px; the meetings table no longer overflows on narrow windows; stray rounded corners, the tag field and the warning banners were cleaned up.</li>
+</ul>
+<h3>Added</h3>
+<ul>
+<li><strong>Stop the local model from the app.</strong> Settings → Models has a <strong>Running now</strong> panel with the notes and chat model, the speech model and the search model, each with a Stop button that frees its memory. They start again by themselves when needed. Settings → Notes model also has a Stop button.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li><strong>A lighter, more minimal look</strong>: white sidebar, near-white desk, hairline borders, softer shadows, a soft blue used only for links, focus and selection, and charcoal primary buttons. The dark theme uses neutral greys.</li>
+</ul>
 <h2 id="0-1-1-2026-10-23"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.1">0.1.1</a> - 2026-10-23</h2>
 <h3>Added</h3>
 <ul>
@@ -124,7 +138,7 @@ warn.</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.1 · Free to use, not to sell</span>
+    <span>Lumina 0.1.2 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -132,6 +146,6 @@ warn.</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.1" defer></script>
+<script src="../assets/site.js?v=0.1.2" defer></script>
 </body>
 </html>

@@ -57,3 +57,21 @@ def test_languages_endpoint():
         assert len(r["languages"]) == 25
         r = c.get("/api/languages?engine_name=whisper").json()
         assert len(r["languages"]) >= 99
+
+
+def test_running_models_can_be_stopped_from_the_app():
+    with client() as c:
+        run = c.get("/api/status").json()["running"]
+        assert set(run) == {"llm", "llm_model", "stt", "stt_model", "embeddings"}
+        for name in ("llm", "stt", "embeddings"):
+            r = c.post(f"/api/running/{name}/stop")
+            assert r.status_code == 200 and r.json()["running"]["llm"] is False
+        assert c.post("/api/running/nope/stop").status_code == 404
+
+
+def test_stop_refuses_the_speech_model_while_recording(monkeypatch):
+    from lumina import server
+
+    monkeypatch.setattr(server.sessions, "state", lambda: {"meeting_id": "x"})
+    with client() as c:
+        assert c.post("/api/running/stt/stop").status_code == 409

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Columns2, Info, Loader2, Rows3, RefreshCw, StickyNote } from "lucide-react";
+import { CheckCircle2, Columns2, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote } from "lucide-react";
 import { api, type Job, type Model } from "../api";
 import { CopyButton, ModelRow, Switch, useModels, useSetting } from "../components";
 import { langName, useT } from "../i18n";
@@ -100,6 +100,60 @@ function NotesViewPicker() {
         })}
       </div>
       <p className="hint">{t("settings.notesViewHint")}</p>
+    </div>
+  );
+}
+
+/** What is loaded in memory, with a Stop button for each (the notes model, the speech model, the search model). */
+function RunningModels() {
+  const t = useT();
+  const status = useStore((s) => s.status)!;
+  const refresh = useStore((s) => s.refresh);
+  const toast = useStore((s) => s.toast);
+  const [busy, setBusy] = useState("");
+  const r = status.running;
+  const builtin = status.llm.effective === "builtin";
+  const act = async (name: "llm" | "stt" | "embeddings", start = false) => {
+    setBusy(name + (start ? "+" : ""));
+    try {
+      if (start) await api.startLlm();
+      else await api.stopRunning(name);
+      toast(start ? t("settings.started") : t("settings.stopped"));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy("");
+      refresh();
+    }
+  };
+  const rows: { id: "llm" | "stt" | "embeddings"; on: boolean; detail: string; external?: boolean }[] = [
+    { id: "llm", on: r.llm, detail: r.llm ? r.llm_model : "", external: !builtin },
+    { id: "stt", on: r.stt, detail: r.stt_model },
+    { id: "embeddings", on: r.embeddings, detail: "" },
+  ];
+  return (
+    <div className="running" role="group" aria-label={t("settings.running")}>
+      <h3>{t("settings.running")}</h3>
+      <p className="hint">{t("settings.runningLead")}</p>
+      {rows.map((x) => (
+        <div className="run-row" key={x.id}>
+          <span className={`run-dot ${x.on ? "on" : ""}`} aria-hidden="true" />
+          <div className="run-name">
+            <b>{t(`settings.run.${x.id}` as "settings.run.llm")}</b>
+            <small>{x.external ? t("settings.run.external") : [x.on ? t("settings.run.on") : t("settings.run.off"), x.detail].filter(Boolean).join(" · ")}</small>
+          </div>
+          {x.on && !x.external && (
+            <button className="btn sm" disabled={!!busy} onClick={() => act(x.id)}>
+              {busy === x.id ? <Loader2 size={14} className="spin" /> : <Square size={13} fill="currentColor" />} {t("settings.stopModel")}
+            </button>
+          )}
+          {!x.on && x.id === "llm" && builtin && status.llm.builtin && (
+            <button className="btn sm ghost" disabled={!!busy} onClick={() => act("llm", true)}>
+              {busy === "llm+" ? <Loader2 size={14} className="spin" /> : <Play size={14} />} {t("settings.startModel")}
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -345,6 +399,11 @@ export default function Settings() {
             )}
             <div className="actions">
               <button className="btn" onClick={runTest} disabled={test === "busy"}>{test === "busy" ? <Loader2 size={16} className="spin" /> : <CheckCircle2 size={16} />} {t("settings.test")}</button>
+              {status.running.llm && provider === "builtin" && (
+                <button className="btn" onClick={async () => { await api.stopRunning("llm").catch((e) => useStore.getState().toast(e.message, "error")); useStore.getState().refresh(); }}>
+                  <Square size={14} fill="currentColor" /> {t("settings.stopModel")}
+                </button>
+              )}
               {test && test !== "busy" && (test.ok
                 ? <span className="chip ok">{t("settings.testOk", { s: test.seconds ?? "" })}</span>
                 : <span className="chip err" style={{ height: "auto", padding: "4px 10px", whiteSpace: "normal" }}>{test.error}</span>)}
@@ -399,6 +458,7 @@ export default function Settings() {
           </Section>
 
           <Section id="models" title={t("settings.models")}>
+            <RunningModels />
             <p className="lead" style={{ marginTop: 0 }}>{t("settings.modelsLead")}</p>
             <ModelGroups models={models} jobs={jobs} />
           </Section>

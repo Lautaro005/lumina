@@ -23,6 +23,10 @@ class Embedder:
         self._tok = None
 
     @property
+    def loaded(self) -> bool:
+        return self._session is not None
+
+    @property
     def ready(self) -> bool:
         return installed("embeddinggemma-2")
 
