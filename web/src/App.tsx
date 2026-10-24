@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { BookOpen, FolderOpen, MessageSquareText, Plus, Settings as Cog, ShieldCheck } from "lucide-react";
 import { api, connectLive, fmtClock } from "./api";
-import { Logo, Toasts } from "./components";
+import { IndexStatus, Logo, Toasts } from "./components";
 import { useT } from "./i18n";
 import { useStore } from "./store";
 import Chat from "./views/Chat";
@@ -72,6 +72,7 @@ function Rail() {
           <span>{fmtClock(live.elapsed)}</span>
         </button>
       )}
+      <IndexStatus compact />
       <div className="rail-foot">
         <ShieldCheck size={16} />
         <span>{t("nav.local")}</span>

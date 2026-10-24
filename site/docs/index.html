@@ -7,11 +7,11 @@
 <meta name="description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <link rel="canonical" href="https://lautaro005.github.io/lumina/docs/">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#2b4fa8">
+<meta name="theme-color" content="#f7f8fa">
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.2">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.3">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -19,7 +19,7 @@
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="../" aria-label="Lumina home">
-        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="2.5" width="25" height="27" rx="4" fill="var(--paper)" stroke="var(--rule-soft)"/><rect x="4" y="9" width="24" height="1.6" fill="#7b9be0"/><rect x="12" y="10.6" width="1.6" height="18.4" fill="#e0594f"/><rect x="16.5" y="15" width="8" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="16.5" y="19.5" width="6" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="6.5" y="15" width="3.6" height="1.6" rx=".8" fill="#20242c"/></svg>
         lumina
       </a>
       <nav class="topnav" aria-label="Main">
@@ -36,7 +36,7 @@
 <main id="main" class="doc">
   <div class="wrap">
     <article class="page">
-      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#install">Install</a><a href="#first-run">First run</a><a href="#meetings">Meetings</a><a href="#languages">Languages and transcription</a><a href="#models">Notes model</a><a href="#sources">Sources</a><a href="#chat">Chat and web search</a><a href="#speech">Read aloud</a><a href="#agents">Agents (MCP)</a><a href="#data">Your data</a><a href="#commands">Commands</a><a href="#troubleshooting">Troubleshooting</a><a href="#source">Build from source</a></nav></aside>
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#install">Install</a><a href="#first-run">First run</a><a href="#meetings">Meetings</a><a href="#languages">Languages and transcription</a><a href="#models">Notes model</a><a href="#sources">Sources</a><a href="#notch">The notch</a><a href="#chat">Chat and web search</a><a href="#speech">Read aloud</a><a href="#agents">Agents (MCP)</a><a href="#data">Your data</a><a href="#commands">Commands</a><a href="#troubleshooting">Troubleshooting</a><a href="#source">Build from source</a></nav></aside>
       <div class="doc-body">
         <header><h1>Documentation</h1><p>Everything Lumina does, how to set it up and where your data lives.</p></header>
         <div class="prose">
@@ -127,6 +127,10 @@
 
 <h2 id="sources">Sources</h2>
 <p>Sources are what Lumina searches when it writes notes, answers questions or helps live. Meetings are added on their own when they end.</p>
+<p>While files are being read and indexed, a progress bar shows the file in hand, files done out of total and a rough time left (also under the sidebar on every page). A folder has an arrow: click it to list the files inside with their status, passages and size. Reading is fast: PDFs go through PDFium, two files are read while the model embeds a third, and a file whose text did not change is not embedded again.</p>
+<p>Deleting a source removes its passages with it. <b>Settings → Delete data</b> deletes all chats, all sources, all meetings or everything (your settings and downloaded models stay).</p>
+<h2 id="notch">The notch</h2>
+<p>In the desktop app, while you record, a black island grows out of the notch (on a Mac without one, and on Windows and Linux, from the top edge of the screen) and shows the last three lines of the transcript and the elapsed time. Click it to return to the meeting. Turn it on or off in <b>Settings → Transcription → Show the live transcript in the notch</b> (on by default on macOS).</p>
 <ul>
 <li><b>Add folder</b> or <b>Add files</b> opens your system's file chooser; you can also paste a path or drop files on the page.</li>
 <li>Folders are <b>watched</b>: new, changed and deleted files are re-indexed automatically. Hidden folders, <code>node_modules</code> and <code>.git</code> are skipped.</li>
@@ -196,7 +200,7 @@
 <h3>Enhanced notes do not appear</h3>
 <p>Check Settings → Notes model → <b>Test</b>. For Gemma 4, the first start loads the model (up to a minute on slow disks). For Ollama or LM Studio, make sure the server is running and has a model.</p>
 <h3>Update says the same version</h3>
-<p>Installs made before 0.1.2 had no git history and were never refreshed. Run the install command above once more (or <code>lumina update</code>): since 0.1.2 it downloads the current code, keeps your <code>data/</code> folder and from then on <code>lumina update</code> works. The version is printed by <code>lumina version</code>.</p>
+<p>Installs made before 0.1.2 had no git history and were never refreshed. Run the install command above once more (or <code>lumina update</code>): since 0.1.3 it downloads the current code, keeps your <code>data/</code> folder and from then on <code>lumina update</code> works. The version is printed by <code>lumina version</code>.</p>
 <h3>Port 47770 is busy</h3>
 <p>Run <code>lumina serve --port 47771</code>, or set <code>LUMINA_PORT=47771</code>.</p>
 
@@ -213,7 +217,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.2 · Free to use, not to sell</span>
+    <span>Lumina 0.1.3 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -221,6 +225,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.2" defer></script>
+<script src="../assets/site.js?v=0.1.3" defer></script>
 </body>
 </html>

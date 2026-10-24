@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "local",
-  "description": "The app's own starting and error pages. The Lumina UI served on 127.0.0.1 gets no app commands.",
-  "windows": ["main"],
+  "description": "The app's own pages (starting screen, error screen, notch). The Lumina UI served on 127.0.0.1 gets no app commands.",
+  "windows": ["main", "notch"],
   "permissions": ["core:default"]
 }

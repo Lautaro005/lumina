@@ -5,17 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Lumina</title>
 <style>
-  :root { --desk:#e7ecf5; --paper:#fff; --ink:#1e2430; --ink2:#4a5568; --rule:#3a6fd8; --margin:#d9453b; color-scheme: light dark; }
-  @media (prefers-color-scheme: dark) { :root { --desk:#0d121c; --paper:#151b27; --ink:#e6eaf2; --ink2:#b0b9cb; --rule:#6f9bff; --margin:#ff6b5e; } }
+  :root { --desk:#f7f8fa; --paper:#fff; --ink:#1d2129; --ink2:#4b5563; --rule:#e3e7ee; --accent:#7b9be0; --margin:#e0594f; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --desk:#0f1115; --paper:#171a20; --ink:#e8eaee; --ink2:#b4bac6; --rule:#2a2f3a; --accent:#8ba6e6; --margin:#ff7468; } }
   html, body { height: 100%; margin: 0; }
   body { background: var(--desk); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; display: grid; place-items: center; }
-  .sheet { background: var(--paper); width: min(520px, 90vw); border-radius: 6px; box-shadow: 0 8px 28px rgba(25,38,70,.12); display: grid; grid-template-columns: 34% 1fr; position: relative; overflow: hidden; }
-  .sheet::before { content: ""; position: absolute; left: 34%; top: 0; bottom: 0; width: 2px; background: var(--margin); animation: flow 1.6s ease-in-out infinite; }
-  @keyframes flow { 50% { opacity: .35; } }
-  .head { grid-column: 1 / -1; padding: 18px 22px 12px; border-bottom: 2px solid var(--rule); font: 600 22px Georgia, serif; display: flex; align-items: center; gap: 10px; }
+  .sheet { background: var(--paper); width: min(520px, 90vw); border-radius: 12px; box-shadow: 0 0 0 1px var(--rule), 0 8px 28px rgba(20,28,45,.07); display: grid; grid-template-columns: 34% 1fr; position: relative; overflow: hidden; }
+  .sheet::before { content: ""; position: absolute; left: 34%; top: 0; bottom: 0; width: 1px; background: var(--margin); opacity: .6; animation: flow 1.6s ease-in-out infinite; }
+  @keyframes flow { 50% { opacity: .2; } }
+  .head { grid-column: 1 / -1; padding: 18px 22px 12px; border-bottom: 1px solid var(--rule); font: 600 22px Georgia, serif; display: flex; align-items: center; gap: 10px; }
   .cue { padding: 16px 18px 18px 22px; font-weight: 700; font-size: 13.5px; }
   .body { padding: 16px 22px 18px; color: var(--ink2); }
-  .error .sheet::before { animation: none; }
+  .error .sheet::before { animation: none; opacity: .9; }
   code { font: 13px ui-monospace, Menlo, monospace; }
   @media (prefers-reduced-motion: reduce) { .sheet::before { animation: none; } }
 </style>
@@ -23,7 +23,7 @@
 <body>
   <div class="sheet" role="status" aria-live="polite">
     <div class="head">
-      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#2b4fa8"/><rect x="5" y="4" width="22" height="24" rx="2" fill="#fff"/><rect x="5" y="10" width="22" height="2" fill="#3a6fd8"/><rect x="12" y="12" width="2" height="16" fill="#d9453b"/></svg>
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="2.5" width="25" height="27" rx="4" fill="#fff" stroke="#c9cfda"/><rect x="4" y="9" width="24" height="1.6" fill="#7b9be0"/><rect x="12" y="10.6" width="1.6" height="18.4" fill="#e0594f"/><rect x="16.5" y="15" width="8" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="16.5" y="19.5" width="6" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="6.5" y="15" width="3.6" height="1.6" rx=".8" fill="#20242c"/></svg>
       lumina
     </div>
     <div class="cue" id="cue">Starting</div>

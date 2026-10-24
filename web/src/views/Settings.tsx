@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Columns2, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote } from "lucide-react";
+import { CheckCircle2, Columns2, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote, Trash2 } from "lucide-react";
 import { api, type Job, type Model } from "../api";
-import { CopyButton, ModelRow, Switch, useModels, useSetting } from "../components";
+import { ConfirmDialog, CopyButton, ModelRow, Switch, useModels, useSetting } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
 
@@ -158,6 +158,54 @@ function RunningModels() {
   );
 }
 
+const DELETES = ["chats", "sources", "meetings", "all"] as const;
+
+/** Wipes chats, sources, meetings or all of them, after a confirmation. */
+function DeleteData() {
+  const t = useT();
+  const toast = useStore((s) => s.toast);
+  const refresh = useStore((s) => s.refresh);
+  const [ask, setAsk] = useState<(typeof DELETES)[number] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!ask) return;
+    setBusy(true);
+    try {
+      await api.deleteData(ask);
+      toast(t("settings.delete.done"));
+      window.dispatchEvent(new CustomEvent("lumina:kb"));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+      setAsk(null);
+      refresh();
+    }
+  };
+  return (
+    <>
+      <p className="lead" style={{ marginTop: 0 }}>{t("settings.deleteLead")}</p>
+      <div className="danger-list">
+        {DELETES.map((d) => (
+          <div key={d} className={`danger-row ${d === "all" ? "all" : ""}`}>
+            <div>
+              <b>{t(`settings.delete.${d}` as "settings.delete.all")}</b>
+              <small>{t(`settings.delete.${d}Hint` as "settings.delete.allHint")}</small>
+            </div>
+            <button className="btn danger" onClick={() => setAsk(d)}><Trash2 size={15} /> {t("common.delete")}</button>
+          </div>
+        ))}
+      </div>
+      {ask && (
+        <ConfirmDialog busy={busy} onConfirm={run} onCancel={() => setAsk(null)}
+          title={t("settings.delete.title", { what: t(`settings.delete.what.${ask}` as "settings.delete.what.all") })}
+          body={t("settings.delete.body", { what: t(`settings.delete.what.${ask}` as "settings.delete.what.all") })}
+          confirm={t("common.delete")} cancel={t("common.cancel")} />
+      )}
+    </>
+  );
+}
+
 const GROUPS: { id: string; kinds: string[] }[] = [
   { id: "chat", kinds: ["llm", "runtime"] },
   { id: "stt", kinds: ["stt", "vad"] },
@@ -217,6 +265,7 @@ export default function Settings() {
   const [partials, setPartials] = useSetting<boolean>("partials");
   const [autoEnh, setAutoEnh] = useSetting<boolean>("auto_enhance");
   const [assist, setAssist] = useSetting<boolean>("live_assistance");
+  const [notch, setNotch] = useSetting<boolean>("notch_live");
   const [provider, setProvider] = useSetting<string>("llm_provider");
   const [gemma, setGemma] = useSetting<string>("builtin_model");
   const [ollamaUrl, setOllamaUrl] = useSetting<string>("ollama_url");
@@ -261,7 +310,7 @@ export default function Settings() {
   const nav: [string, string][] = [
     ["general", t("settings.general")], ["transcription", t("settings.transcription")], ["generation", t("settings.generation")],
     ["knowledge", t("settings.knowledge")], ["speech", t("settings.speech")], ["models", t("settings.modelsNav")],
-    ["agents", t("settings.agents")], ["about", t("settings.about")],
+    ["agents", t("settings.agents")], ["delete", t("settings.delete")], ["about", t("settings.about")],
   ];
 
   return (
@@ -339,6 +388,10 @@ export default function Settings() {
               <Switch checked={!!partials} onChange={setPartials} label={t("settings.partials")} />
               <Switch checked={!!autoEnh} onChange={setAutoEnh} label={t("settings.autoEnhance")} />
               <Switch checked={!!assist} onChange={setAssist} label={t("settings.assist")} />
+              <div>
+                <Switch checked={!!notch} onChange={setNotch} label={t("settings.notch")} />
+                <p className="hint" style={{ marginLeft: 50 }}>{t("settings.notchHint")}{!status.system.app && <> {t("settings.notchBrowser")}</>}</p>
+              </div>
             </div>
           </Section>
 
@@ -479,6 +532,10 @@ export default function Settings() {
               </>
             )}
             <p className="hint">{t("settings.tools")}</p>
+          </Section>
+
+          <Section id="delete" title={t("settings.delete")}>
+            <DeleteData />
           </Section>
 
           <Section id="about" title={t("settings.about")}>

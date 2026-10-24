@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 
 import numpy as np
 
@@ -10,6 +11,8 @@ from .catalog import CATALOG, installed
 from .config import settings
 
 MAX_TOKENS = 2048
+BATCH_TOKENS = 6144  # padded tokens in one model call
+MAX_BATCH = 16
 
 
 class NotReady(RuntimeError):
@@ -52,13 +55,13 @@ class Embedder:
             self._session = None
             self._tok = None
 
-    def _run(self, texts: list[str]) -> np.ndarray:
-        assert self._tok is not None and self._session is not None
-        enc = self._tok.encode_batch(texts)
-        width = max(len(e.ids) for e in enc)
-        ids = np.zeros((len(texts), width), np.int64)
+    def _infer(self, encs: list) -> np.ndarray:
+        """One padded batch through the model. The caller holds the lock."""
+        assert self._session is not None
+        width = max(len(e.ids) for e in encs)
+        ids = np.zeros((len(encs), width), np.int64)
         mask = np.zeros_like(ids)
-        for i, e in enumerate(enc):
+        for i, e in enumerate(encs):
             ids[i, : len(e.ids)] = e.ids
             mask[i, : len(e.ids)] = 1
         empty = np.zeros((0, 512), np.float32)
@@ -70,27 +73,51 @@ class Embedder:
         out = out[:, :dim]  # Matryoshka truncation, then re-normalise
         return out / np.maximum(np.linalg.norm(out, axis=1, keepdims=True), 1e-9)
 
-    def embed(self, texts: list[str], batch: int = 8) -> list[list[float]]:
+    def warm(self) -> None:
+        """Loads the model now (the indexer calls this while it is still reading the first file)."""
+        with self._lock:
+            self._load()
+
+    def embed(self, texts: list[str], progress: Callable[[int, int], None] | None = None) -> list[list[float]]:
+        """Embeds every text. Texts are sorted by length and packed into batches of at most BATCH_TOKENS padded
+        tokens, so short ones do not pay for long ones. The lock is taken per batch: a search from the chat gets
+        in between the batches of a large file instead of waiting for all of it."""
         if not texts:
             return []
         with self._lock:
             self._load()
-            # sort by length so batches pad less
-            order = sorted(range(len(texts)), key=lambda i: len(texts[i]))
-            result: list[list[float] | None] = [None] * len(texts)
-            for s in range(0, len(order), batch):
-                idx = order[s : s + batch]
-                vecs = self._run([texts[i] for i in idx])
-                for i, v in zip(idx, vecs, strict=True):
-                    result[i] = v.astype(float).tolist()
-            return result  # type: ignore[return-value]
+            tok = self._tok
+        assert tok is not None
+        encs = tok.encode_batch(texts)
+        order = sorted(range(len(texts)), key=lambda i: len(encs[i].ids))
+        result: list[list[float] | None] = [None] * len(texts)
+        done, pos = 0, 0
+        while pos < len(order):
+            nxt = pos
+            while nxt < len(order) and nxt - pos < MAX_BATCH:
+                width = len(encs[order[nxt]].ids)  # sorted ascending: the newest one is the widest
+                if nxt > pos and width * (nxt - pos + 1) > BATCH_TOKENS:
+                    break
+                nxt += 1
+            idx = order[pos:nxt]
+            with self._lock:
+                self._load()
+                vecs = self._infer([encs[i] for i in idx])
+            for i, v in zip(idx, vecs, strict=True):
+                result[i] = v.astype(float).tolist()
+            pos = nxt
+            done += len(idx)
+            if progress:
+                progress(done, len(texts))
+        return result  # type: ignore[return-value]
 
     def query(self, text: str, task: str = "search result") -> list[float]:
         return self.embed([f"task: {task} | query: {text}"])[0]
 
-    def documents(self, items: list[tuple[str, str]]) -> list[list[float]]:
+    def documents(self, items: list[tuple[str, str]],
+                  progress: Callable[[int, int], None] | None = None) -> list[list[float]]:
         """items: (title, text)"""
-        return self.embed([f"title: {t or 'none'} | text: {x}" for t, x in items])
+        return self.embed([f"title: {t or 'none'} | text: {x}" for t, x in items], progress)
 
 
 embedder = Embedder()

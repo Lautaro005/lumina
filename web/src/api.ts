@@ -13,7 +13,7 @@ export type Job = { id: string; state: string; done: number; total: number; erro
 
 export type Status = {
   version: string;
-  system: { os: string; arch: string; python: string; data: string };
+  system: { os: string; arch: string; python: string; data: string; app: boolean };
   settings: Settings;
   models: Record<string, boolean>;
   downloads: Record<string, Job>;
@@ -25,8 +25,15 @@ export type Status = {
   tts_ready: boolean;
   session: { meeting_id: string; paused: boolean; elapsed: number; sources: string[]; model: string } | null;
   kb: { documents: number; meetings: number; notes: number };
+  index: Progress;
   port: number;
   running: Running;
+};
+
+/** Indexing progress: files done out of total, the file in hand and a rough time left. */
+export type Progress = {
+  active: boolean; total: number; done: number; fraction: number; eta: number | null;
+  current: { id: string; title: string; phase: "reading" | "embedding"; done: number; total: number } | null;
 };
 
 export type Running = { llm: boolean; llm_model: string; stt: boolean; stt_model: string; embeddings: boolean };
@@ -127,6 +134,8 @@ export const api = {
   stopRunning: (name: "llm" | "stt" | "embeddings") => req<{ running: Running }>("POST", `/api/running/${name}/stop`),
   startLlm: () => req<{ running: Running }>("POST", "/api/running/llm/start"),
   reindexAll: () => req("POST", "/api/reindex"),
+  deleteData: (what: "chats" | "sources" | "meetings" | "all") =>
+    req<{ deleted: Record<string, number>; kb: Status["kb"] }>("DELETE", `/api/data/${what}`),
   reveal: (id: string) => req("POST", "/api/open", { id }),
   openPrivacy: (what: "mic" | "screen") => req("POST", "/api/open-privacy", { what }),
   pick: (type: "file" | "folder") => req<{ path: string }>("POST", "/api/pick", { type }),

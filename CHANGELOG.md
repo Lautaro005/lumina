@@ -3,6 +3,42 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] - 2026-10-24
+
+### Added
+- **Indexing progress bar.** While Lumina reads and indexes files, Sources shows what it is doing ("Reading
+  report.pdf", "Indexing report.pdf · 120 of 201 passages"), files done out of total and a rough time left; a thin
+  bar under the sidebar shows it on every page, and folders show their own bar. `/api/status` carries it (`index`) and
+  `GET /api/index` returns it.
+- **Folders open like a dropdown.** In Sources a folder has an arrow: click it to see every file inside, with its
+  path inside the folder, status, passages and size.
+- **Settings → Delete data.** Delete all chats, all sources, all meetings, or everything, each after a confirmation.
+  Passages are deleted with them; your settings and downloaded models stay. `DELETE /api/data/{chats|sources|meetings|all}`.
+- **Live transcript in the notch (desktop app).** While you record, a black island grows out of the notch (or from the
+  top edge of the screen on computers without one, and on Windows and Linux) and shows the last three lines of the
+  transcript, with the elapsed time. It covers the notch the same way brain's does (a window above the menu bar). Click
+  it to go back to the meeting. Settings → Transcription → "Show the live transcript in the notch" turns it on or off
+  (on by default on macOS). `GET /api/notch` feeds it.
+
+### Changed
+- **Much faster indexing.** Files are read and split by two helper threads while the model embeds the previous one
+  (it never waits for a PDF); PDFs are read with PDFium instead of pypdf (about 6 times faster on a plain 200-page
+  file, more on complex ones); passages are packed into batches by length so short ones do not pay for long ones;
+  identical passages are embedded once; a file whose text did not change is not embedded again after a rescan,
+  a touch or a restart; the model loads while the first file is still being read; and a search from the chat no
+  longer waits for a whole file to finish embedding.
+- **The website uses the app's look**: near-white desk, white sheets, hairlines, charcoal buttons and a soft blue,
+  with the same neutral dark theme. New logo and favicon; the starting page of the desktop app too.
+
+### Fixed
+- **Deleting a file or a folder from Sources now deletes its passages, and the counter shows it.** The passage counter
+  was only refreshed every 15 seconds and the indexing events never reached the page (so a source could stay "Indexing"
+  until you changed page); a file that was being indexed while you removed it could write its passages after the
+  removal; copies of dropped files stayed in `data/uploads`. Everything is now removed under one lock, the counter updates
+  at once, and Lumina deletes passages that have no source at every start.
+- A damaged file is reported on its own row instead of stopping the queue; adding a folder that is already there
+  rescans it instead of queuing the folder itself.
+
 ## [0.1.2] - 2026-10-23
 
 ### Fixed

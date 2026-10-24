@@ -7,11 +7,11 @@
 <meta name="description" content="What changed in each version of Lumina.">
 <link rel="canonical" href="https://lautaro005.github.io/lumina/changelog/">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#2b4fa8">
+<meta name="theme-color" content="#f7f8fa">
 <meta property="og:title" content="Lumina changelog">
 <meta property="og:description" content="What changed in each version of Lumina.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.2">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.3">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -19,7 +19,7 @@
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="../" aria-label="Lumina home">
-        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="2.5" width="25" height="27" rx="4" fill="var(--paper)" stroke="var(--rule-soft)"/><rect x="4" y="9" width="24" height="1.6" fill="#7b9be0"/><rect x="12" y="10.6" width="1.6" height="18.4" fill="#e0594f"/><rect x="16.5" y="15" width="8" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="16.5" y="19.5" width="6" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="6.5" y="15" width="3.6" height="1.6" rx=".8" fill="#20242c"/></svg>
         lumina
       </a>
       <nav class="topnav" aria-label="Main">
@@ -36,12 +36,30 @@
 <main id="main" class="doc">
   <div class="wrap">
     <article class="page">
-      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-2-2026-10-23">0.1.2 - 2026-10-23</a><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-3-2026-10-24">0.1.3 - 2026-10-24</a><a href="#0-1-2-2026-10-23">0.1.2 - 2026-10-23</a><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
       <div class="doc-body">
         <header><h1>Changelog</h1><p>What changed in each version. Lumina follows semantic versioning.</p></header>
         <div class="prose">
 <p>All notable changes to Lumina are listed here. The format follows <a href="https://keepachangelog.com/">Keep a Changelog</a> and the
 project uses <a href="https://semver.org/">Semantic Versioning</a>.</p>
+<h2 id="0-1-3-2026-10-24"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.3">0.1.3</a> - 2026-10-24</h2>
+<h3>Added</h3>
+<ul>
+<li><strong>Indexing progress bar.</strong> Sources shows what Lumina is reading or indexing, files done out of total and a rough time left; a thin bar under the sidebar shows it on every page and folders show their own.</li>
+<li><strong>Folders open like a dropdown.</strong> Click the arrow on a folder to see every file inside with its status, passages and size.</li>
+<li><strong>Settings → Delete data.</strong> Delete all chats, all sources, all meetings or everything, after a confirmation. Passages go with them; settings and downloaded models stay.</li>
+<li><strong>Live transcript in the notch (desktop app).</strong> While you record, a black island grows out of the notch (or the top edge of the screen) with the last three lines of the transcript. Click it to return to the meeting. Turn it on or off in Settings → Transcription.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li><strong>Much faster indexing.</strong> Files are read while the model embeds the previous one, PDFs are read with PDFium (about 6 times faster than pypdf on a plain file), passages are batched by length, repeated passages are embedded once, unchanged files are skipped and the model loads while the first file is still being read.</li>
+<li><strong>The website uses the app's look</strong>: near-white desk, hairlines, charcoal buttons, soft blue, neutral dark theme, new logo.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li><strong>Deleting a file or folder from Sources now deletes its passages</strong> and the counter updates at once. A file being indexed while you removed it could write its passages afterwards, dropped-file copies stayed in <code>data/uploads</code> and the page never received indexing events. Passages without a source are removed at every start.</li>
+<li>A damaged file is reported on its own row instead of stopping the queue.</li>
+</ul>
 <h2 id="0-1-2-2026-10-23"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.2">0.1.2</a> - 2026-10-23</h2>
 <h3>Fixed</h3>
 <ul>
@@ -138,7 +156,7 @@ warn.</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.2 · Free to use, not to sell</span>
+    <span>Lumina 0.1.3 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -146,6 +164,6 @@ warn.</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.2" defer></script>
+<script src="../assets/site.js?v=0.1.3" defer></script>
 </body>
 </html>

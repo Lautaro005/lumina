@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { FileText, Folder, FolderOpen, NotebookPen, RefreshCw, Search, StickyNote, Trash2, Upload, X } from "lucide-react";
+import { ChevronRight, FileText, Folder, FolderOpen, NotebookPen, RefreshCw, Search, StickyNote, Trash2, Upload, X } from "lucide-react";
 import { api, fmtBytes, type Source } from "../api";
+import { IndexStatus, ProgressBar } from "../components";
 import { useT, type Key } from "../i18n";
 import { useStore } from "../store";
 
@@ -18,14 +19,24 @@ export default function Sources() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<any[] | null>(null);
   const [tagDraft, setTagDraft] = useState<Record<string, string>>({});
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const refresh = useStore((s) => s.refresh);
 
   const load = () => api.sources().then(setRows).catch(() => {});
   useEffect(() => {
     load();
-    const on = () => load();
+    let timer: ReturnType<typeof setTimeout>;
+    const on = () => { clearTimeout(timer); timer = setTimeout(load, 350); }; // a folder fires one event per file
     window.addEventListener("lumina:kb", on);
-    return () => window.removeEventListener("lumina:kb", on);
+    return () => { clearTimeout(timer); window.removeEventListener("lumina:kb", on); };
   }, []);
+  const toggle = (id: string) => setOpen((o) => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const remove = async (id: string) => {
+    await api.deleteSource(id).catch((e) => toast((e as Error).message, "error"));
+    load();
+    refresh();
+  };
+  const rel = (folder: Source, k: Source) => (k.path.startsWith(folder.path) ? k.path.slice(folder.path.length).replace(/^[\\/]+/, "") : k.title);
 
   const add = async (p: string) => {
     if (!p.trim()) return;
@@ -99,6 +110,8 @@ export default function Sources() {
             <div className="hint">{over ? t("sources.drop") : t("sources.counts", status.kb)}</div>
           </div>
 
+          <IndexStatus />
+
           {note && (
             <form className="panel" style={{ padding: 16, display: "grid", gap: 10 }}
               onSubmit={async (e) => { e.preventDefault(); await api.addNote(note.title || "Note", note.text); setNote(null); load(); }}>
@@ -121,13 +134,25 @@ export default function Sources() {
                   const I = Icon(s.kind);
                   const ready = kids.filter((k) => k.status === "ready").length;
                   const st = s.kind === "folder" ? (kids.some((k) => k.status === "indexing" || k.status === "pending") ? "indexing" : "ready") : s.status;
+                  const isOpen = open.has(s.id);
+                  const files = [...kids].sort((a, b) => rel(s, a).localeCompare(rel(s, b)));
+                  const busy = s.kind === "folder" && kids.some((k) => k.status === "indexing" || k.status === "pending");
                   return (
                     <tr key={s.id}>
                       <td>
                         <div className="src-row">
                           <span className="kind-ic"><I size={17} /></span>
                           <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontWeight: 700 }}>{s.title}</div>
+                            {s.kind === "folder" ? (
+                              <button type="button" className="folder-toggle" aria-expanded={isOpen} aria-controls={`ff-${s.id}`}
+                                title={isOpen ? t("sources.hideFiles") : t("sources.showFiles")} onClick={() => toggle(s.id)}>
+                                <ChevronRight size={16} className="chev" />
+                                <span style={{ fontWeight: 700 }}>{s.title}</span>
+                                <span className="ff-count">{t("sources.fileCount", { n: kids.length })}</span>
+                              </button>
+                            ) : (
+                              <div style={{ fontWeight: 700 }}>{s.title}</div>
+                            )}
                             {s.path && <div className="src-path">{s.path}</div>}
                             <div className="t-tags">
                               <span className={`chip ${statusChip[st] ?? ""}`}>{t(`sources.status.${st}` as Key)}</span>
@@ -138,7 +163,7 @@ export default function Sources() {
                               {s.tags.map((x) => (
                                 <span key={x} className="tag">{x}<button aria-label={`${t("common.remove")} ${x}`} onClick={() => setTags(s, s.tags.filter((y) => y !== x))}><X size={12} /></button></span>
                               ))}
-                              <input className="input" style={{ height: 24, width: 120, fontSize: 12.5 }} placeholder={`+ ${t("common.addTag")}`}
+                              <input className="tag-input" placeholder={`+ ${t("common.addTag")}`}
                                 value={tagDraft[s.id] || ""} aria-label={t("common.addTag")}
                                 onChange={(e) => setTagDraft({ ...tagDraft, [s.id]: e.target.value })}
                                 onKeyDown={(e) => {
@@ -146,7 +171,21 @@ export default function Sources() {
                                   if (e.key === "Enter" && v && !s.tags.includes(v)) { setTags(s, [...s.tags, v]); setTagDraft({ ...tagDraft, [s.id]: "" }); }
                                 }} />
                             </div>
+                            {busy && <ProgressBar value={kids.length ? ready / kids.length : 0} label={t("sources.index.files", { done: ready, total: kids.length })} />}
                             {s.error && s.status === "error" && <div className="hint" style={{ color: "var(--margin-ink)", marginTop: 6 }}>{s.error}</div>}
+                            {s.kind === "folder" && isOpen && (
+                              <ul className="folder-files" id={`ff-${s.id}`}>
+                                {files.length === 0 && <li className="ff-empty">{t("sources.noFiles")}</li>}
+                                {files.map((k) => (
+                                  <li key={k.id} title={k.path}>
+                                    <FileText size={14} />
+                                    <span className="ff-name">{rel(s, k)}</span>
+                                    <span className="ff-meta">{k.status === "ready" ? `${k.chunks} ${t("sources.chunks")}` : ""}{k.size ? `${k.status === "ready" ? " · " : ""}${fmtBytes(k.size)}` : ""}</span>
+                                    <span className={`chip ${statusChip[k.status] ?? ""}`}>{t(`sources.status.${k.status}` as Key)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -154,7 +193,7 @@ export default function Sources() {
                         <div className="row-actions">
                           <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={t("sources.reindex")} onClick={() => api.reindex(s.id).then(load)}><RefreshCw size={15} /></button>
                           {s.path && <button className="btn sm ghost icon" title={t("sources.reveal")} aria-label={t("sources.reveal")} onClick={() => api.reveal(s.id)}><FolderOpen size={15} /></button>}
-                          <button className="btn sm ghost icon danger" title={t("common.remove")} aria-label={t("common.remove")} onClick={() => api.deleteSource(s.id).then(load)}><Trash2 size={15} /></button>
+                          <button className="btn sm ghost icon danger" title={t("common.remove")} aria-label={t("common.remove")} onClick={() => remove(s.id)}><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>

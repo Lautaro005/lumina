@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.2`) | ✅ |
+| `0.1.x` (latest: `0.1.3`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -57,7 +57,14 @@ being exploited).
 - **Speech models.** The optional EmbeddingGemma 2 speech files are downloaded from Hugging Face into `models/` and
   run in process with `ai-edge-litert`. They are LiteRT model files, not pickled Python.
 - **The desktop app** loads only the local UI, opens every other link in your browser and gives the page no app
-  commands.
+  commands. Since 0.1.3 it also polls `GET /api/notch` on `127.0.0.1` for the live-transcript notch; the notch page is
+  a local file with no network access, and it can only ask the app to open the meeting being recorded.
+- **Deleting data.** Settings → Delete data (`DELETE /api/data/...`) removes chats, sources, meetings and their passages
+  from the SQLite database and the vector index, and the copies of dropped files in `uploads/`. It is protected by the
+  same host and origin checks as the rest of the API. Your own files on disk are never touched. Freed space inside the
+  database files is reused by SQLite and ChromaDB rather than returned to the system at once.
+- **PDF reading.** PDFs are read with PDFium (`pypdfium2`), which is native code; a malformed PDF falls back to the
+  pure Python reader and a file that cannot be read is reported on its own row.
 
 ## Scope
 

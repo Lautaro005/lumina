@@ -20,6 +20,86 @@ export function Logo({ size = 28, onCover = true }: { size?: number; onCover?: b
   );
 }
 
+/** A thin progress bar. `value` is 0..1; without it the bar slides back and forth. */
+export function ProgressBar({ value, label }: { value?: number; label: string }) {
+  const known = value !== undefined;
+  return (
+    <div className={`pbar ${known ? "" : "wait"}`} role="progressbar" aria-label={label}
+      aria-valuemin={0} aria-valuemax={100} aria-valuenow={known ? Math.round(value * 100) : undefined}>
+      <i style={known ? { width: `${Math.max(2, Math.min(100, value * 100))}%` } : undefined} />
+    </div>
+  );
+}
+
+/** The indexing bar: what is being read or embedded, files done out of total and a rough time left. */
+export function IndexStatus({ compact = false }: { compact?: boolean }) {
+  const t = useT();
+  const p = useStore((s) => s.status?.index);
+  if (!p || !p.active) return null;
+  const cur = p.current;
+  const what = !cur ? t("sources.index.finishing")
+    : cur.phase === "reading" || !cur.total ? t("sources.index.reading", { name: cur.title })
+    : t("sources.index.embedding", { name: cur.title, done: cur.done, total: cur.total });
+  const files = t("sources.index.files", { done: p.done, total: p.total });
+  const eta = p.eta ? t("sources.index.eta", { time: fmtEta(p.eta) }) : "";
+  if (compact) {
+    return (
+      <div className="index-mini" title={`${what}\n${files}`} aria-live="polite">
+        <span>{files}</span>
+        <ProgressBar value={p.fraction} label={files} />
+      </div>
+    );
+  }
+  return (
+    <div className="index-card" aria-live="polite">
+      <div className="index-top">
+        <Loader2 size={15} className="spin" />
+        <b>{what}</b>
+        <span>{[files, eta].filter(Boolean).join(" · ")}</span>
+      </div>
+      <ProgressBar value={p.fraction} label={files} />
+    </div>
+  );
+}
+
+/** "45 s", "3 min", "1 h 5 min". */
+export function fmtEta(seconds: number): string {
+  if (seconds < 60) return `${Math.max(5, Math.round(seconds / 5) * 5)} s`;
+  const m = Math.round(seconds / 60);
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+}
+
+/** A small confirmation window. Escape or a click outside cancels. */
+export function ConfirmDialog({ title, body, confirm, cancel, busy, onConfirm, onCancel }: {
+  title: string; body: string; confirm: string; cancel: string; busy?: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  const ok = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    ok.current?.focus();
+    const key = (e: KeyboardEvent) => e.key === "Escape" && !busy && onCancel();
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("keydown", key);
+      prev?.focus?.();
+    };
+  }, [busy, onCancel]);
+  return (
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && !busy && onCancel()}>
+      <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-body">
+        <h2 id="dlg-title">{title}</h2>
+        <p id="dlg-body">{body}</p>
+        <div className="actions">
+          <button className="btn" onClick={onCancel} disabled={busy}>{cancel}</button>
+          <button ref={ok} className="btn danger-solid" onClick={onConfirm} disabled={busy}>
+            {busy ? <Loader2 size={15} className="spin" /> : <Trash2 size={15} />} {confirm}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 marked.setOptions({ gfm: true, breaks: true });
 
 export function Markdown({ text, className = "md", cites }: { text: string; className?: string; cites?: boolean }) {

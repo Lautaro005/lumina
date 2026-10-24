@@ -7,11 +7,11 @@
 <meta name="description" content="How to report a vulnerability in Lumina privately, what is in scope and how Lumina protects your data.">
 <link rel="canonical" href="https://lautaro005.github.io/lumina/security/">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#2b4fa8">
+<meta name="theme-color" content="#f7f8fa">
 <meta property="og:title" content="Lumina security policy">
 <meta property="og:description" content="How to report a vulnerability in Lumina privately, what is in scope and how Lumina protects your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.2">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.3">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -19,7 +19,7 @@
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="../" aria-label="Lumina home">
-        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="2" width="26" height="28" rx="3" fill="#fff"/><rect x="3" y="9" width="26" height="2" fill="#3a6fd8"/><rect x="12" y="11" width="2" height="19" fill="#d9453b"/><rect x="16.5" y="15" width="9" height="1.6" rx=".8" fill="#9db6ea"/><rect x="16.5" y="19.5" width="7" height="1.6" rx=".8" fill="#9db6ea"/><rect x="6" y="15" width="4" height="1.6" rx=".8" fill="#1e2430"/></svg>
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="2.5" width="25" height="27" rx="4" fill="var(--paper)" stroke="var(--rule-soft)"/><rect x="4" y="9" width="24" height="1.6" fill="#7b9be0"/><rect x="12" y="10.6" width="1.6" height="18.4" fill="#e0594f"/><rect x="16.5" y="15" width="8" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="16.5" y="19.5" width="6" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="6.5" y="15" width="3.6" height="1.6" rx=".8" fill="#20242c"/></svg>
         lumina
       </a>
       <nav class="topnav" aria-label="Main">
@@ -52,7 +52,7 @@ handled privately.</p>
 </tr>
 </thead>
 <tbody><tr>
-<td><code>0.1.x</code> (latest: <code>0.1.2</code>)</td>
+<td><code>0.1.x</code> (latest: <code>0.1.3</code>)</td>
 <td>✅</td>
 </tr>
 <tr>
@@ -101,6 +101,9 @@ says. Since 0.1.1 every source reaches the model inside a numbered <code>&lt;sou
 <li><strong>Speech models.</strong> The optional EmbeddingGemma 2 speech files are downloaded from Hugging Face into <code>models/</code> and run in process with <code>ai-edge-litert</code>. They are LiteRT model files, not pickled Python.</li>
 <li><strong>The desktop app</strong> loads only the local UI, opens every other link in your browser and gives the page no app
 commands.</li>
+<li><strong>The notch.</strong> Since 0.1.3 the desktop app polls <code>GET /api/notch</code> on <code>127.0.0.1</code> for the live transcript. The notch page is a local file with no network access and can only ask the app to open the meeting being recorded.</li>
+<li><strong>Deleting data.</strong> Settings → Delete data removes chats, sources, meetings and their passages from the database, the vector index and <code>uploads/</code>, behind the same host and origin checks as the rest of the API. Your own files are never touched.</li>
+<li><strong>PDF reading.</strong> PDFs are read with PDFium (<code>pypdfium2</code>, native code); a malformed PDF falls back to the pure Python reader.</li>
 </ul>
 <h2 id="scope">Scope</h2>
 <p>In scope:</p>
@@ -133,7 +136,7 @@ repository and its GitHub releases</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.2 · Free to use, not to sell</span>
+    <span>Lumina 0.1.3 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -141,6 +144,6 @@ repository and its GitHub releases</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.2" defer></script>
+<script src="../assets/site.js?v=0.1.3" defer></script>
 </body>
 </html>

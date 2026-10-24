@@ -1,1 +1,1 @@
-{"local":{"identifier":"local","description":"The app's own starting and error pages. The Lumina UI served on 127.0.0.1 gets no app commands.","local":true,"windows":["main"],"permissions":["core:default"]}}
+{"local":{"identifier":"local","description":"The app's own pages (starting screen, error screen, notch). The Lumina UI served on 127.0.0.1 gets no app commands.","local":true,"windows":["main","notch"],"permissions":["core:default"]}}

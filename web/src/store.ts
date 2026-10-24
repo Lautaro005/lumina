@@ -156,7 +156,14 @@ export const useStore = create<State>((set, get) => ({
         get().toast(ev.text, "warn");
         break;
       case "kb":
-        window.dispatchEvent(new CustomEvent("lumina:kb", { detail: ev }));
+        if (ev.event === "progress") {
+          const { type: _t, event: _e, ...index } = ev;
+          set((st) => (st.status ? { status: { ...st.status, index } } : {}));
+        } else if (ev.event === "counts") {
+          set((st) => (st.status ? { status: { ...st.status, kb: { documents: ev.documents, meetings: ev.meetings, notes: ev.notes } } } : {}));
+        } else {
+          window.dispatchEvent(new CustomEvent("lumina:kb", { detail: ev }));
+        }
         break;
     }
   },

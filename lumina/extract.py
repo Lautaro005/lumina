@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from pathlib import Path
 
 SUPPORTED = {
@@ -13,18 +14,52 @@ SUPPORTED = {
 MAX_FILE_BYTES = 60 * 1024 * 1024
 
 
+_PDFIUM = threading.Lock()  # PDFium is not thread-safe; the indexer reads two files at once
+
+
+def _pdf(path: Path) -> str:
+    """PDFium reads a page in milliseconds; pypdf (pure Python, much slower) stays as the fallback."""
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        return _pdf_slow(path)
+    pages: list[str] = []
+    try:
+        with _PDFIUM:
+            doc = pdfium.PdfDocument(str(path))
+            try:
+                for i in range(len(doc)):
+                    page = doc[i]
+                    tp = page.get_textpage()
+                    text = tp.get_text_range() or ""
+                    tp.close()
+                    page.close()
+                    text = text.replace("\r\n", "\n").replace("\r", "\n")
+                    if text.strip():
+                        pages.append(f"[page {i + 1}]\n{text}")
+            finally:
+                doc.close()
+    except Exception:  # noqa: BLE001  (damaged or protected file: let pypdf try before giving up)
+        return _pdf_slow(path)
+    return "\n\n".join(pages)
+
+
+def _pdf_slow(path: Path) -> str:
+    from pypdf import PdfReader
+
+    reader = PdfReader(str(path))
+    pages = []
+    for i, page in enumerate(reader.pages, 1):
+        text = page.extract_text() or ""
+        if text.strip():
+            pages.append(f"[page {i}]\n{text}")
+    return "\n\n".join(pages)
+
+
 def extract(path: Path) -> str:
     ext = path.suffix.lower()
     if ext == ".pdf":
-        from pypdf import PdfReader
-
-        reader = PdfReader(str(path))
-        pages = []
-        for i, page in enumerate(reader.pages, 1):
-            text = page.extract_text() or ""
-            if text.strip():
-                pages.append(f"[page {i}]\n{text}")
-        return "\n\n".join(pages)
+        return _pdf(path)
     if ext == ".docx":
         import docx
 

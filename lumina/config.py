@@ -69,6 +69,7 @@ DEFAULTS: dict[str, Any] = {
     "enhance_interval": 45,
     "live_assistance": True,
     "notes_view": "columns",  # columns (Foresight style) | rows (Cornell) | tabs
+    "notch_live": platform.system() == "Darwin",  # desktop app: the live transcript in the notch while recording
     # knowledge
     "embedding_dim": 768,
     "watched_folders": [],
@@ -145,8 +146,9 @@ class Settings:
 settings = Settings()
 
 
-def system_info() -> dict[str, str]:
+def system_info() -> dict[str, Any]:
     return {
+        "app": os.environ.get("LUMINA_APP") == "1",
         "os": platform.system(),
         "arch": platform.machine(),
         "python": platform.python_version(),

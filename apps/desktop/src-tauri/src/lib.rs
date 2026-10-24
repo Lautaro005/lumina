@@ -14,6 +14,8 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
 
+mod notch;
+
 const DEFAULT_PORT: u16 = 47770;
 
 fn user_home() -> Option<PathBuf> {
@@ -123,7 +125,7 @@ impl Backend {
         Some(dir.join("desktop.log"))
     }
 
-    fn log(&self, line: &str) {
+    pub fn log(&self, line: &str) {
         if let Some(p) = self.log_path() {
             if let Ok(mut f) = std::fs::OpenOptions::new()
                 .create(true)
@@ -302,12 +304,29 @@ fn error_page(app: &AppHandle, message: &str) {
     }
 }
 
+/// The notch asks for the state it missed while its page was loading.
+#[tauri::command]
+fn notch_state() -> serde_json::Value {
+    notch::state_json()
+}
+
+/// A click on the notch: back to the meeting being recorded.
+#[tauri::command]
+fn notch_open_meeting(app: AppHandle, id: String) {
+    if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return;
+    }
+    let backend = app.state::<Arc<Backend>>().inner().clone();
+    open_route(&app, &backend, &format!("/meeting/{id}"));
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let backend = Arc::new(Backend::discover());
     let for_exit = Arc::clone(&backend);
 
     let app = tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![notch_state, notch_open_meeting])
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             show_main(app);
         }))
@@ -317,6 +336,7 @@ pub fn run() {
             move |app| {
                 let handle = app.handle().clone();
                 let port = backend.port;
+                app.manage(Arc::clone(&backend));
                 let opener_handle = handle.clone();
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                     .title("Lumina")
@@ -368,6 +388,8 @@ pub fn run() {
                 }
                 tray.build(app)?;
 
+                notch::watch(app.handle().clone(), Arc::clone(&backend));
+
                 let b3 = Arc::clone(&backend);
                 std::thread::spawn(move || {
                     let result = b3
@@ -392,6 +414,9 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             // closing the window keeps Lumina in the tray; Quit is in the tray menu
+            if window.label() != "main" {
+                return;
+            }
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();

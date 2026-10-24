@@ -622,3 +622,50 @@ tr:hover .row-actions, .row-actions:focus-within { opacity: 1; }
 }
 
 .panels .panel { box-shadow: none; border-radius: 0; background: transparent; }
+
+/* indexing progress */
+.pbar { height: 6px; border-radius: 3px; background: var(--rule-hair); overflow: hidden; position: relative; margin-top: 8px; }
+.pbar i { display: block; height: 100%; border-radius: 3px; background: var(--rule); transition: width 0.35s ease; }
+.pbar.wait i { width: 35%; animation: slide-bar 1.3s ease-in-out infinite alternate; }
+@keyframes slide-bar { from { transform: translateX(-30%); } to { transform: translateX(190%); } }
+.index-card { padding: 12px 16px 14px; border-radius: var(--radius); background: var(--paper); box-shadow: 0 0 0 1px var(--rule-hair), var(--shadow); }
+.index-top { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; }
+.index-top svg { color: var(--rule-ink); flex: none; }
+.index-top b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.index-top span { margin-left: auto; flex: none; color: var(--ink-3); font-size: 13px; white-space: nowrap; }
+.index-mini { margin: 14px 4px 0; display: grid; gap: 0; font-size: 12.5px; color: var(--ink-3); }
+.index-mini .pbar { margin-top: 5px; height: 4px; }
+
+/* folders in Sources */
+.folder-toggle { display: flex; align-items: center; gap: 6px; max-width: 100%; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font: inherit; text-align: left; }
+.folder-toggle .chev { flex: none; color: var(--ink-3); transition: transform 0.15s ease; }
+.folder-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.folder-toggle:hover .chev { color: var(--ink); }
+.ff-count { color: var(--ink-3); font-weight: 400; font-size: 13px; white-space: nowrap; }
+.folder-files { list-style: none; margin: 10px 0 0; padding: 4px 0; border-radius: var(--radius-sm); background: var(--desk); box-shadow: inset 0 0 0 1px var(--rule-hair); max-height: 280px; overflow: auto; }
+.folder-files li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 12px; font-size: 13px; }
+.folder-files li + li { border-top: 1px solid var(--rule-hair); }
+.folder-files li svg { color: var(--ink-3); }
+.ff-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ff-meta { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
+.ff-empty { display: block !important; color: var(--ink-3); }
+.folder-files .chip { height: 20px; font-size: 11.5px; }
+
+/* delete data */
+.danger-list { display: grid; border-radius: var(--radius); box-shadow: 0 0 0 1px var(--rule-hair); overflow: hidden; background: var(--paper); }
+.danger-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; }
+.danger-row + .danger-row { border-top: 1px solid var(--rule-hair); }
+.danger-row div { display: grid; gap: 2px; min-width: 0; }
+.danger-row b { font-size: 14.5px; }
+.danger-row small { color: var(--ink-3); font-size: 13px; }
+.danger-row.all { background: var(--margin-soft); }
+.danger-row .btn { flex: none; }
+.btn.danger-solid { background: var(--margin-ink); border-color: var(--margin-ink); color: #fff; }
+.btn.danger-solid:hover:not(:disabled) { background: var(--margin); border-color: var(--margin); color: #fff; }
+.scrim { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(20, 24, 32, 0.38); }
+.dialog { width: min(420px, 100%); padding: 22px 22px 18px; border-radius: var(--radius); background: var(--paper); box-shadow: var(--shadow-pop); display: grid; gap: 10px; }
+.dialog h2 { font: 600 19px/1.3 var(--serif); }
+.dialog p { color: var(--ink-2); font-size: 14.5px; }
+.dialog .actions { justify-content: flex-end; margin-top: 8px; }
+@media (max-width: 560px) { .danger-row { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 1000px) { .index-mini span { display: none; } }

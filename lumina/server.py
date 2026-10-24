@@ -70,7 +70,8 @@ def create_app(port: int) -> FastAPI:
     async def lifespan(app: FastAPI):
         hub.attach(asyncio.get_running_loop())
         downloads.listeners.append(lambda j: hub.publish({"type": "download", **j}))
-        kb.listeners.append(lambda e: hub.publish({"type": "kb", **e}))
+        kb.listeners.append(lambda e: hub.publish({"type": "kb", "event": e.get("type", ""),
+                                                   **{k: v for k, v in e.items() if k != "type"}}))
         threading.Thread(target=kb.start_watching, daemon=True).start()
         threading.Thread(target=kb.counts_warm, daemon=True).start()
         async with mcp.session_manager.run():
@@ -135,6 +136,7 @@ def create_app(port: int) -> FastAPI:
             "session": sessions.state(),
             "running": running_models(),
             "kb": kb.counts(),
+            "index": kb.progress(),
             "port": port,
         }
 
@@ -191,7 +193,7 @@ def create_app(port: int) -> FastAPI:
                 changes.get("llm_provider") and changes["llm_provider"] != "builtin"):
             threading.Thread(target=llm.builtin.stop, daemon=True).start()
         if "embedding_dim" in changes and changes["embedding_dim"] != before["embedding_dim"]:
-            threading.Thread(target=kb.reindex_all, daemon=True).start()
+            threading.Thread(target=kb.reindex_all, kwargs={"force": True}, daemon=True).start()
         return settings.public()
 
     @app.get("/api/languages")
@@ -418,14 +420,55 @@ def create_app(port: int) -> FastAPI:
     def reindex(sid: str) -> dict:
         row = db.one("SELECT * FROM sources WHERE id=?", [sid])
         if row and row["kind"] == "folder":
-            threading.Thread(target=kb._scan_folder, args=(sid, Path(row["path"])), daemon=True).start()
+            def rescan() -> None:
+                for c in db.q("SELECT id FROM sources WHERE parent=?", [sid]):
+                    kb.enqueue(c["id"], force=True)
+                kb._scan_folder(sid, Path(row["path"]))
+
+            threading.Thread(target=rescan, daemon=True).start()
         elif row:
-            kb.enqueue(sid)
+            kb.enqueue(sid, force=True)
         return {"ok": True}
 
     @app.post("/api/reindex")
     def reindex_all() -> dict:
-        return {"queued": kb.reindex_all()}
+        return {"queued": kb.reindex_all(force=True)}
+
+    @app.get("/api/index")
+    def index_progress() -> dict:
+        return kb.progress()
+
+    # --- delete data -------------------------------------------------------------------------------
+    @app.delete("/api/data/{what}")
+    def delete_data(what: str) -> dict[str, Any]:
+        """Settings → Delete: all chats, all sources, all meetings, or all of them. Settings and downloaded models stay."""
+        if what not in ("chats", "sources", "meetings", "all"):
+            raise HTTPException(404, "unknown data")
+        if what in ("meetings", "all") and sessions.state():
+            raise HTTPException(409, "A meeting is being recorded. End it first.")
+        out: dict[str, int] = {}
+        if what in ("chats", "all"):
+            out["chats"] = len(db.q("SELECT id FROM chats"))
+            db.x("DELETE FROM chats")
+        if what in ("sources", "all"):
+            out["sources"] = kb.clear_sources()
+        if what in ("meetings", "all"):
+            out["meetings"] = kb.clear_meetings()
+            kb.clear_old_uploads()
+        return {"deleted": out, "kb": kb.counts()}
+
+    # --- the notch (desktop app) -----------------------------------------------------------------------
+    @app.get("/api/notch")
+    def notch() -> dict[str, Any]:
+        """What the desktop app shows in the notch: whether a meeting is being recorded and its latest words."""
+        cur = sessions.current
+        base: dict[str, Any] = {"enabled": bool(settings.get("notch_live")), "recording": False}
+        if not cur or cur.stop_flag.is_set():
+            return base
+        m = db.meeting(cur.meeting_id) or {}
+        return {**base, "recording": True, "paused": cur.paused, "meeting_id": cur.meeting_id,
+                "title": m.get("title", ""), "elapsed": round(cur.clock(), 1),
+                "lines": list(cur.recent)[-6:], "speaking": dict(cur.speaking)}
 
     @app.get("/api/search")
     def search(q: str, k: int = 10, scope: str = "all") -> list[dict]:

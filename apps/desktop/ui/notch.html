@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lumina</title>
+<link rel="stylesheet" href="notch.css">
+</head>
+<body>
+  <div class="island seed" id="island" role="button" tabindex="0">
+    <header>
+      <div class="who">
+        <span class="rec" id="rec" aria-hidden="true"></span>
+        <b id="label">Recording</b>
+      </div>
+      <div class="gap" aria-hidden="true"></div>
+      <time id="clock">0:00</time>
+    </header>
+    <div class="body">
+      <div class="tx" id="tx" aria-live="polite"><p id="words"></p></div>
+    </div>
+  </div>
+<script src="notch.js"></script>
+</body>
+</html>

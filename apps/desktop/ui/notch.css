@@ -1,0 +1,91 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: transparent; color: #f4f4f0;
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  user-select: none; -webkit-user-select: none; cursor: default;
+}
+body.preview { background: #c9b59a; }
+
+/* The island is centered at the top of a transparent window that leaves a little room around it,
+   so the spring can overshoot. Its size comes from the page script (--w / --h); it grows by CSS. */
+.island {
+  --spring: cubic-bezier(.25, 1.18, .4, 1);
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --seed-w: 150px; --seed-h: 0px;
+  position: absolute; top: 0; left: 50%;
+  width: var(--w, 0px); height: var(--h, 0px);
+  transform: translateX(-50%);
+  background: #000;
+  border-radius: 0 0 26px 26px;
+  display: flex; flex-direction: column;
+  cursor: pointer; outline: none;
+  will-change: width, height;
+  transition:
+    width .62s var(--spring), height .62s var(--spring),
+    border-radius .62s var(--ease), opacity .3s var(--ease), transform .62s var(--ease);
+}
+.island.no-anim, .island.no-anim * { transition: none !important; animation: none !important; }
+/* closed: back to the notch (or, without one, up and out) */
+.island.seed {
+  width: var(--seed-w); height: var(--seed-h);
+  border-radius: 0 0 14px 14px;
+}
+html[data-os="macos"][data-notch="0"] .island.seed { opacity: 0; }
+html:not([data-os="macos"]) .island { border-radius: 22px; top: 6px; }
+html:not([data-os="macos"]) .island.seed { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(.9); border-radius: 22px; }
+
+/* the concave shoulders where the island meets the top edge, like the notch's own */
+html[data-os="macos"] .island::before,
+html[data-os="macos"] .island::after {
+  content: ""; position: absolute; top: 0; width: 12px; height: 12px; pointer-events: none;
+  transition: opacity .3s var(--ease);
+}
+html[data-os="macos"] .island::before { left: -12px; background: radial-gradient(circle at 0 100%, transparent 11.5px, #000 12px); }
+html[data-os="macos"] .island::after { right: -12px; background: radial-gradient(circle at 100% 100%, transparent 11.5px, #000 12px); }
+html[data-os="macos"] .island.seed::before, html[data-os="macos"] .island.seed::after { opacity: 0; }
+
+/* ---------- header: where the menu bar is (on a notched Mac the hardware notch sits in .gap) ---------- */
+header {
+  flex: none; display: flex; align-items: center; justify-content: space-between;
+  height: var(--header, 34px); padding: 0 18px;
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity .25s var(--ease), transform .4s var(--ease);
+}
+.island:not(.seed) header { opacity: 1; transform: none; transition-delay: .16s; }
+.who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.who b { font-weight: 600; font-size: 12px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gap { flex: 1; }
+html[data-notch="1"] .gap { flex: 0 0 var(--notch-w, 190px); }
+time { font-variant-numeric: tabular-nums; font-size: 12px; color: #9a9a94; white-space: nowrap; }
+.rec { width: 8px; height: 8px; border-radius: 50%; background: #ff5b4f; flex: none; animation: breathe 1.6s ease-in-out infinite; }
+.island.paused .rec { background: #8f8f89; animation: none; }
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 91, 79, .55); }
+  70% { box-shadow: 0 0 0 7px rgba(255, 91, 79, 0); }
+}
+
+/* ---------- the last three lines of the transcript ---------- */
+.body {
+  flex: 1; min-height: 0; padding: 0 20px 14px;
+  opacity: 0; transform: translateY(-6px);
+  transition: opacity .22s var(--ease), transform .45s var(--ease);
+}
+.island:not(.seed) .body { opacity: 1; transform: none; transition-delay: .24s; }
+/* three lines tall; the newest words stay at the bottom and the oldest fade out at the top */
+.tx {
+  height: calc(1.45em * 3); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+  font-size: 13.5px; line-height: 1.45;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 .9em);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 .9em);
+}
+.tx p { margin: 0; flex: none; overflow-wrap: anywhere; }
+.tx .you { color: #f4f4f0; }
+.tx .others { color: #b9b9b2; }
+.tx .live { opacity: .7; }
+.tx .idle { color: #8f8f89; }
+
+@media (prefers-reduced-motion: reduce) {
+  .island, header, .body { transition-duration: .01s; }
+  .rec { animation: none; }
+}

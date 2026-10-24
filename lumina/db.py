@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS sources (
   status TEXT NOT NULL DEFAULT 'pending',    -- pending | indexing | ready | error | skipped
   error TEXT NOT NULL DEFAULT '',
   watch INTEGER NOT NULL DEFAULT 0,
-  text TEXT NOT NULL DEFAULT ''              -- body for notes
+  text TEXT NOT NULL DEFAULT '',             -- body for notes
+  hash TEXT NOT NULL DEFAULT ''              -- digest of what was indexed, to skip unchanged files
 );
 CREATE INDEX IF NOT EXISTS src_path ON sources(path);
 """
@@ -97,6 +98,9 @@ class DB:
         self._write = threading.RLock()
         with self.conn() as c:
             c.executescript(SCHEMA)
+            cols = {r[1] for r in c.execute("PRAGMA table_info(sources)")}
+            if "hash" not in cols:  # databases from before 0.1.3
+                c.execute("ALTER TABLE sources ADD COLUMN hash TEXT NOT NULL DEFAULT ''")
 
     def conn(self) -> sqlite3.Connection:
         c = getattr(self._local, "c", None)

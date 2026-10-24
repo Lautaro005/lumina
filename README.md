@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.1.2" src="https://img.shields.io/badge/version-0.1.2-2b4fa8">
+  <img alt="Version 0.1.3" src="https://img.shields.io/badge/version-0.1.3-20242c">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -51,7 +51,7 @@ plus the notes model). After that it works offline.
 | ✍️ **Writes your notes** | You type short cues while you listen. Lumina writes the full note for each one and adds the points you missed. Three views: side by side, Cornell rows, or one at a time. |
 | 📋 **Sums it up** | When the meeting ends you get an overview, decisions, action items and open questions, and an automatic title. |
 | 💡 **Helps live** | When someone asks a question your documents can answer, a short answer with its source appears beside your notes. |
-| 📚 **Knows your files** | Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, or whole folders it keeps up to date. |
+| 📚 **Knows your files** | Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, or whole folders it keeps up to date. A progress bar shows the indexing, and a folder opens like a dropdown to list its files. |
 | 💬 **Answers questions** | Ask "what did we decide about pricing?" across every meeting and file. Every answer cites its sources. Web search is optional and off by default. |
 | 🤖 **Works with your agents** | Claude, Cursor, Codex or any MCP client can search your meetings and files through Lumina's MCP server. |
 | 🔊 **Reads aloud** | Notes and answers can be read with a natural voice (Kokoro) or your system voice. |
@@ -89,6 +89,10 @@ downloads.
 supports. If you know the language, choose it: automatic detection can guess wrong on short or mixed audio. With the
 default "Automatic" model setting, Lumina uses Parakeet for automatic detection, Canary when you pick a European language,
 and Whisper for any other language.
+
+**Live transcript in the notch** (desktop app, Settings → Transcription): while you record, a black island grows out of the notch (or the top edge of the screen) with the last three lines of the transcript. Click it to return to the meeting.
+
+**Delete data** (Settings → Delete data): delete all chats, all sources, all meetings or everything, passages included. Settings and models stay.
 
 Settings → Models lists everything grouped by what it does: chat and notes, transcription, embeddings and read aloud, and a **Running now** panel with a Stop button to free the memory of the local model whenever you want.
 

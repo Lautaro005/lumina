@@ -6,6 +6,7 @@ import json
 import logging
 import threading
 import time
+from collections import deque
 from typing import Any
 
 from . import enhance, llm
@@ -36,6 +37,8 @@ class LiveSession:
         self.enhancing = threading.Lock()
         self.last_assist = 0.0
         self.sources: list[str] = []
+        self.recent: deque[dict[str, str]] = deque(maxlen=8)  # last sentences, for the notch
+        self.speaking: dict[str, str] = {}  # what each source is saying right now (not final yet)
 
     def clock(self) -> float:
         return self.offset + (time.time() - self.t_start)
@@ -104,10 +107,13 @@ class LiveSession:
         if ev.kind == "level":
             hub.publish({"type": "level", **base, "level": round(ev.level, 3)})
         elif ev.kind == "partial":
+            self.speaking[ev.source] = ev.text
             hub.publish({"type": "partial", **base, "text": ev.text, "t0": ev.t0})
         elif ev.kind == "error":
             hub.publish({"type": "warning", **base, "text": ev.text})
         elif ev.kind == "final":
+            self.speaking[ev.source] = ""
+            self.recent.append({"source": ev.source, "text": ev.text})
             sid = db.add_segment(self.meeting_id, ev.source, ev.t0, ev.t1, ev.text, ev.language)
             self.segments_since += 1
             hub.publish({"type": "segment", **base, "id": sid, "t0": ev.t0, "t1": ev.t1, "text": ev.text,
