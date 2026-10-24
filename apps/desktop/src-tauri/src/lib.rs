@@ -80,6 +80,7 @@ pub struct Backend {
     pub port: u16,
     child: Mutex<Option<Child>>,
     started_here: AtomicBool,
+    quitting: AtomicBool,
 }
 
 impl Backend {
@@ -93,6 +94,7 @@ impl Backend {
             port,
             child: Mutex::new(None),
             started_here: AtomicBool::new(false),
+            quitting: AtomicBool::new(false),
         }
     }
 
@@ -226,8 +228,69 @@ impl Backend {
         Err("Lumina took too long to start. Run `lumina doctor` in a terminal.".into())
     }
 
+    /// True when the server this app started has exited by itself (someone closed it in the Activity
+    /// Monitor, or it crashed).
+    fn engine_died(&self) -> bool {
+        if !self.started_here.load(Ordering::SeqCst) {
+            return false;
+        }
+        self.child
+            .lock()
+            .unwrap()
+            .as_mut()
+            .is_some_and(|c| matches!(c.try_wait(), Ok(Some(_))))
+    }
+
+    /// Keeps the server alive for as long as the app is open: if it disappears it is started again and the
+    /// page reloads, so closing the Python process can never leave the app broken. Gives up after 3 failed
+    /// restarts in a minute.
+    pub fn supervise(self: &Arc<Self>, app: AppHandle) {
+        let me = Arc::clone(self);
+        std::thread::spawn(move || {
+            let mut restarts: Vec<Instant> = Vec::new();
+            loop {
+                std::thread::sleep(Duration::from_secs(2));
+                if me.quitting.load(Ordering::SeqCst) {
+                    return;
+                }
+                if !me.engine_died() {
+                    continue;
+                }
+                restarts.retain(|t| t.elapsed() < Duration::from_secs(60));
+                if restarts.len() >= 3 {
+                    let msg = "Lumina's engine keeps stopping. Run `lumina doctor` in a terminal.";
+                    me.log(msg);
+                    error_page(&app, msg);
+                    return;
+                }
+                restarts.push(Instant::now());
+                me.log("the engine stopped; starting it again");
+                me.started_here.store(false, Ordering::SeqCst);
+                *me.child.lock().unwrap() = None;
+                let result = me
+                    .ensure_running()
+                    .and_then(|_| me.wait_ready(Duration::from_secs(120)));
+                match result {
+                    Ok(()) => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            if let Ok(url) = Url::parse(&me.url()) {
+                                let _ = w.navigate(url);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        me.log(&e);
+                        error_page(&app, &e);
+                        return;
+                    }
+                }
+            }
+        });
+    }
+
     /// Quit: ask the server we started to close (it stops its own helpers), then make sure it did.
     pub fn stop(&self) {
+        self.quitting.store(true, Ordering::SeqCst);
         if !self.started_here.swap(false, Ordering::SeqCst) {
             return;
         }
@@ -402,6 +465,7 @@ pub fn run() {
                                     let _ = w.navigate(url);
                                 }
                             }
+                            b3.supervise(handle.clone());
                         }
                         Err(e) => {
                             b3.log(&e);

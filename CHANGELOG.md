@@ -3,6 +3,35 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] - 2026-10-24
+
+### Added
+- **Update from inside the app.** Lumina looks for a newer version by itself (when it starts and every 6 hours) and
+  shows an **Update to x.y.z** button under the menu; Settings → About has **Check now**, the same button and a switch
+  to turn the automatic check off. Updating runs `lumina update` for you, closes Lumina and opens the new version.
+  `GET /api/update`, `POST /api/update/check` and `POST /api/update`.
+- **Meetings in Sources.** Finished meetings, with their summary, are listed in Sources under **Meetings**, so
+  everything Lumina can search is in one place. Click one to open it.
+- **Free memory when idle** (Settings → General, on by default). Lumina unloads the speech model, the embedding model
+  and the built-in notes model a few minutes after you stop using them and loads them again by itself.
+
+### Changed
+- **New, simpler logo**: an L and a dot of light, in the app, the website, the app icon and the share image.
+- **One program asks for the Mac permissions.** On macOS the microphone and the computer's audio now go through the same
+  signed helper (`lumina-audiotap`), so the microphone and Screen & System Audio Recording permissions belong to one
+  program and are asked once. The helper is rebuilt only when its source really changed (before, an update that merely
+  touched the file rebuilt it and macOS asked again) and it is signed with a fixed name. If the helper cannot give
+  audio, Lumina falls back to the previous microphone path.
+- **The engine follows the app.** If the Lumina app closes or crashes, its server closes with it; if someone closes the
+  server (the `python` process in the Activity Monitor), the app starts it again and reloads the page.
+
+### Fixed
+- **"The model did not return valid JSON"** in Enhanced notes and in the summary. Small models often wrap the JSON in
+  text, leave a trailing comma or stop halfway; Lumina now repairs those answers and, if it still cannot read one, asks
+  again with more room and without the JSON grammar before giving up.
+- **Sources no longer breaks with long names.** A long file or folder name, a long path or a long indexing message used
+  to push the layout wider than the window and hide the buttons and the search box.
+
 ## [0.1.3] - 2026-10-24
 
 ### Added

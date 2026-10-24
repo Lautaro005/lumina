@@ -1107,7 +1107,7 @@ wheels = [
 
 [[package]]
 name = "lumina"
-version = "0.1.2"
+version = "0.1.4"
 source = { editable = "." }
 dependencies = [
     { name = "ai-edge-litert", marker = "platform_machine == 'arm64' or sys_platform != 'darwin'" },

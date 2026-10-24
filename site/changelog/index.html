@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina changelog">
 <meta property="og:description" content="What changed in each version of Lumina.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.3">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.4">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -19,7 +19,7 @@
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="../" aria-label="Lumina home">
-        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="3.5" y="2.5" width="25" height="27" rx="4" fill="var(--paper)" stroke="var(--rule-soft)"/><rect x="4" y="9" width="24" height="1.6" fill="#7b9be0"/><rect x="12" y="10.6" width="1.6" height="18.4" fill="#e0594f"/><rect x="16.5" y="15" width="8" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="16.5" y="19.5" width="6" height="1.6" rx=".8" fill="#b9c8ee"/><rect x="6.5" y="15" width="3.6" height="1.6" rx=".8" fill="#20242c"/></svg>
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="#20242c" stroke="#fff" stroke-opacity=".16"/><g transform="translate(-1 0)"><path d="M11.5 8v14a2.5 2.5 0 0 0 2.5 2.5h7" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.2" cy="10.6" r="2.5" fill="#7b9be0"/></g></svg>
         lumina
       </a>
       <nav class="topnav" aria-label="Main">
@@ -36,12 +36,30 @@
 <main id="main" class="doc">
   <div class="wrap">
     <article class="page">
-      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-3-2026-10-24">0.1.3 - 2026-10-24</a><a href="#0-1-2-2026-10-23">0.1.2 - 2026-10-23</a><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-4-2026-10-24">0.1.4</a><a href="#0-1-3-2026-10-24">0.1.3 - 2026-10-24</a><a href="#0-1-2-2026-10-23">0.1.2 - 2026-10-23</a><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
       <div class="doc-body">
         <header><h1>Changelog</h1><p>What changed in each version. Lumina follows semantic versioning.</p></header>
         <div class="prose">
 <p>All notable changes to Lumina are listed here. The format follows <a href="https://keepachangelog.com/">Keep a Changelog</a> and the
 project uses <a href="https://semver.org/">Semantic Versioning</a>.</p>
+<h2 id="0-1-4-2026-10-24"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.4">0.1.4</a> - 2026-10-24</h2>
+<h3>Added</h3>
+<ul>
+<li><strong>Update from inside the app.</strong> Lumina looks for a newer version when it starts and every 6 hours and shows an <strong>Update to x.y.z</strong> button under the menu. Settings → About has <strong>Check now</strong> and a switch for the automatic check. Updating runs <code>lumina update</code> for you, closes Lumina and opens the new version.</li>
+<li><strong>Meetings in Sources.</strong> Finished meetings, with their summary, are listed in Sources so everything Lumina can search is in one place.</li>
+<li><strong>Free memory when idle</strong> (Settings → General, on by default). The speech, embedding and built-in notes models are unloaded a few minutes after you stop using them and load again by themselves.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li><strong>New, simpler logo</strong>: an L and a dot of light, in the app, the website, the app icon and the share image.</li>
+<li><strong>One program asks for the Mac permissions.</strong> The microphone and the computer's audio go through the same signed helper, so each permission is asked once. The helper is rebuilt only when its source really changed and is signed with a fixed name; if it cannot give audio, Lumina falls back to the previous microphone path.</li>
+<li><strong>The engine follows the app.</strong> If the app closes or crashes its server closes with it; if the <code>python</code> process is closed by hand, the app starts it again.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li><strong>"The model did not return valid JSON"</strong> in Enhanced notes and the summary. Answers with extra text, a trailing comma or cut short are repaired, and otherwise Lumina asks again with more room and without the JSON grammar.</li>
+<li><strong>Sources no longer breaks with long names</strong> of files, folders, paths or indexing messages.</li>
+</ul>
 <h2 id="0-1-3-2026-10-24"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.3">0.1.3</a> - 2026-10-24</h2>
 <h3>Added</h3>
 <ul>
@@ -156,7 +174,7 @@ warn.</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.3 · Free to use, not to sell</span>
+    <span>Lumina 0.1.4 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -164,6 +182,6 @@ warn.</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.3" defer></script>
+<script src="../assets/site.js?v=0.1.4" defer></script>
 </body>
 </html>

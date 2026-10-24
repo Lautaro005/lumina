@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BookOpen, FolderOpen, MessageSquareText, Plus, Settings as Cog, ShieldCheck } from "lucide-react";
 import { api, connectLive, fmtClock } from "./api";
-import { IndexStatus, Logo, Toasts } from "./components";
+import { IndexStatus, Logo, Toasts, UpdateOverlay, UpdateRail } from "./components";
 import { useT } from "./i18n";
 import { useStore } from "./store";
 import Chat from "./views/Chat";
@@ -73,6 +73,7 @@ function Rail() {
         </button>
       )}
       <IndexStatus compact />
+      <UpdateRail />
       <div className="rail-foot">
         <ShieldCheck size={16} />
         <span>{t("nav.local")}</span>
@@ -115,6 +116,14 @@ export default function App() {
     document.documentElement.lang = t.lang;
   }, [t.lang]);
 
+  // the server came back as another version (an update): load the new interface
+  const booted = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!status?.version) return;
+    if (!booted.current) booted.current = status.version;
+    else if (booted.current !== status.version) location.reload();
+  }, [status?.version]);
+
   if (!status) {
     return (
       <div className="setup">
@@ -138,6 +147,7 @@ export default function App() {
       <Rail />
       <main className="main" id="main">{view}</main>
       <Toasts />
+      <UpdateOverlay />
     </div>
   );
 }

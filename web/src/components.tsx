@@ -6,16 +6,15 @@ import { api, fmtBytes, type Job, type Model } from "./api";
 import { useT } from "./i18n";
 import { useStore } from "./store";
 
-/** The Lumina mark: a Cornell sheet, one blue rule and the red margin line. */
-export function Logo({ size = 28, onCover = true }: { size?: number; onCover?: boolean }) {
+/** The Lumina mark: an L, and a dot of light. */
+export function Logo({ size = 28 }: { size?: number; onCover?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect x="3.5" y="2.5" width="25" height="27" rx="4" fill={onCover ? "#ffffff" : "var(--paper)"} stroke="var(--rule-soft)" />
-      <rect x="4" y="9" width="24" height="1.6" fill="#7b9be0" />
-      <rect x="12" y="10.6" width="1.6" height="18.4" fill="#e0594f" />
-      <rect x="16.5" y="15" width="8" height="1.6" rx="0.8" fill="#b9c8ee" />
-      <rect x="16.5" y="19.5" width="6" height="1.6" rx="0.8" fill="#b9c8ee" />
-      <rect x="6.5" y="15" width="3.6" height="1.6" rx="0.8" fill="#20242c" />
+      <rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="#20242c" stroke="#fff" strokeOpacity=".16" />
+      <g transform="translate(-1 0)">
+        <path d="M11.5 8v14a2.5 2.5 0 0 0 2.5 2.5h7" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="21.2" cy="10.6" r="2.5" fill="#7b9be0" />
+      </g>
     </svg>
   );
 }
@@ -58,6 +57,74 @@ export function IndexStatus({ compact = false }: { compact?: boolean }) {
         <span>{[files, eta].filter(Boolean).join(" · ")}</span>
       </div>
       <ProgressBar value={p.fraction} label={files} />
+    </div>
+  );
+}
+
+/** The "Update to x.y.z" button under the menu. It shows only when a newer version exists. */
+export function UpdateRail() {
+  const t = useT();
+  const u = useStore((s) => s.status?.update);
+  const refresh = useStore((s) => s.refresh);
+  const toast = useStore((s) => s.toast);
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!u || !u.available || u.state === "running") return null;
+  const run = async () => {
+    setBusy(true);
+    try {
+      await api.applyUpdate();
+      await refresh();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+      setAsk(false);
+    }
+  };
+  return (
+    <>
+      <button className="rail-update" onClick={() => setAsk(true)} title={t("update.available", { v: u.latest })}>
+        <Download size={16} />
+        <span><b>{t("update.cta", { v: u.latest })}</b></span>
+      </button>
+      {ask && (
+        <ConfirmDialog title={t("update.confirmTitle", { v: u.latest })} body={t("update.confirmBody")}
+          confirm={t("update.now")} cancel={t("common.cancel")} busy={busy} onConfirm={run} onCancel={() => setAsk(false)} />
+      )}
+    </>
+  );
+}
+
+/** While the update runs: what it is doing, and a reload when the new version answers. */
+export function UpdateOverlay() {
+  const t = useT();
+  const running = useStore((s) => s.status?.update.state === "running");
+  const [log, setLog] = useState("");
+  useEffect(() => {
+    if (!running) return;
+    let on = true;
+    const tick = async () => {
+      try {
+        const u = await api.update();
+        if (!on) return;
+        setLog(u.log);
+        if (u.state !== "running") useStore.getState().refresh();
+      } catch { /* the server is restarting */ }
+    };
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => { on = false; clearInterval(id); };
+  }, [running]);
+  if (!running) return null;
+  return (
+    <div className="updating" role="alertdialog" aria-live="polite" aria-label={t("update.running")}>
+      <div className="updating-card">
+        <Loader2 size={22} className="spin" />
+        <h2>{t("update.running")}</h2>
+        <p>{t("update.runningHint")}</p>
+        {log && <pre>{log}</pre>}
+      </div>
     </div>
   );
 }

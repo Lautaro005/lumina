@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" role="img" aria-labelledby="t d">
   <title id="t">Lumina</title>
   <desc id="d">A Cornell note page: your short notes on the left of a red margin line, Lumina's enhanced notes on the right.</desc>
-  <rect width="1280" height="420" fill="#2b4fa8"/>
+  <rect width="1280" height="420" fill="#20242c"/>
   <g transform="translate(96 54)">
     <rect width="1088" height="312" rx="10" fill="#ffffff"/>
     <text x="40" y="66" font-family="Georgia, 'Times New Roman', serif" font-size="40" font-weight="700" fill="#1e2430">lumina</text>
     <text x="210" y="64" font-family="Helvetica, Arial, sans-serif" font-size="19" fill="#4a5568">Notes that write themselves, on your computer.</text>
-    <rect x="0" y="94" width="1088" height="3" fill="#3a6fd8"/>
+    <rect x="0" y="94" width="1088" height="3" fill="#7b9be0"/>
     <rect x="352" y="97" width="3" height="215" fill="#d9453b"/>
     <g font-family="Helvetica, Arial, sans-serif" font-size="19" font-weight="700" fill="#1e2430">
       <text x="40" y="146">Q3 budget, cut?</text>

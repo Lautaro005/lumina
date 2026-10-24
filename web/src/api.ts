@@ -26,6 +26,7 @@ export type Status = {
   session: { meeting_id: string; paused: boolean; elapsed: number; sources: string[]; model: string } | null;
   kb: { documents: number; meetings: number; notes: number };
   index: Progress;
+  update: { available: boolean; latest: string; state: "idle" | "running" | "failed" };
   port: number;
   running: Running;
 };
@@ -51,10 +52,15 @@ export type Summary = {
 export type Segment = { id: number; meeting_id?: string; source: string; t0: number; t1: number; text: string; language?: string };
 export type Assist = { id: string; question: string; answer: string; sources: any[]; created: number; seen: number };
 
+export type UpdateInfo = {
+  current: string; latest: string; available: boolean; checked: number; error: string;
+  state: "idle" | "running" | "failed"; can_update: boolean; app: boolean; releases: string; log: string;
+};
+
 export type Meeting = {
   id: string; title: string; created: number; started: number | null; ended: number | null;
   status: "draft" | "live" | "done"; language: string; tags: string[]; cues: string;
-  enhanced: Block[]; summary: Summary; duration: number;
+  enhanced: Block[]; summary: Summary; duration: number; indexed?: number | null;
   segments?: Segment[]; assists?: Assist[];
 };
 
@@ -103,6 +109,9 @@ export const api = {
 
   meetings: (p: { q?: string; tag?: string; since?: number } = {}) =>
     req<Meeting[]>("GET", `/api/meetings?q=${encodeURIComponent(p.q || "")}&tag=${encodeURIComponent(p.tag || "")}&since=${p.since || 0}`),
+  update: () => req<UpdateInfo>("GET", "/api/update"),
+  checkUpdate: () => req<UpdateInfo>("POST", "/api/update/check"),
+  applyUpdate: () => req<UpdateInfo>("POST", "/api/update"),
   createMeeting: (title = "") => req<Meeting>("POST", "/api/meetings", { title, tags: [] }),
   meeting: (id: string) => req<Meeting>("GET", `/api/meetings/${id}`),
   patchMeeting: (id: string, fields: Partial<Meeting>) => req<Meeting>("PATCH", `/api/meetings/${id}`, fields),

@@ -20,7 +20,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, WebSocket
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
-from . import __version__, chat, export, llm, tts
+from . import __version__, chat, export, llm, memory, tts
 from .audio import list_inputs
 from .catalog import CATALOG, EU25, installed, languages_for, stt_choice
 from .config import DATA, UI_DIR, UPLOADS, settings, system_info
@@ -32,6 +32,7 @@ from .kb import kb
 from .mcp_server import server as mcp
 from .session import import_recording, run_enhance, sessions
 from .stt import engine
+from .updater import updater
 
 log = logging.getLogger("lumina.server")
 
@@ -54,6 +55,28 @@ class NoteIn(BaseModel):
 
 
 
+def _watch_parent() -> None:
+    """Started by the desktop app: if the app disappears (crash, force quit) this server goes with it,
+    so no stray Python is left running."""
+    if os.environ.get("LUMINA_APP") != "1":
+        return
+    parent = os.getppid()
+    if parent <= 1:
+        return
+
+    def loop() -> None:
+        import signal
+
+        while True:
+            time.sleep(3)
+            if os.getppid() != parent:
+                log.info("the desktop app is gone; closing")
+                os.kill(os.getpid(), signal.SIGTERM if hasattr(signal, "SIGTERM") else signal.SIGINT)
+                return
+
+    threading.Thread(target=loop, daemon=True, name="parent-watch").start()
+
+
 def running_models() -> dict[str, Any]:
     """What is loaded in memory right now (the UI offers a Stop button for each)."""
     return {
@@ -73,6 +96,9 @@ def create_app(port: int) -> FastAPI:
         kb.listeners.append(lambda e: hub.publish({"type": "kb", "event": e.get("type", ""),
                                                    **{k: v for k, v in e.items() if k != "type"}}))
         threading.Thread(target=kb.start_watching, daemon=True).start()
+        memory.start()
+        updater.start_background()
+        _watch_parent()
         threading.Thread(target=kb.counts_warm, daemon=True).start()
         async with mcp.session_manager.run():
             yield
@@ -121,6 +147,7 @@ def create_app(port: int) -> FastAPI:
     @app.get("/api/status")
     def status() -> dict[str, Any]:
         s = settings.all()
+        upd = updater.state()
         return {
             "version": __version__,
             "system": system_info(),
@@ -137,6 +164,7 @@ def create_app(port: int) -> FastAPI:
             "running": running_models(),
             "kb": kb.counts(),
             "index": kb.progress(),
+            "update": {k: upd[k] for k in ("available", "latest", "state")},
             "port": port,
         }
 
@@ -165,6 +193,23 @@ def create_app(port: int) -> FastAPI:
         except llm.LLMError as e:
             raise HTTPException(400, str(e)) from e
         return {"running": running_models()}
+
+    @app.get("/api/update")
+    def update_state() -> dict[str, Any]:
+        return updater.check()
+
+    @app.post("/api/update/check")
+    def update_check() -> dict[str, Any]:
+        return updater.check(force=True)
+
+    @app.post("/api/update")
+    def update_apply() -> dict[str, Any]:
+        if sessions.state():
+            raise HTTPException(409, "A meeting is being recorded. End it first.")
+        try:
+            return updater.apply(port)
+        except RuntimeError as e:
+            raise HTTPException(400, str(e)) from e
 
     @app.post("/api/quit")
     async def quit_app(request: Request) -> dict:

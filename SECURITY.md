@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.3`) | ✅ |
+| `0.1.x` (latest: `0.1.4`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -47,7 +47,8 @@ being exploited).
 - **Data.** Everything lives in the data folder (`~/.lumina/data` by default): `lumina.db` (SQLite), `chroma/` (vector
   index), `models/`, `uploads/`, `logs/` and `settings.json`. Nothing is sent anywhere by default. No telemetry
   (ChromaDB's telemetry is turned off).
-- **What leaves the computer, and only when you ask:** model downloads from Hugging Face and GitHub, web search queries
+- **What leaves the computer:** a version check (`raw.githubusercontent.com`, one small file, when Lumina starts and every
+  6 hours; Settings → About turns it off), and, only when you ask, model downloads from Hugging Face and GitHub, web search queries
   when the chat's Web search toggle is on (DuckDuckGo or your SearXNG), and prompts sent to an Ollama, LM Studio or
   OpenAI-compatible server you configure (which may be remote if you point it at one).
 - **Untrusted text.** Transcripts, files, web results and MCP inputs are data. The chat and assistance prompts tell the
@@ -63,6 +64,11 @@ being exploited).
   from the SQLite database and the vector index, and the copies of dropped files in `uploads/`. It is protected by the
   same host and origin checks as the rest of the API. Your own files on disk are never touched. Freed space inside the
   database files is reused by SQLite and ChromaDB rather than returned to the system at once.
+- **Updating from the app.** `POST /api/update` runs `lumina update` (the same code path as the terminal command: `git pull`
+  from this repository, `uv sync`, the desktop app from this repository's latest release) in a detached script, then
+  restarts Lumina. It takes no input, so a web page cannot choose what runs; it is behind the same host and origin checks.
+- **macOS permissions.** The microphone and system audio go through one helper, `lumina-audiotap`, compiled on your Mac
+  from `lumina/native/audiotap.swift`, signed ad hoc with a fixed identifier and rebuilt only when its source changes.
 - **PDF reading.** PDFs are read with PDFium (`pypdfium2`), which is native code; a malformed PDF falls back to the
   pure Python reader and a file that cannot be read is reported on its own row.
 

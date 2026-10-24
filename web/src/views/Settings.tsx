@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Columns2, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote, Trash2 } from "lucide-react";
-import { api, type Job, type Model } from "../api";
+import { CheckCircle2, Columns2, Download, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote, Trash2 } from "lucide-react";
+import { api, type Job, type Model, type UpdateInfo } from "../api";
 import { ConfirmDialog, CopyButton, ModelRow, Switch, useModels, useSetting } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
@@ -161,6 +161,50 @@ function RunningModels() {
 const DELETES = ["chats", "sources", "meetings", "all"] as const;
 
 /** Wipes chats, sources, meetings or all of them, after a confirmation. */
+function UpdatePanel() {
+  const t = useT();
+  const toast = useStore((s) => s.toast);
+  const refresh = useStore((s) => s.refresh);
+  const [info, setInfo] = useState<UpdateInfo | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const [auto, setAuto] = useSetting<boolean>("update_check");
+  useEffect(() => { api.update().then(setInfo).catch(() => {}); }, []);
+  const check = async () => {
+    setBusy(true);
+    try { setInfo(await api.checkUpdate()); } catch (e) { toast((e as Error).message, "error"); } finally { setBusy(false); }
+  };
+  const run = async () => {
+    setBusy(true);
+    try { await api.applyUpdate(); await refresh(); } catch (e) { toast((e as Error).message, "error"); } finally { setBusy(false); setAsk(false); }
+  };
+  return (
+    <div className="update-panel">
+      <div className="update-line">
+        <div>
+          <b>{!info ? "…" : info.available ? t("update.available", { v: info.latest }) : info.error ? t("update.cantCheck") : t("update.upToDate")}</b>
+          <small>
+            {t("update.current", { v: info?.current ?? "" })}
+            {info && info.checked > 0 && ` · ${t("update.checked", { when: new Date(info.checked * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}`}
+          </small>
+          {info?.state === "failed" && <small className="bad">{t("update.failed")}</small>}
+          {info?.error && <small className="bad">{info.error}</small>}
+        </div>
+        <div className="actions">
+          <button className="btn" onClick={check} disabled={busy}>{t("update.check")}</button>
+          {info?.available && <button className="btn primary" onClick={() => setAsk(true)} disabled={busy || !info.can_update}><Download size={15} /> {t("update.cta", { v: info.latest })}</button>}
+        </div>
+      </div>
+      {info?.available && !info.can_update && <p className="hint">{t("update.manual")}</p>}
+      <Switch checked={!!auto} onChange={setAuto} label={t("update.auto")} />
+      {ask && info && (
+        <ConfirmDialog title={t("update.confirmTitle", { v: info.latest })} body={t("update.confirmBody")}
+          confirm={t("update.now")} cancel={t("common.cancel")} busy={busy} onConfirm={run} onCancel={() => setAsk(false)} />
+      )}
+    </div>
+  );
+}
+
 function DeleteData() {
   const t = useT();
   const toast = useStore((s) => s.toast);
@@ -266,6 +310,7 @@ export default function Settings() {
   const [autoEnh, setAutoEnh] = useSetting<boolean>("auto_enhance");
   const [assist, setAssist] = useSetting<boolean>("live_assistance");
   const [notch, setNotch] = useSetting<boolean>("notch_live");
+  const [saver, setSaver] = useSetting<boolean>("memory_saver");
   const [provider, setProvider] = useSetting<string>("llm_provider");
   const [gemma, setGemma] = useSetting<string>("builtin_model");
   const [ollamaUrl, setOllamaUrl] = useSetting<string>("ollama_url");
@@ -339,6 +384,8 @@ export default function Settings() {
               </div>
             </div>
             <NotesViewPicker />
+            <Switch checked={!!saver} onChange={setSaver} label={t("settings.memorySaver")} />
+            <p className="hint" style={{ marginLeft: 50 }}>{t("settings.memorySaverHint")}</p>
           </Section>
 
           <Section id="transcription" title={t("settings.transcription")}>
@@ -539,6 +586,7 @@ export default function Settings() {
           </Section>
 
           <Section id="about" title={t("settings.about")}>
+            <UpdatePanel />
             <div className="grid2">
               <div className="field"><span className="label">{t("settings.version")}</span><span>Lumina {status.version} · {status.system.os} {status.system.arch}</span></div>
               <div className="field"><span className="label">{t("settings.data")}</span><span className="src-path" style={{ fontSize: 14 }}>{status.system.data}</span></div>

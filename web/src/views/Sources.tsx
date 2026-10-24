@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, FileText, Folder, FolderOpen, NotebookPen, RefreshCw, Search, StickyNote, Trash2, Upload, X } from "lucide-react";
-import { api, fmtBytes, type Source } from "../api";
+import { ChevronRight, FileAudio, FileText, Folder, FolderOpen, NotebookPen, RefreshCw, Search, StickyNote, Trash2, Upload, X } from "lucide-react";
+import { api, fmtBytes, type Meeting, type Source } from "../api";
 import { IndexStatus, ProgressBar } from "../components";
 import { useT, type Key } from "../i18n";
 import { useStore } from "../store";
@@ -22,7 +22,13 @@ export default function Sources() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const refresh = useStore((s) => s.refresh);
 
-  const load = () => api.sources().then(setRows).catch(() => {});
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const go = useStore((s) => s.go);
+
+  const load = () => {
+    api.sources().then(setRows).catch(() => {});
+    api.meetings().then((m) => setMeetings(m.filter((x) => x.indexed))).catch(() => {});
+  };
   useEffect(() => {
     load();
     let timer: ReturnType<typeof setTimeout>;
@@ -89,7 +95,7 @@ export default function Sources() {
       </div>
 
       <div className="sources-grid">
-        <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+        <div className="sources-main">
           {!status.embeddings_ready && <div className="callout warn">{t("sources.needEmbeddings")}</div>}
           <div className={`dropzone ${over ? "over" : ""}`}
             onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
@@ -124,9 +130,9 @@ export default function Sources() {
             </form>
           )}
 
-          {top.length === 0 ? (
+          {top.length === 0 && meetings.length === 0 ? (
             <div className="panel empty"><p style={{ maxWidth: "60ch" }}>{t("sources.empty")}</p></div>
-          ) : (
+          ) : top.length > 0 && (
             <table className="table">
               <tbody>
                 {top.map((s) => {
@@ -147,11 +153,10 @@ export default function Sources() {
                               <button type="button" className="folder-toggle" aria-expanded={isOpen} aria-controls={`ff-${s.id}`}
                                 title={isOpen ? t("sources.hideFiles") : t("sources.showFiles")} onClick={() => toggle(s.id)}>
                                 <ChevronRight size={16} className="chev" />
-                                <span style={{ fontWeight: 700 }}>{s.title}</span>
-                                <span className="ff-count">{t("sources.fileCount", { n: kids.length })}</span>
+                                <span className="src-title">{s.title}</span>
                               </button>
                             ) : (
-                              <div style={{ fontWeight: 700 }}>{s.title}</div>
+                              <div className="src-title">{s.title}</div>
                             )}
                             {s.path && <div className="src-path">{s.path}</div>}
                             <div className="t-tags">
@@ -189,7 +194,7 @@ export default function Sources() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ width: 1 }}>
+                      <td className="act-col">
                         <div className="row-actions">
                           <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={t("sources.reindex")} onClick={() => api.reindex(s.id).then(load)}><RefreshCw size={15} /></button>
                           {s.path && <button className="btn sm ghost icon" title={t("sources.reveal")} aria-label={t("sources.reveal")} onClick={() => api.reveal(s.id)}><FolderOpen size={15} /></button>}
@@ -201,6 +206,35 @@ export default function Sources() {
                 })}
               </tbody>
             </table>
+          )}
+
+          {meetings.length > 0 && (
+            <section>
+              <h2 className="src-section">{t("sources.meetings")} <span>{meetings.length}</span></h2>
+              <table className="table">
+                <tbody>
+                  {meetings.map((m) => (
+                    <tr key={m.id} className="click" tabIndex={0} onClick={() => go(`/meeting/${m.id}`)}
+                      onKeyDown={(e) => e.key === "Enter" && go(`/meeting/${m.id}`)}>
+                      <td>
+                        <div className="src-row">
+                          <span className="kind-ic"><FileAudio size={17} /></span>
+                          <div>
+                            <div className="src-title">{m.title || t("common.untitled")}</div>
+                            {m.summary?.overview && <div className="src-path">{m.summary.overview}</div>}
+                            <div className="t-tags">
+                              <span className="chip ok">{t("sources.status.ready")}</span>
+                              <span className="chip">{new Date((m.started || m.created) * 1000).toLocaleDateString()}</span>
+                              {m.summary?.overview && <span className="chip">{t("sources.hasSummary")}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
           )}
         </div>
 

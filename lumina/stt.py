@@ -34,6 +34,7 @@ class Engine:
         self.model_id = ""
         self._model = None
         self._lock = threading.Lock()
+        self.used = time.time()
 
     def current_choice(self) -> str:
         return stt_choice(settings.get("stt_engine"), settings.get("stt_language"), settings.get("whisper_size"))
@@ -87,6 +88,7 @@ class Engine:
 
     def recognize(self, audio: np.ndarray, language: str = "auto") -> tuple[str, str]:
         """Returns (text, detected_or_forced_language)."""
+        self.used = time.time()
         if audio.size < SR * 0.3:
             return "", language
         with self._lock:

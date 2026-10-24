@@ -8,11 +8,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import platform
 import shutil
 import subprocess
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -24,6 +26,17 @@ log = logging.getLogger("lumina.audio")
 SR = 16000
 HELPER_SRC = Path(__file__).parent / "native" / "audiotap.swift"
 HELPER = BIN / "lumina-audiotap"
+HELPER_PLIST = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>app.lumina.audiotap</string>
+<key>CFBundleName</key><string>Lumina</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>Lumina transcribes your meetings on this Mac. The audio never leaves the computer.</string>
+<key>NSAudioCaptureUsageDescription</key>
+<string>Lumina records the other people in your calls to transcribe them on this Mac.</string>
+</dict></plist>
+"""
 
 
 def resample(x: np.ndarray, sr: int) -> np.ndarray:
@@ -54,12 +67,56 @@ def list_inputs() -> list[dict]:
 
 
 class Mic:
+    """The microphone. On a Mac the default microphone goes through the same signed helper that records the
+    system audio, so macOS asks for the permission once, for one program. Elsewhere (or if the helper is not
+    there) it is PortAudio through sounddevice."""
+
     def __init__(self, on_audio: Callable[[np.ndarray], None], device: int | None = None):
         self.on_audio = on_audio
         self.device = device
         self.stream = None
+        self.proc: subprocess.Popen | None = None
+        self.running = False
 
     def start(self) -> None:
+        if platform.system() == "Darwin" and self.device is None and self._start_helper():
+            return
+        self._start_portaudio()
+
+    def _start_helper(self) -> bool:
+        helper = build_helper()
+        if not helper:
+            return False
+        err = open(LOGS / "audiotap.log", "ab")
+        proc = subprocess.Popen([str(helper), "mic"], stdout=subprocess.PIPE, stderr=err, stdin=subprocess.PIPE)
+        first = threading.Event()
+        self.proc, self.running = proc, True
+
+        def read() -> None:
+            assert proc.stdout
+            while self.running:
+                data = proc.stdout.read(6400)  # 200 ms of 16 kHz float32
+                if not data:
+                    break
+                first.set()
+                self.on_audio(np.frombuffer(data[: len(data) // 4 * 4], np.float32).copy())
+
+        threading.Thread(target=read, daemon=True, name="mic-helper").start()
+        # the first time macOS shows its permission window; wait for the answer
+        deadline = time.time() + 120
+        while time.time() < deadline and not first.is_set() and proc.poll() is None:
+            time.sleep(0.05)
+        if first.is_set():
+            return True
+        code = proc.poll()
+        self.stop()
+        if code == 4:
+            raise PermissionError("Microphone access is off for Lumina. "
+                                  "Turn it on in System Settings → Privacy & Security → Microphone.")
+        log.warning("mic helper gave no audio (exit %s); using PortAudio", code)
+        return False
+
+    def _start_portaudio(self) -> None:
         import sounddevice as sd
 
         info = sd.query_devices(self.device, "input")
@@ -74,6 +131,16 @@ class Mic:
         self.stream.start()
 
     def stop(self) -> None:
+        self.running = False
+        if self.proc is not None:
+            try:
+                if self.proc.stdin:
+                    self.proc.stdin.close()
+                self.proc.terminate()
+                self.proc.wait(3)
+            except Exception:  # noqa: BLE001
+                self.proc.kill()
+            self.proc = None
         if self.stream is not None:
             try:
                 self.stream.stop()
@@ -82,22 +149,45 @@ class Mic:
                 self.stream = None
 
 
+def _helper_sha() -> str:
+    return hashlib.sha256(HELPER_SRC.read_bytes()).hexdigest()
+
+
 def build_helper() -> Path | None:
-    """Compile the macOS helper once; returns its path or None."""
+    """Compile the macOS helper once; returns its path or None.
+
+    macOS ties the microphone and screen-recording permissions to the program's signature. A helper that is
+    rebuilt gets a new signature and macOS asks again, so it is rebuilt only when its source really changed
+    (not when an update merely touches the file) and it is signed with a fixed name."""
     if platform.system() != "Darwin":
         return None
-    if HELPER.exists() and HELPER.stat().st_mtime >= HELPER_SRC.stat().st_mtime:
-        return HELPER
+    sha_file = HELPER.with_suffix(".sha")
+    try:
+        if HELPER.exists() and sha_file.exists() and sha_file.read_text().strip() == _helper_sha():
+            return HELPER
+    except OSError:
+        pass
     swiftc = shutil.which("swiftc") or "/usr/bin/swiftc"
+    plist = BIN / "lumina-audiotap-Info.plist"
+    plist.write_text(HELPER_PLIST)
     try:
         r = subprocess.run([swiftc, "-O", "-o", str(HELPER), str(HELPER_SRC), "-framework", "ScreenCaptureKit",
-                            "-framework", "CoreMedia"], capture_output=True, text=True, timeout=300)
+                            "-framework", "CoreMedia", "-framework", "AVFoundation",
+                            "-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist",
+                            "-Xlinker", str(plist)],
+                           capture_output=True, text=True, timeout=300)
     except (OSError, subprocess.TimeoutExpired) as e:
         log.warning("cannot build audio helper: %s", e)
         return None
     if r.returncode != 0:
         log.warning("audio helper build failed: %s", r.stderr[-2000:])
         return None
+    subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", "--identifier", "app.lumina.audiotap",
+                    str(HELPER)], capture_output=True)
+    try:
+        sha_file.write_text(_helper_sha())
+    except OSError:
+        pass
     return HELPER
 
 

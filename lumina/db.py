@@ -156,7 +156,7 @@ class DB:
         return self.one("SELECT * FROM meetings WHERE id=?", [mid])
 
     def meetings(self, q: str = "", tag: str = "", since: float = 0, until: float = 0) -> list[dict]:
-        sql = "SELECT id,title,created,started,ended,status,language,tags,duration,summary FROM meetings WHERE 1=1"
+        sql = "SELECT id,title,created,started,ended,status,language,tags,duration,summary,indexed FROM meetings WHERE 1=1"
         args: list[Any] = []
         if q:
             sql += " AND (title LIKE ? OR cues LIKE ? OR id IN (SELECT meeting_id FROM segments WHERE text LIKE ?))"

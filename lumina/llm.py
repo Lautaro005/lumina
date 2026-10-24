@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import platform
+import re
 import subprocess
 import threading
 import time
@@ -58,6 +59,7 @@ class BuiltinServer:
         self.model_id = ""
         self._lock = threading.Lock()
         self.port = BUILTIN_LLM_PORT
+        self.used = time.time()
 
     @property
     def url(self) -> str:
@@ -243,6 +245,7 @@ def ready() -> tuple[bool, str]:
 def stream(messages: list[dict[str, str]], temperature: float | None = None, max_tokens: int = 1500,
            json_mode: bool = False, provider: str | None = None) -> Iterator[str]:
     base, model, headers = provider_config(provider)
+    builtin.used = time.time()
     body: dict[str, Any] = {
         "model": model, "messages": messages, "stream": True, "max_tokens": max_tokens,
         "temperature": settings.get("temperature") if temperature is None else temperature,
@@ -284,6 +287,7 @@ def stream(messages: list[dict[str, str]], temperature: float | None = None, max
                     else:
                         continue
                 if piece:
+                    builtin.used = time.time()
                     yield piece
     except httpx.ConnectError as e:
         raise LLMError("Could not reach the model server. Is it running?") from e
@@ -296,20 +300,66 @@ def complete(messages: list[dict[str, str]], **kw: Any) -> str:
 
 
 def complete_json(messages: list[dict[str, str]], **kw: Any) -> Any:
-    text = complete(messages, json_mode=True, **kw)
-    return parse_json(text)
+    """Ask for JSON. Small local models sometimes wrap it in prose, stop halfway or ignore JSON mode,
+    so a bad answer is repaired when possible and otherwise asked for again, with more room."""
+    last = ""
+    for attempt in range(3):
+        opts = dict(kw)
+        if attempt:
+            opts["json_mode"] = attempt == 1  # the last try goes without the JSON grammar
+            opts["temperature"] = 0.0
+            opts["max_tokens"] = int(kw.get("max_tokens", 1500) * (1 + attempt))
+        opts.setdefault("json_mode", True)
+        last = complete(messages, **opts)
+        try:
+            return parse_json(last)
+        except LLMError:
+            log.warning("attempt %d: model answer was not JSON: %.300r", attempt + 1, last)
+    raise LLMError("The model did not return valid JSON") from None
+
+
+def _repair(t: str) -> str:
+    """Close a JSON text that was cut off: an open string, then every open bracket."""
+    stack: list[str] = []
+    in_str = esc = False
+    for ch in t:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+        elif ch in "}]" and stack:
+            stack.pop()
+    out = t + ('"' if in_str else "")
+    out = re.sub(r",\s*$", "", out.rstrip())
+    out = re.sub(r'"[^"\\]*"\s*:\s*$', "", out).rstrip().rstrip(",")  # a key without its value
+    return out + "".join(reversed(stack))
 
 
 def parse_json(text: str) -> Any:
-    t = text.strip()
-    if t.startswith("```"):
-        t = t.split("\n", 1)[1] if "\n" in t else t
-        t = t.rsplit("```", 1)[0]
-    for opener, closer in (("{", "}"), ("[", "]")):
-        i, j = t.find(opener), t.rfind(closer)
-        if i != -1 and j > i:
+    t = re.sub(r"<think>.*?(</think>|$)", "", text, flags=re.S).strip()
+    fence = re.search(r"```(?:json)?\s*(.*?)(```|$)", t, flags=re.S | re.I)
+    if fence:
+        t = fence.group(1).strip()
+    starts = [i for i in (t.find("{"), t.find("[")) if i != -1]
+    if not starts:
+        raise LLMError("The model did not return valid JSON")
+    body = t[min(starts):]
+    candidates = [body]
+    last = max(body.rfind("}"), body.rfind("]"))
+    if last > 0:
+        candidates.append(body[: last + 1])
+    candidates.append(_repair(body))
+    for c in candidates:
+        for fixed in (c, re.sub(r",\s*([}\]])", r"\1", c)):
             try:
-                return json.loads(t[i : j + 1])
+                return json.loads(fixed, strict=False)
             except json.JSONDecodeError:
                 continue
     raise LLMError("The model did not return valid JSON")

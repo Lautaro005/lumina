@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from collections.abc import Callable
 
 import numpy as np
@@ -24,6 +25,7 @@ class Embedder:
         self._lock = threading.Lock()
         self._session = None
         self._tok = None
+        self.used = time.time()  # last time it embedded something (the memory saver unloads it when idle)
 
     @property
     def loaded(self) -> bool:
@@ -57,6 +59,7 @@ class Embedder:
 
     def _infer(self, encs: list) -> np.ndarray:
         """One padded batch through the model. The caller holds the lock."""
+        self.used = time.time()
         assert self._session is not None
         width = max(len(e.ids) for e in encs)
         ids = np.zeros((len(encs), width), np.int64)

@@ -1,8 +1,15 @@
-// lumina-audiotap: writes this Mac's system audio (what you hear from Zoom, Meet, Teams...) to stdout
-// as raw 32-bit float, mono, 48 kHz. Uses ScreenCaptureKit (macOS 13+). The first run asks for the
-// Screen & System Audio Recording permission. Lumina's own audio is excluded.
+// lumina-audiotap: Lumina's one audio helper on macOS, so the system asks for each permission once and
+// remembers it for this single program.
 //
-// Build: swiftc -O -o lumina-audiotap audiotap.swift -framework ScreenCaptureKit -framework CoreMedia
+//   lumina-audiotap          this Mac's system audio (what you hear from Zoom, Meet, Teams...) on stdout,
+//                            raw 32-bit float, mono, 48 kHz. Uses ScreenCaptureKit (macOS 13+): asks for the
+//                            Screen & System Audio Recording permission. Lumina's own audio is excluded.
+//   lumina-audiotap mic [id] the microphone on stdout, raw 32-bit float, mono, 16 kHz (default microphone
+//                            or the device with that id). Asks for the Microphone permission once.
+//                            Exit code 4 means the permission was refused.
+//   lumina-audiotap devices  the microphones as JSON.
+//
+// Build: swiftc -O -o lumina-audiotap audiotap.swift -framework ScreenCaptureKit -framework CoreMedia -framework AVFoundation
 import AVFoundation
 import CoreMedia
 import Foundation
@@ -60,14 +67,98 @@ final class Tap: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 }
 
-let tap = Tap()
+final class MicTap: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
+    let session = AVCaptureSession()
+    let out = FileHandle.standardOutput
+    let queue = DispatchQueue(label: "mic")
+
+    func authorize() {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return
+        case .notDetermined:
+            let wait = DispatchSemaphore(value: 0)
+            var ok = false
+            AVCaptureDevice.requestAccess(for: .audio) { granted in ok = granted; wait.signal() }
+            wait.wait()
+            if !ok { refuse() }
+        default:
+            refuse()
+        }
+    }
+
+    func refuse() -> Never {
+        FileHandle.standardError.write("microphone permission refused\n".data(using: .utf8)!)
+        exit(4)
+    }
+
+    func start(id: String?) {
+        authorize()
+        let device = id.flatMap { AVCaptureDevice(uniqueID: $0) } ?? AVCaptureDevice.default(for: .audio)
+        guard let device = device, let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
+            FileHandle.standardError.write("no microphone found\n".data(using: .utf8)!)
+            exit(2)
+        }
+        session.addInput(input)
+        let output = AVCaptureAudioDataOutput()
+        output.audioSettings = [
+            AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 16000, AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32, AVLinearPCMIsFloatKey: true, AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false,
+        ]
+        output.setSampleBufferDelegate(self, queue: queue)
+        guard session.canAddOutput(output) else { exit(2) }
+        session.addOutput(output)
+        session.startRunning()
+        FileHandle.standardError.write("ready\n".data(using: .utf8)!)
+    }
+
+    func captureOutput(_ output: AVCaptureOutput, didOutput sb: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard sb.isValid else { return }
+        var blockBuffer: CMBlockBuffer?
+        var abl = AudioBufferList()
+        let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
+            sb, bufferListSizeNeededOut: nil, bufferListOut: &abl,
+            bufferListSize: MemoryLayout<AudioBufferList>.size, blockBufferAllocator: nil,
+            blockBufferMemoryAllocator: nil, flags: 0, blockBufferOut: &blockBuffer)
+        guard status == noErr else { return }
+        let buffers = UnsafeMutableAudioBufferListPointer(&abl)
+        if let first = buffers.first, let data = first.mData {
+            out.write(Data(bytes: data, count: Int(first.mDataByteSize)))
+        }
+    }
+}
+
+func listDevices() {
+    let fallback = AVCaptureDevice.default(for: .audio)?.uniqueID
+    var items: [[String: Any]] = []
+    for d in AVCaptureDevice.devices(for: .audio) {
+        items.append(["id": d.uniqueID, "name": d.localizedName, "default": d.uniqueID == fallback])
+    }
+    if let data = try? JSONSerialization.data(withJSONObject: items), let text = String(data: data, encoding: .utf8) {
+        print(text)
+    }
+    exit(0)
+}
+
 signal(SIGPIPE, SIG_IGN)
-Task {
-    do {
-        try await tap.start()
-    } catch {
-        FileHandle.standardError.write("error: \(error.localizedDescription)\n".data(using: .utf8)!)
-        exit(1)
+let args = CommandLine.arguments
+let mode = args.count > 1 ? args[1] : "system"
+let micTap = MicTap()
+let tap = Tap()
+switch mode {
+case "devices":
+    listDevices()
+case "mic":
+    micTap.start(id: args.count > 2 ? args[2] : nil)
+default:
+    Task {
+        do {
+            try await tap.start()
+        } catch {
+            FileHandle.standardError.write("error: \(error.localizedDescription)\n".data(using: .utf8)!)
+            exit(1)
+        }
     }
 }
 // stop when the parent closes our stdin or dies

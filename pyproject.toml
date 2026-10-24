@@ -1,6 +1,6 @@
 [project]
 name = "lumina"
-version = "0.1.3"
+version = "0.1.4"
 description = "Local-first meeting notes and knowledge base: live transcription, enhanced notes, RAG chat and an MCP server, all on your device."
 readme = "README.md"
 license = { file = "LICENSE" }

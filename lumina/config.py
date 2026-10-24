@@ -69,6 +69,8 @@ DEFAULTS: dict[str, Any] = {
     "enhance_interval": 45,
     "live_assistance": True,
     "notes_view": "columns",  # columns (Foresight style) | rows (Cornell) | tabs
+    "update_check": True,  # look for a newer version in the background and offer it in the app
+    "memory_saver": True,  # unload models nobody is using, so Lumina stays small
     "notch_live": platform.system() == "Darwin",  # desktop app: the live transcript in the notch while recording
     # knowledge
     "embedding_dim": 768,
