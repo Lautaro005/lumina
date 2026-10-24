@@ -8,9 +8,11 @@
 //                            or the device with that id). Asks for the Microphone permission once.
 //                            Exit code 4 means the permission was refused.
 //   lumina-audiotap devices  the microphones as JSON.
+//   lumina-audiotap status   the two permissions as JSON (microphone: 0 not asked, 1 restricted, 2 refused, 3 allowed).
 //
 // Build: swiftc -O -o lumina-audiotap audiotap.swift -framework ScreenCaptureKit -framework CoreMedia -framework AVFoundation
 import AVFoundation
+import CoreGraphics
 import CoreMedia
 import Foundation
 import ScreenCaptureKit
@@ -93,7 +95,14 @@ final class MicTap: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
     }
 
     func start(id: String?) {
-        authorize()
+        // the permission window is answered on another thread so the main one stays free to run its loop
+        DispatchQueue.global().async {
+            self.authorize()
+            DispatchQueue.main.async { self.begin(id: id) }
+        }
+    }
+
+    func begin(id: String?) {
         let device = id.flatMap { AVCaptureDevice(uniqueID: $0) } ?? AVCaptureDevice.default(for: .audio)
         guard let device = device, let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
             FileHandle.standardError.write("no microphone found\n".data(using: .utf8)!)
@@ -149,6 +158,11 @@ let tap = Tap()
 switch mode {
 case "devices":
     listDevices()
+case "status":
+    // 0 not asked yet, 1 restricted, 2 refused, 3 allowed
+    let mic = AVCaptureDevice.authorizationStatus(for: .audio).rawValue
+    print("{\"microphone\": \(mic), \"screen\": \(CGPreflightScreenCaptureAccess())}")
+    exit(0)
 case "mic":
     micTap.start(id: args.count > 2 ? args[2] : nil)
 default:

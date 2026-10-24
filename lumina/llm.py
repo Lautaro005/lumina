@@ -243,13 +243,18 @@ def ready() -> tuple[bool, str]:
 
 
 def stream(messages: list[dict[str, str]], temperature: float | None = None, max_tokens: int = 1500,
-           json_mode: bool = False, provider: str | None = None) -> Iterator[str]:
+           json_mode: bool = False, provider: str | None = None,
+           cancel: threading.Event | None = None) -> Iterator[str]:
+    """Streams the answer. Setting `cancel` stops it at the next piece and closes the connection, which also
+    stops the model server from generating."""
     base, model, headers = provider_config(provider)
     builtin.used = time.time()
     body: dict[str, Any] = {
         "model": model, "messages": messages, "stream": True, "max_tokens": max_tokens,
         "temperature": settings.get("temperature") if temperature is None else temperature,
     }
+    if (provider or effective_provider()) == "builtin":
+        body["cache_prompt"] = True  # llama.cpp reuses the part of the prompt that did not change
     if json_mode:
         body["response_format"] = {"type": "json_object"}
     try:
@@ -259,11 +264,13 @@ def stream(messages: list[dict[str, str]], temperature: float | None = None, max
                 r.read()
                 if json_mode and r.status_code in (400, 422):
                     # some servers do not support response_format; retry without it
-                    yield from stream(messages, temperature, max_tokens, False, provider)
+                    yield from stream(messages, temperature, max_tokens, False, provider, cancel)
                     return
                 raise LLMError(f"model server answered {r.status_code}: {r.text[:300]}")
             in_think = False
             for line in r.iter_lines():
+                if cancel is not None and cancel.is_set():
+                    return
                 if not line.startswith("data:"):
                     continue
                 data = line[5:].strip()
@@ -311,6 +318,9 @@ def complete_json(messages: list[dict[str, str]], **kw: Any) -> Any:
             opts["max_tokens"] = int(kw.get("max_tokens", 1500) * (1 + attempt))
         opts.setdefault("json_mode", True)
         last = complete(messages, **opts)
+        cancel = kw.get("cancel")
+        if cancel is not None and cancel.is_set():
+            raise LLMError("cancelled")
         try:
             return parse_json(last)
         except LLMError:

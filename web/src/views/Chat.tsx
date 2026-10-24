@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, BookOpen, Check, Copy, FileText, Globe, Plus, StickyNote, Trash2, Volume2 } from "lucide-react";
+import { ArrowUp, BookOpen, Check, Copy, FileText, Globe, Pencil, Plus, RotateCw, Square, StickyNote, Volume2 } from "lucide-react";
 import { api, sendChat, type ChatT, type Message } from "../api";
-import { Markdown, guessLang, speak } from "../components";
+import { ConfirmDialog, ContextMenu, Markdown, RenameInput, guessLang, speak } from "../components";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 
@@ -73,6 +73,12 @@ export default function Chat({ chatId }: { chatId?: string }) {
   const [draft, setDraft] = useState("");
   const [web, setWeb] = useState<boolean>(!!status.settings.web_search);
   const [live, setLive] = useState<Live>(null);
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [renaming, setRenaming] = useState("");
+  const [deleting, setDeleting] = useState<ChatT | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const abort = useRef<AbortController | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
@@ -90,7 +96,7 @@ export default function Chat({ chatId }: { chatId?: string }) {
     if (el) { el.style.height = "0px"; el.style.height = `${Math.min(180, el.scrollHeight)}px`; }
   }, [draft]);
 
-  const send = async (text = draft) => {
+  const send = async (text = draft, replace = false) => {
     const q = text.trim();
     if (!q || live) return;
     let id = chatId;
@@ -100,29 +106,56 @@ export default function Chat({ chatId }: { chatId?: string }) {
       go(`/chat/${id}`);
     }
     setDraft("");
-    setMessages((m) => [...m, { id: `tmp-${Date.now()}`, role: "user", content: q, sources: [], created: Date.now() / 1000 }]);
+    setEditing(null);
+    setMessages((m) => {
+      let base = m;
+      if (replace) {  // the last question and its answer are replaced
+        base = m.slice();
+        while (base.length && base[base.length - 1].role === "assistant") base.pop();
+        if (base.length && base[base.length - 1].role === "user") base.pop();
+      }
+      return [...base, { id: `tmp-${Date.now()}`, role: "user", content: q, sources: [], created: Date.now() / 1000 }];
+    });
     setLive({ text: "", sources: [], status: "searching" });
+    const ctl = new AbortController();
+    abort.current = ctl;
     try {
       await sendChat(id!, q, web, (ev) => {
         if (ev.type === "sources") setLive((l) => (l ? { ...l, sources: ev.sources, status: "writing" } : l));
         else if (ev.type === "delta") setLive((l) => (l ? { ...l, text: l.text + ev.text } : l));
         else if (ev.type === "error") toast(ev.text, "error");
         else if (ev.type === "done") setMessages((m) => [...m, ev.message]);
-      });
+      }, { signal: ctl.signal, replace });
     } catch (e) {
-      toast((e as Error).message, "error");
+      if ((e as Error).name === "AbortError") {
+        // stopped by the user: the server kept what was written so far
+        await new Promise((r) => setTimeout(r, 250));
+        api.chat(id!).then((c) => setMessages(c.messages)).catch(() => {});
+      } else {
+        toast((e as Error).message, "error");
+      }
     } finally {
+      abort.current = null;
       setLive(null);
       loadChats();
     }
   };
+  const stop = () => abort.current?.abort();
 
   const remove = async (id: string) => {
     await api.deleteChat(id);
     if (id === chatId) go("/chat");
+    setDeleting(null);
+    loadChats();
+  };
+  const rename = async (id: string, title: string) => {
+    setRenaming("");
+    setChats((cs) => cs.map((c) => (c.id === id ? { ...c, title } : c)));
+    await api.renameChat(id, title).catch((e) => toast((e as Error).message, "error"));
     loadChats();
   };
 
+  const lastUser = messages.map((m) => m.role).lastIndexOf("user");
   const kokoro = status.settings.tts_engine === "kokoro" && status.tts_ready;
   const empty = messages.length === 0 && !live;
 
@@ -136,7 +169,14 @@ export default function Chat({ chatId }: { chatId?: string }) {
           <button type="button" className="web-toggle" aria-pressed={web} title={t("chat.webHint")} onClick={() => setWeb(!web)}>
             <Globe size={15} /> {t("chat.web")}
           </button>
-          <button type="submit" className="send" aria-label={t("chat.send")} disabled={!draft.trim() || !!live}><ArrowUp size={18} /></button>
+          <span className="send-wrap">
+            {live && (
+              <button type="button" className="stop" onClick={stop} aria-label={t("chat.stop")} title={t("chat.stop")}>
+                <Square size={13} fill="currentColor" />
+              </button>
+            )}
+            <button type="submit" className="send" aria-label={t("chat.send")} disabled={!draft.trim() || !!live}><ArrowUp size={18} /></button>
+          </span>
         </div>
       </div>
     </form>
@@ -144,14 +184,25 @@ export default function Chat({ chatId }: { chatId?: string }) {
 
   return (
     <div className="chat">
+      {menu && (
+        <ContextMenu at={menu} onClose={() => setMenu(null)}
+          onRename={() => setRenaming(menu.id)} onDelete={() => setDeleting(chats.find((c) => c.id === menu.id) ?? null)} />
+      )}
+      {deleting && (
+        <ConfirmDialog title={t("chat.deleteTitle")} body={`“${deleting.title || t("chat.new")}” — ${t("chat.deleteBody")}`}
+          confirm={t("common.delete")} cancel={t("common.cancel")} onConfirm={() => remove(deleting.id)} onCancel={() => setDeleting(null)} />
+      )}
       <nav className="chat-list" aria-label={t("chat.history")}>
         <button className="chat-new" onClick={() => go("/chat")}><Plus size={16} /> {t("chat.new")}</button>
         {chats.length === 0 && <p className="hint" style={{ padding: "8px 10px" }}>{t("chat.noChats")}</p>}
         {chats.map((c) => (
           <div key={c.id} className="chat-item" role="button" tabIndex={0} aria-current={c.id === chatId}
-            onClick={() => go(`/chat/${c.id}`)} onKeyDown={(e) => e.key === "Enter" && go(`/chat/${c.id}`)}>
-            <span>{c.title || t("chat.new")}</span>
-            <button className="btn sm ghost icon del" aria-label={t("common.delete")} onClick={(e) => { e.stopPropagation(); remove(c.id); }}><Trash2 size={14} /></button>
+            onClick={() => renaming !== c.id && go(`/chat/${c.id}`)}
+            onKeyDown={(e) => e.key === "Enter" && renaming !== c.id && go(`/chat/${c.id}`)}
+            onContextMenu={(e) => { e.preventDefault(); setMenu({ id: c.id, x: e.clientX, y: e.clientY }); }}>
+            {renaming === c.id
+              ? <RenameInput value={c.title} label={t("common.rename")} onSave={(v) => rename(c.id, v)} onCancel={() => setRenaming("")} />
+              : <span>{c.title || t("chat.new")}</span>}
           </div>
         ))}
       </nav>
@@ -172,8 +223,27 @@ export default function Chat({ chatId }: { chatId?: string }) {
           <>
             <div className="convo-scroll" ref={scroller}>
               <div className="convo-inner">
-                {messages.map((m) => m.role === "user" ? (
-                  <div key={m.id} className="q">{m.content}</div>
+                {messages.map((m, idx) => m.role === "user" ? (
+                  editing === m.id ? (
+                    <form key={m.id} className="q-edit" onSubmit={(e) => { e.preventDefault(); send(editDraft, true); }}>
+                      <textarea value={editDraft} autoFocus rows={3} aria-label={t("chat.edit")} onChange={(e) => setEditDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Escape") setEditing(null); }} />
+                      <div className="actions">
+                        <button type="button" className="btn sm ghost" onClick={() => setEditing(null)}>{t("common.cancel")}</button>
+                        <button type="submit" className="btn sm primary" disabled={!editDraft.trim()}>{t("chat.saveEdit")}</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div key={m.id} className="q-wrap">
+                      <div className="q">{m.content}</div>
+                      {!live && lastUser === idx && (
+                        <div className="q-tools">
+                          <button type="button" className="tool" onClick={() => send(m.content, true)} aria-label={t("chat.regenerate")} title={t("chat.regenerate")}><RotateCw size={15} /></button>
+                          <button type="button" className="tool" onClick={() => { setEditDraft(m.content); setEditing(m.id); }} aria-label={t("chat.edit")} title={t("chat.edit")}><Pencil size={15} /></button>
+                        </div>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <article key={m.id} className="a">
                     <div className="a-body"><Markdown text={m.content} cites /></div>

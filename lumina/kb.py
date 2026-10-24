@@ -282,6 +282,8 @@ class KnowledgeBase:
         """Removes every meeting (transcripts, notes, assistance cards) and its passages."""
         with self._wlock:
             n = len(db.q("SELECT id FROM meetings"))
+            for r in db.q("SELECT audio FROM meetings WHERE audio!=''"):
+                Path(r["audio"]).unlink(missing_ok=True)
             db.x("DELETE FROM meetings")
             self.reset_collection("meetings")
         self._emit({"type": "meeting_indexed", "id": "*", "chunks": 0})
@@ -293,6 +295,7 @@ class KnowledgeBase:
         """Imported recordings stay in the uploads folder after they were transcribed; delete the ones that no
         source points at (and that are not being worked on right now)."""
         used = {r["path"] for r in db.q("SELECT path FROM sources WHERE path!=''")}
+        used |= {r["audio"] for r in db.q("SELECT audio FROM meetings WHERE audio!=''")}  # kept to transcribe again
         n = 0
         for p in UPLOADS.glob("*"):
             try:

@@ -99,7 +99,15 @@ def doctor() -> int:
     if not inputs:
         ok = False
     if info["os"] == "Darwin":
-        print("System audio helper:", "ready" if build_helper() else "unavailable (xcode-select --install)")
+        helper = build_helper()
+        print("System audio helper:", "ready" if helper else "unavailable (xcode-select --install; see logs/audiotap-build.log)")
+        if helper:
+            from .audio import permissions
+
+            p = permissions() or {}
+            names = {0: "not asked yet", 1: "restricted", 2: "refused", 3: "allowed"}
+            print(f"  Microphone permission: {names.get(p.get('microphone'), 'unknown')}")
+            print(f"  Screen & System Audio Recording permission: {'allowed' if p.get('screen') else 'not allowed (yet)'}")
     d = detect()
     print(f"\nGenerators: built-in {'ready' if d['builtin'] else 'not downloaded'} · "
           f"Ollama {'running' if d['ollama'] else 'off'} · LM Studio {'running' if d['lmstudio'] else 'off'}")

@@ -299,11 +299,22 @@ def public(s: dict) -> dict:
     return {k: v for k, v in s.items() if k not in ("text", "limit")} | {"snippet": s["text"][:280]}
 
 
-def answer(chat_id: str, question: str, web: bool | None = None) -> Iterator[dict]:
+def drop_last_turn(chat_id: str) -> None:
+    """Removes the last question and the answers after it (to ask again or to edit the question)."""
+    rows = db.q("SELECT id, role FROM messages WHERE chat_id=? ORDER BY created", [chat_id])
+    while rows and rows[-1]["role"] == "assistant":
+        db.x("DELETE FROM messages WHERE id=?", [rows.pop()["id"]])
+    if rows and rows[-1]["role"] == "user":
+        db.x("DELETE FROM messages WHERE id=?", [rows.pop()["id"]])
+
+
+def answer(chat_id: str, question: str, web: bool | None = None, replace_last: bool = False) -> Iterator[dict]:
     web = settings.get("web_search") if web is None else web
     chat = db.one("SELECT * FROM chats WHERE id=?", [chat_id])
     if not chat:
         raise KeyError(chat_id)
+    if replace_last:
+        drop_last_turn(chat_id)
     history = db.q("SELECT role, content FROM messages WHERE chat_id=? ORDER BY created", [chat_id])[-HISTORY_TURNS:]
     db.add_message(chat_id, "user", question)
     if not chat["title"]:
@@ -321,6 +332,11 @@ def answer(chat_id: str, question: str, web: bool | None = None) -> Iterator[dic
     except llm.LLMError as e:
         yield {"type": "error", "text": str(e)}
         return
+    except GeneratorExit:  # the user pressed Stop: keep what was written so far
+        partial = clean_answer("".join(full), len(sources))
+        if partial:
+            db.add_message(chat_id, "assistant", partial, [])
+        raise
     text = clean_answer("".join(full), len(sources))
     used = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text)})
     kept = [public(sources[n - 1]) | {"n": n} for n in used]

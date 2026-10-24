@@ -60,7 +60,7 @@ export type UpdateInfo = {
 export type Meeting = {
   id: string; title: string; created: number; started: number | null; ended: number | null;
   status: "draft" | "live" | "done"; language: string; tags: string[]; cues: string;
-  enhanced: Block[]; summary: Summary; duration: number; indexed?: number | null;
+  enhanced: Block[]; summary: Summary; duration: number; indexed?: number | null; audio?: string;
   segments?: Segment[]; assists?: Assist[];
 };
 
@@ -154,16 +154,21 @@ export const api = {
   newChat: (meeting_id?: string) => req<ChatT>("POST", "/api/chats", meeting_id ? { meeting_id } : {}),
   chat: (id: string) => req<ChatT & { messages: Message[] }>("GET", `/api/chats/${id}`),
   deleteChat: (id: string) => req("DELETE", `/api/chats/${id}`),
+  renameChat: (id: string, title: string) => req<ChatT>("PATCH", `/api/chats/${id}`, { title }),
+  retranscribe: (id: string) => req("POST", `/api/meetings/${id}/retranscribe`),
   agents: () => req<{ stdio: { command: string; args: string[] }; http: { url: string; token: string }; data: string }>("GET", "/api/agents"),
   voices: () => req<Record<string, string[]>>("GET", "/api/tts/voices"),
 };
 
 /** POST a chat message and read the server-sent events it streams back. */
-export async function sendChat(chatId: string, text: string, web: boolean, onEvent: (ev: any) => void) {
+/** Sends a question and streams the answer. `signal` stops it; `replace` replaces the last question and its answer. */
+export async function sendChat(chatId: string, text: string, web: boolean, onEvent: (ev: any) => void,
+  opts: { signal?: AbortSignal; replace?: boolean } = {}) {
   const r = await fetch(`/api/chats/${chatId}/messages`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, web }),
+    body: JSON.stringify({ text, web, replace_last: !!opts.replace }),
+    signal: opts.signal,
   });
   if (!r.ok || !r.body) throw new Error(await r.text());
   const reader = r.body.getReader();

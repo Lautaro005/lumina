@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import platform
 import shutil
@@ -181,6 +182,10 @@ def build_helper() -> Path | None:
         return None
     if r.returncode != 0:
         log.warning("audio helper build failed: %s", r.stderr[-2000:])
+        try:
+            (LOGS / "audiotap-build.log").write_text(r.stderr)
+        except OSError:
+            pass
         return None
     subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", "--identifier", "app.lumina.audiotap",
                     str(HELPER)], capture_output=True)
@@ -189,6 +194,18 @@ def build_helper() -> Path | None:
     except OSError:
         pass
     return HELPER
+
+
+def permissions() -> dict | None:
+    """The macOS microphone and screen-recording permissions as the helper sees them (None elsewhere)."""
+    helper = build_helper()
+    if not helper:
+        return None
+    try:
+        out = subprocess.run([str(helper), "status"], capture_output=True, text=True, timeout=10).stdout
+        return json.loads(out)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
 
 
 class SystemAudio:

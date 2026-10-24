@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina security policy">
 <meta property="og:description" content="How to report a vulnerability in Lumina privately, what is in scope and how Lumina protects your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.4">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.5">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -52,7 +52,7 @@ handled privately.</p>
 </tr>
 </thead>
 <tbody><tr>
-<td><code>0.1.x</code> (latest: <code>0.1.4</code>)</td>
+<td><code>0.1.x</code> (latest: <code>0.1.5</code>)</td>
 <td>✅</td>
 </tr>
 <tr>
@@ -105,6 +105,7 @@ commands.</li>
 <li><strong>Deleting data.</strong> Settings → Delete data removes chats, sources, meetings and their passages from the database, the vector index and <code>uploads/</code>, behind the same host and origin checks as the rest of the API. Your own files are never touched.</li>
 <li><strong>Updating from the app.</strong> <code>POST /api/update</code> runs <code>lumina update</code> (the same <code>git pull</code>, <code>uv sync</code> and release download as the terminal command) in a detached script and restarts Lumina. It takes no input, so a web page cannot choose what runs, and it is behind the same host and origin checks.</li>
 <li><strong>macOS permissions.</strong> The microphone and the computer's audio go through one helper, <code>lumina-audiotap</code>, compiled on your Mac from <code>lumina/native/audiotap.swift</code>, signed with a fixed identifier and rebuilt only when its source changes.</li>
+<li><strong>Imported recordings</strong> are kept in <code>uploads/</code> so they can be transcribed again, until you delete the meeting; <code>GET /api/meetings/{id}/audio</code> serves only that file, behind the same host and origin checks.</li>
 <li><strong>PDF reading.</strong> PDFs are read with PDFium (<code>pypdfium2</code>, native code); a malformed PDF falls back to the pure Python reader.</li>
 </ul>
 <h2 id="scope">Scope</h2>
@@ -138,7 +139,7 @@ repository and its GitHub releases</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.4 · Free to use, not to sell</span>
+    <span>Lumina 0.1.5 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -146,6 +147,6 @@ repository and its GitHub releases</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.4" defer></script>
+<script src="../assets/site.js?v=0.1.5" defer></script>
 </body>
 </html>

@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.1.4" src="https://img.shields.io/badge/version-0.1.4-20242c">
+  <img alt="Version 0.1.5" src="https://img.shields.io/badge/version-0.1.5-20242c">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -48,9 +48,9 @@ plus the notes model). After that it works offline.
 | | |
 |---|---|
 | 🎙️ **Listens** | Records your microphone (**You**) and your computer's audio (**Others**: Zoom, Meet, Teams…) and transcribes both live, on the CPU. |
-| ✍️ **Writes your notes** | You type short cues while you listen. Lumina writes the full note for each one and adds the points you missed. Three views: side by side, Cornell rows, or one at a time. |
+| ✍️ **Writes your notes** | You type short cues while you listen. Lumina writes the full note for each one, automatically while the meeting runs. Three views: side by side, Cornell rows, or one at a time. |
 | 🔄 **Updates itself** | Lumina looks for new versions and updates from a button inside the app (Settings → About), keeping your data. |
-| 📋 **Sums it up** | When the meeting ends you get an overview, decisions, action items and open questions, and an automatic title. |
+| 📋 **Sums it up** | When the meeting ends you get an overview, decisions, action items and open questions, and an automatic title; regenerate it any time. Imported recordings get a page with the player, summary and transcript. |
 | 💡 **Helps live** | When someone asks a question your documents can answer, a short answer with its source appears beside your notes. |
 | 📚 **Knows your files** | Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, or whole folders it keeps up to date. A progress bar shows the indexing, a folder opens like a dropdown to list its files, and your finished meetings are listed there too. |
 | 💬 **Answers questions** | Ask "what did we decide about pricing?" across every meeting and file. Every answer cites its sources. Web search is optional and off by default. |

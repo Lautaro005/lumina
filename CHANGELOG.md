@@ -3,6 +3,35 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.5] - 2026-10-24
+
+### Added
+- **Regenerate summary.** A finished meeting has a **Regenerate summary** button in its Summary (and **Write the summary**
+  when there is none). `POST /api/meetings/{id}/summarize` now writes only the summary and the title.
+- **Imported recordings have their own page.** The recording is kept; the page shows the player, the summary and the
+  transcript (searchable, copyable), with **Transcribe again** (`POST /api/meetings/{id}/retranscribe`,
+  `GET /api/meetings/{id}/audio`). No notes columns: an imported recording has nothing to enhance.
+- **Stop in the chat.** While Lumina writes an answer, a Stop button sits above Send; the part already written is kept.
+- **Edit and ask again.** Under your last question: **Answer again** and **Edit question**.
+- **Right-click on chats and meetings** opens a floating menu with **Rename** and **Delete** (chat history and the
+  meetings list). `PATCH /api/chats/{id}`.
+
+### Changed
+- **Enhanced notes are only your notes, automatically.** Lumina expands what you wrote as the meeting goes (no Enhance
+  button), and no longer adds notes of its own, so the "Lumina ·" label is gone.
+- **Faster enhancing.** The transcript goes first and only grows, so the built-in model reuses what it already read
+  (`cache_prompt`); only your cues are answered, in about a third of the tokens; it runs every 12 seconds when something
+  changed; with no notes written it does not call the model at all.
+- **Ending a meeting does not enhance.** Ending cancels any enhancing in progress (the model stops generating) and goes
+  straight to the summary. Enhanced notes and summary are separate: **Enhance my notes again** is in the ⋯ menu.
+- **No scrollbar in the chat list.**
+
+### Fixed
+- **macOS permission windows** (best effort, see the notes below): the desktop app is now signed ad hoc as a whole
+  (`install.sh` and the bundle), because macOS only remembers permissions of a validly signed app; the microphone
+  window is answered off the helper's main thread. `lumina doctor` prints the helper's build errors and the two
+  permissions as macOS reports them.
+
 ## [0.1.4] - 2026-10-24
 
 ### Added

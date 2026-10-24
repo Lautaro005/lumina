@@ -136,6 +136,8 @@ install_release_app() {
     tar -xzf "$TMP/app" -C "$TMP" && [ -d "$TMP/Lumina.app" ] || { warn "Unexpected archive."; rm -rf "$TMP"; return 0; }
     mkdir -p "$HOME/Applications"; rm -rf "$HOME/Applications/Lumina.app"; mv "$TMP/Lumina.app" "$HOME/Applications/Lumina.app"
     xattr -dr com.apple.quarantine "$HOME/Applications/Lumina.app" 2>/dev/null || true
+    # a complete, valid signature: macOS remembers the microphone and recording permissions of a signed app
+    codesign --force --deep --sign - "$HOME/Applications/Lumina.app" >/dev/null 2>&1 || true
   else
     install_linux_app "$TMP/app"
   fi
@@ -170,6 +172,7 @@ build_app() {
   OUT="$DIR/apps/desktop/src-tauri/target/release/bundle"
   if [ "$OS" = Darwin ]; then
     mkdir -p "$HOME/Applications"; rm -rf "$HOME/Applications/Lumina.app"; cp -R "$OUT/macos/Lumina.app" "$HOME/Applications/Lumina.app"
+    codesign --force --deep --sign - "$HOME/Applications/Lumina.app" >/dev/null 2>&1 || true
   else
     install_linux_app "$(ls "$OUT"/appimage/*.AppImage | head -n1)"
   fi

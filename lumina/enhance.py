@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from typing import Any
 
 from . import llm
@@ -20,15 +21,6 @@ def cue_lines(cues: str) -> list[str]:
     return out
 
 
-def _norm(t: str) -> str:
-    return re.sub(r"[\W_]+", " ", t.lower()).strip()
-
-
-def _overlap(a: str, b: str) -> float:
-    wa, wb = set(_norm(a).split()), set(_norm(b).split())
-    return len(wa & wb) / max(1, min(len(wa), len(wb)))
-
-
 def _clip(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
@@ -37,43 +29,43 @@ def _clip(text: str, limit: int) -> str:
     return head + "\n[…]\n" + tail
 
 
-def enhance(cues: str, transcript: str, title: str = "", final: bool = False) -> list[dict[str, Any]]:
-    """Expand each cue into notes, row-aligned with the cue. Returns [{cue, text, auto}]."""
+def _tail(text: str, limit: int, step: int = 4000) -> str:
+    """The end of a transcript. The start moves in big jumps, so the beginning of the prompt stays the same
+    between runs and the model server can reuse what it already read."""
+    if len(text) <= limit:
+        return text
+    cut = ((len(text) - limit) // step + 1) * step
+    nl = text.find("\n", cut)
+    return text[(nl + 1 if nl != -1 else cut):]
+
+
+def enhance(cues: str, transcript: str, title: str = "", cancel: threading.Event | None = None) -> list[dict[str, Any]]:
+    """Expands each of the user's cues into a note, row-aligned with the cue. Returns [{cue, text, auto}].
+
+    Only what the user wrote is enhanced: Lumina does not add notes of its own (that is the summary's job)."""
     lines = cue_lines(cues)
-    transcript = _clip(transcript, 42000 if final else 24000)
-    if not transcript.strip() and not lines:
-        return []
-    numbered = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(lines)) or "(no notes yet)"
+    if not lines or not transcript.strip():
+        return [{"cue": c, "text": "", "auto": False} for c in lines]
+    numbered = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(lines))
     system = (
-        "You are Lumina, a meeting note-taker. The user writes short cues while listening. For each cue, write "
-        "the enhanced note it stands for, using only facts from the transcript: who said what, numbers, dates, "
-        "decisions and open questions. Use short markdown bullets (2-5 per cue), no headings, no preamble. "
-        "If the transcript says nothing about a cue, return an empty text for it. Then add up to 4 extra "
-        "blocks for important points that none of the user's cues cover (never repeat a cue), each with a 2-5 word cue. "
-        + LANG_RULE + ' Answer with JSON only: {"blocks":[{"n":1,"text":"- ..."}],"extra":[{"cue":"...","text":"- ..."}]}'
+        "You are Lumina, a meeting note-taker. The user types short cues (shorthand) while listening. For each cue, "
+        "write the note it stands for, using only facts from the transcript: who said what, numbers, dates, "
+        "decisions. Keep each note to 1-3 short markdown bullets, no headings, no preamble. If the transcript has "
+        "not said anything about a cue yet, give an empty text for it. Never add notes for things the user did not "
+        "write. " + LANG_RULE + ' Answer with JSON only: {"blocks":[{"n":1,"text":"- ..."}]}'
     )
-    user = f"Meeting: {title or 'untitled'}\n\nUser's cues:\n{numbered}\n\nTranscript:\n{transcript or '(empty)'}"
+    # the transcript comes first and only grows, the cues come last: the prompt prefix is reused between runs
+    user = (f"Meeting: {title or 'untitled'}\n\nTranscript:\n{_tail(transcript, 24000)}\n\n"
+            f"User's cues:\n{numbered}")
     data = llm.complete_json([{"role": "system", "content": system}, {"role": "user", "content": user}],
-                             temperature=0.2, max_tokens=2500)
+                             temperature=0.2, max_tokens=300 + 140 * len(lines), cancel=cancel)
     by_n: dict[int, str] = {}
     for b in data.get("blocks", []) if isinstance(data, dict) else []:
         try:
             by_n[int(b.get("n"))] = str(b.get("text", "")).strip()
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, AttributeError):
             continue
-    out = [{"cue": c, "text": by_n.get(i + 1, ""), "auto": False} for i, c in enumerate(lines)]
-    seen_cues = {_norm(c) for c in lines}
-    seen_text = {_norm(b["text"]) for b in out if b["text"]}
-    for b in data.get("extra", []) if isinstance(data, dict) else []:
-        cue, text = str(b.get("cue", "")).strip(), str(b.get("text", "")).strip()
-        if not cue or not text or _norm(cue) in seen_cues or _norm(text) in seen_text:
-            continue
-        if any(_overlap(text, t) > 0.6 for t in seen_text):
-            continue
-        seen_cues.add(_norm(cue))
-        seen_text.add(_norm(text))
-        out.append({"cue": cue, "text": text, "auto": True})
-    return out
+    return [{"cue": c, "text": by_n.get(i + 1, ""), "auto": False} for i, c in enumerate(lines)]
 
 
 def summarize(cues: str, transcript: str, title: str = "") -> dict[str, Any]:

@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS meetings (
   enhanced TEXT NOT NULL DEFAULT '[]',       -- [{cue, text}] aligned to cues
   summary TEXT NOT NULL DEFAULT '{}',        -- {overview, decisions[], action_items[], topics[]}
   duration REAL NOT NULL DEFAULT 0,
-  indexed REAL
+  indexed REAL,
+  audio TEXT NOT NULL DEFAULT ''             -- an imported recording (kept so it can be transcribed again)
 );
 CREATE TABLE IF NOT EXISTS segments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,6 +102,9 @@ class DB:
             cols = {r[1] for r in c.execute("PRAGMA table_info(sources)")}
             if "hash" not in cols:  # databases from before 0.1.3
                 c.execute("ALTER TABLE sources ADD COLUMN hash TEXT NOT NULL DEFAULT ''")
+            mcols = {r[1] for r in c.execute("PRAGMA table_info(meetings)")}
+            if "audio" not in mcols:  # databases from before 0.1.5: the imported recording, kept to transcribe again
+                c.execute("ALTER TABLE meetings ADD COLUMN audio TEXT NOT NULL DEFAULT ''")
 
     def conn(self) -> sqlite3.Connection:
         c = getattr(self._local, "c", None)
@@ -156,7 +160,7 @@ class DB:
         return self.one("SELECT * FROM meetings WHERE id=?", [mid])
 
     def meetings(self, q: str = "", tag: str = "", since: float = 0, until: float = 0) -> list[dict]:
-        sql = "SELECT id,title,created,started,ended,status,language,tags,duration,summary,indexed FROM meetings WHERE 1=1"
+        sql = "SELECT id,title,created,started,ended,status,language,tags,duration,summary,indexed,audio FROM meetings WHERE 1=1"
         args: list[Any] = []
         if q:
             sql += " AND (title LIKE ? OR cues LIKE ? OR id IN (SELECT meeting_id FROM segments WHERE text LIKE ?))"

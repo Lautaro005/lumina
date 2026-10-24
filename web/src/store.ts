@@ -21,6 +21,7 @@ type State = {
   online: boolean;
   route: string;
   live: Live;
+  summarizing: string; // id of the meeting whose summary is being written
   meeting: Meeting | null;
   toasts: Toast[];
   refresh: () => Promise<void>;
@@ -44,6 +45,7 @@ export const useStore = create<State>((set, get) => ({
   online: false,
   route: location.hash.slice(1) || "/meetings",
   live: initialLive,
+  summarizing: "",
   meeting: null,
   toasts: [],
 
@@ -109,8 +111,11 @@ export const useStore = create<State>((set, get) => ({
             model: ev.model || live.model, elapsed: ev.offset ?? live.elapsed });
         } else if (ev.state === "processing" || ev.state === "importing") {
           Object.assign(live, { meetingId: ev.meeting_id, state: ev.state, partial: {}, levels: { you: 0, others: 0 } });
+          // a recording being transcribed again starts from an empty transcript
+          if (ev.state === "importing" && mine(ev.meeting_id) && s.meeting) set({ meeting: { ...s.meeting, segments: [] } });
         } else if (ev.state === "done") {
           Object.assign(live, initialLive);
+          set({ summarizing: "" });
           if (mine(ev.meeting_id)) api.meeting(ev.meeting_id).then((m) => get().setMeeting(m));
         }
         set({ live });
@@ -141,7 +146,11 @@ export const useStore = create<State>((set, get) => ({
         set({ live: { ...s.live, enhancing: false } });
         if (mine(ev.meeting_id) && s.meeting) set({ meeting: { ...s.meeting, enhanced: ev.blocks as Block[] } });
         break;
+      case "summarizing":
+        set({ summarizing: ev.meeting_id });
+        break;
       case "summary":
+        set({ summarizing: "" });
         if (mine(ev.meeting_id) && s.meeting)
           set({ meeting: { ...s.meeting, summary: ev.summary, title: ev.title || s.meeting.title } });
         break;

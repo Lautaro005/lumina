@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  Download, FileAudio, Highlighter, ListChecks, Loader2, MessageSquareText, MoreHorizontal, Pause, Play,
-  ScrollText, Search, Sparkles, Square, Trash2, Volume2, X,
+  Download, FileAudio, Highlighter, Loader2, MessageSquareText, MoreHorizontal, Pause, Play,
+  RotateCw, ScrollText, Search, Sparkles, Square, Trash2, Volume2, X,
 } from "lucide-react";
 import { api, fmtClock, type Block, type Meeting as M, type Segment } from "../api";
 import { CopyButton, Markdown, Meter, Popover, guessLang, speak, stopSpeaking } from "../components";
@@ -147,6 +147,8 @@ export default function MeetingView({ id }: { id: string }) {
   const isMine = live.meetingId === id;
   const recording = isMine && live.state === "recording";
   const paused = isMine && live.state === "paused";
+  // a recording that was imported has a transcript and a summary, not notes of its own
+  const imported = !!m && (m.tags.includes("imported") || !!m.audio);
   const processing = isMine && (live.state === "processing" || live.state === "importing");
   const otherLive = !!live.meetingId && !isMine && (live.state === "recording" || live.state === "paused");
 
@@ -184,6 +186,11 @@ export default function MeetingView({ id }: { id: string }) {
   };
   const pause = () => api.pause(id, true);
   const enhanceNow = () => api.enhance(id).catch((e) => toast(e.message, "error"));
+  const summarize = () => api.summarize(id).catch((e) => toast(e.message, "error"));
+  const retranscribe = async () => {
+    setBusy(true);
+    try { await api.retranscribe(id); } catch (e) { toast((e as Error).message, "error"); } finally { setBusy(false); }
+  };
   // window.confirm does not open in the desktop webview, so the confirmation lives in the menu
   const [confirmDel, setConfirmDel] = useState(false);
   const del = async () => {
@@ -242,16 +249,16 @@ export default function MeetingView({ id }: { id: string }) {
                   </>
                 ) : processing ? (
                   <span className="chip blue"><Loader2 size={14} className="spin" /> {live.state === "importing" ? t("meeting.importing") : t("meeting.processing")}</span>
+                ) : imported ? (
+                  <button className="btn" onClick={retranscribe} disabled={busy || !m.audio || !sttReady}>
+                    <RotateCw size={16} /> {t("meeting.retranscribe")}
+                  </button>
                 ) : (
                   <button className="btn record" onClick={start} disabled={busy || !sttReady || otherLive}>
                     {busy ? <Loader2 size={16} className="spin" /> : <span className="dot" style={{ background: "#fff" }} />}
                     {m.status === "done" ? t("meeting.resume") : t("meeting.start")}
                   </button>
                 )}
-                <button className="btn" onClick={enhanceNow} disabled={live.enhancing || !status.llm_ready || !segments.length}>
-                  {live.enhancing ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
-                  {live.enhancing ? t("meeting.enhancing") : t("meeting.enhance")}
-                </button>
                 <div style={{ position: "relative" }}>
                   <button className="btn icon" aria-label={t("meeting.export")} aria-haspopup="menu" onClick={() => setMenu(menu === "export" ? "" : "export")}>
                     <Download size={17} />
@@ -272,8 +279,8 @@ export default function MeetingView({ id }: { id: string }) {
                     <button role="menuitem" onClick={() => { setMenu(""); chatAbout(); }}><MessageSquareText size={16} /> {t("meeting.chat")}</button>
                     <button role="menuitem" onClick={() => { setMenu(""); setDrawer(true); }}><Search size={16} /> {t("meeting.findTranscript")}</button>
                     <button role="menuitem" onClick={() => { setMenu(""); readNotes(); }}><Volume2 size={16} /> {t("common.readAloud")}</button>
-                    {m.status === "done" && (
-                      <button role="menuitem" onClick={() => { setMenu(""); api.summarize(id); }}><ListChecks size={16} /> {t("meeting.summary")}</button>
+                    {m.status === "done" && !imported && m.cues.trim() && (
+                      <button role="menuitem" disabled={!status.llm_ready} onClick={() => { setMenu(""); enhanceNow(); }}><Sparkles size={16} /> {t("meeting.enhanceAgain")}</button>
                     )}
                     <hr />
                     {confirmDel ? (
@@ -342,7 +349,10 @@ export default function MeetingView({ id }: { id: string }) {
             )}
           </header>
 
-          {view === "rows" ? (
+          {imported ? (
+            <ImportedBody m={m} segments={segments}
+              summary={<Summary m={m} canWrite={m.status === "done" && segments.length > 0 && !processing} onWrite={summarize} />} />
+          ) : view === "rows" ? (
             <div className={`cornell ${recording ? "live" : paused ? "paused" : ""}`}>
               {(recording || paused) && (
                 <span className="margin-clock" aria-live="off"><i className="dot" />{recording ? t("meeting.listening") : t("meeting.paused")} {fmtClock(elapsed)}</span>
@@ -381,7 +391,7 @@ export default function MeetingView({ id }: { id: string }) {
               {cues.length <= 1 && <div className="cue-hint">{t("meeting.cueHint")}</div>}
               {autoBlocks.map((b, i) => (
                 <div className="row" key={`auto-${i}`}>
-                  <div className="cue auto"><small>{t("meeting.lumina")}</small>{b.cue}</div>
+                  <div className="cue auto">{b.cue}</div>
                   <div key={b.changed} className={`body ${b.changed && Date.now() / 1000 - b.changed < 30 ? "fresh" : ""}`}><Markdown text={b.text} /></div>
                 </div>
               ))}
@@ -393,13 +403,13 @@ export default function MeetingView({ id }: { id: string }) {
             />
           )}
 
-          <Summary m={m} />
+          {!imported && <Summary m={m} canWrite={m.status === "done" && segments.length > 0 && !processing} onWrite={summarize} />}
         </article>
 
         {showGutter && <Gutter m={m} />}
       </div>
 
-      <Strip segments={segments} onOpen={() => setDrawer(true)} />
+      {!imported && <Strip segments={segments} onOpen={() => setDrawer(true)} />}
       {drawer && <TranscriptDrawer segments={segments} onClose={() => setDrawer(false)} />}
     </>
   );
@@ -453,7 +463,7 @@ function NotesPanels({ view, tab, setTab, raw, onRaw, blocks, recording, paused,
             <ul className="enhanced-list">
               {blocks.filter((b) => b.text).map((b, i) => (
                 <li key={`${b.cue}-${i}`} className={b.changed && Date.now() / 1000 - b.changed < 30 ? "fresh" : ""}>
-                  <b>{b.auto && <small>{t("meeting.lumina")} · </small>}{b.cue}</b>
+                  <b>{b.cue}</b>
                   <Markdown text={b.text} />
                 </li>
               ))}
@@ -467,8 +477,10 @@ function NotesPanels({ view, tab, setTab, raw, onRaw, blocks, recording, paused,
   );
 }
 
-function Summary({ m }: { m: M }) {
+function Summary({ m, canWrite, onWrite }: { m: M; canWrite: boolean; onWrite: () => void }) {
   const t = useT();
+  const writing = useStore((s) => s.summarizing === m.id);
+  const ready = useStore((s) => s.status?.llm_ready);
   const s = m.summary || {};
   const cols: [string, string[] | undefined][] = [
     [t("meeting.decisions"), s.decisions],
@@ -479,7 +491,15 @@ function Summary({ m }: { m: M }) {
   const has = s.overview || cols.some(([, v]) => v && v.length);
   return (
     <section className="summary-band" aria-label={t("meeting.summary")}>
-      <h2>{t("meeting.summary")}</h2>
+      <div className="summary-head">
+        <h2>{t("meeting.summary")}</h2>
+        {canWrite && (
+          <button className="btn sm" onClick={onWrite} disabled={writing || !ready}>
+            {writing ? <Loader2 size={15} className="spin" /> : <RotateCw size={15} />}
+            {writing ? t("meeting.summarizing") : has ? t("meeting.regenerate") : t("meeting.writeSummary")}
+          </button>
+        )}
+      </div>
       {has ? (
         <>
           {s.overview && <p className="overview">{s.overview}</p>}
@@ -496,6 +516,48 @@ function Summary({ m }: { m: M }) {
         <p className="placeholder-line">{t("meeting.summaryEmpty")}</p>
       )}
     </section>
+  );
+}
+
+/** An imported recording: the player, the transcript and its actions, not the notes of a live meeting. */
+function ImportedBody({ m, segments, summary }: { m: M; segments: Segment[]; summary: React.ReactNode }) {
+  const t = useT();
+  const [q, setQ] = useState("");
+  const shown = useMemo(() => (q ? segments.filter((s) => s.text.toLowerCase().includes(q.toLowerCase())) : segments), [segments, q]);
+  const text = segments.map((s) => `[${fmtClock(s.t0)}] ${s.text}`).join("\n");
+  return (
+    <>
+      <div className="import-media">
+        {m.audio ? (
+          <audio className="import-audio" controls preload="none" src={`/api/meetings/${m.id}/audio`} aria-label={t("meeting.recording")} />
+        ) : (
+          <p className="hint">{t("meeting.noRecording")}</p>
+        )}
+      </div>
+      {summary}
+      <section className="import-transcript" aria-label={t("meeting.transcript")}>
+        <header>
+          <h2>{t("meeting.transcript")}</h2>
+          <div className="search-wrap" style={{ maxWidth: 280 }}>
+            <Search size={16} />
+            <input className="input" placeholder={t("meeting.findTranscript")} value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <CopyButton text={text} />
+        </header>
+        {segments.length === 0 ? (
+          <p className="placeholder-line">{t("meeting.transcriptEmpty")}</p>
+        ) : (
+          <div className="import-segs">
+            {shown.map((s) => (
+              <div className="seg" key={s.id}>
+                <time>{fmtClock(s.t0)}</time>
+                <p>{s.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 

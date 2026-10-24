@@ -1,7 +1,7 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, Download, Loader2, Trash2, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Check, Download, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { api, fmtBytes, type Job, type Model } from "./api";
 import { useT } from "./i18n";
 import { useStore } from "./store";
@@ -219,6 +219,62 @@ export function Popover({ open, onClose, children, align = "right" }: {
     <div ref={ref} className="menu" role="menu" style={{ top: "calc(100% + 6px)", [align]: 0 }}>
       {children}
     </div>
+  );
+}
+
+/** The right-click menu of a row: floats where the pointer is and closes on outside click, Escape or scroll. */
+export function ContextMenu({ at, onRename, onDelete, onClose }: {
+  at: { x: number; y: number }; onRename: () => void; onDelete: () => void; onClose: () => void;
+}) {
+  const t = useT();
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState(at);
+  useLayoutEffect(() => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ x: Math.max(8, Math.min(at.x, innerWidth - r.width - 8)), y: Math.max(8, Math.min(at.y, innerHeight - r.height - 8)) });
+  }, [at]);
+  useEffect(() => {
+    const down = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("mousedown", down);
+    document.addEventListener("keydown", key);
+    window.addEventListener("scroll", onClose, true);
+    window.addEventListener("blur", onClose);
+    return () => {
+      document.removeEventListener("mousedown", down);
+      document.removeEventListener("keydown", key);
+      window.removeEventListener("scroll", onClose, true);
+      window.removeEventListener("blur", onClose);
+    };
+  }, [onClose]);
+  return (
+    <div ref={ref} className="menu ctx-menu" role="menu" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
+      <button role="menuitem" onClick={() => { onClose(); onRename(); }}><Pencil size={16} /> {t("common.rename")}</button>
+      <button role="menuitem" style={{ color: "var(--margin-ink)" }} onClick={() => { onClose(); onDelete(); }}><Trash2 size={16} /> {t("common.delete")}</button>
+    </div>
+  );
+}
+
+/** A title that turns into a text box: Enter saves, Escape or leaving cancels. */
+export function RenameInput({ value, onSave, onCancel, label }: {
+  value: string; onSave: (v: string) => void; onCancel: () => void; label: string;
+}) {
+  const [v, setV] = useState(value);
+  const done = useRef(false);
+  const finish = (save: boolean) => {
+    if (done.current) return;
+    done.current = true;
+    if (save && v.trim() && v.trim() !== value) onSave(v.trim()); else onCancel();
+  };
+  return (
+    <input className="rename-input" autoFocus value={v} aria-label={label} maxLength={120}
+      onFocus={(e) => e.currentTarget.select()} onChange={(e) => setV(e.target.value)}
+      onClick={(e) => e.stopPropagation()} onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) finish(true);
+        else if (e.key === "Escape") finish(false);
+      }}
+      onBlur={() => finish(true)} />
   );
 }
 

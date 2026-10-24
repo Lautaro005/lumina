@@ -7,6 +7,7 @@ import logging
 import threading
 import time
 from collections import deque
+from pathlib import Path
 from typing import Any
 
 from . import enhance, llm
@@ -17,6 +18,8 @@ from .embed import NotReady as EmbedNotReady
 from .hub import hub
 from .kb import kb
 from .stt import Event, NotReady, Transcriber, engine, transcribe_file
+
+ENHANCE_GAP = 12  # seconds between two enhance runs while recording
 
 log = logging.getLogger("lumina.session")
 
@@ -32,7 +35,8 @@ class LiveSession:
         self.paused = False
         self.stop_flag = threading.Event()
         self.last_enhance = 0.0
-        self.last_enhance_seg = 0
+        self.last_cues = ""
+        self.cancel = threading.Event()  # set when the meeting ends: nothing is enhanced after that
         self.segments_since = 0
         self.enhancing = threading.Lock()
         self.last_assist = 0.0
@@ -90,6 +94,7 @@ class LiveSession:
 
     def stop(self) -> None:
         self.stop_flag.set()
+        self.cancel.set()
         if self.mic:
             self.mic.stop()
         if self.sys:
@@ -126,18 +131,23 @@ class LiveSession:
             if self.paused:
                 continue
             hub.publish({"type": "tick", "meeting_id": self.meeting_id, "elapsed": round(self.clock(), 1)})
-            interval = int(settings.get("enhance_interval") or 45)
-            if (settings.get("auto_enhance") and self.segments_since >= 3
-                    and time.time() - self.last_enhance > interval):
+            if not settings.get("auto_enhance") or time.time() - self.last_enhance < ENHANCE_GAP:
+                continue
+            m = db.meeting(self.meeting_id)
+            cues = (m or {}).get("cues", "").strip()
+            # enhance as the meeting goes: when there is something new in the transcript or in the user's notes
+            if cues and (self.segments_since >= 2 or (cues != self.last_cues and db.transcript_text(self.meeting_id).strip())):
                 threading.Thread(target=self.enhance_now, daemon=True).start()
 
     def enhance_now(self) -> None:
-        if not self.enhancing.acquire(blocking=False):
+        if self.cancel.is_set() or not self.enhancing.acquire(blocking=False):
             return
         try:
             self.last_enhance = time.time()
             self.segments_since = 0
-            run_enhance(self.meeting_id, final=False)
+            m = db.meeting(self.meeting_id)
+            self.last_cues = (m or {}).get("cues", "").strip()
+            run_enhance(self.meeting_id, cancel=self.cancel)
         finally:
             self.enhancing.release()
 
@@ -176,7 +186,8 @@ class LiveSession:
                                 "created": time.time(), "seen": 0}})
 
 
-def run_enhance(meeting_id: str, final: bool = False) -> list[dict]:
+def run_enhance(meeting_id: str, cancel: threading.Event | None = None) -> list[dict]:
+    """Expands the user's notes with what was said. Runs while recording, and on demand for a finished meeting."""
     m = db.meeting(meeting_id)
     if not m:
         return []
@@ -186,9 +197,13 @@ def run_enhance(meeting_id: str, final: bool = False) -> list[dict]:
         return m["enhanced"] or []
     hub.publish({"type": "enhancing", "meeting_id": meeting_id, "state": "start"})
     try:
-        blocks = enhance.enhance(m["cues"], db.transcript_text(meeting_id), m["title"], final=final)
+        blocks = enhance.enhance(m["cues"], db.transcript_text(meeting_id), m["title"], cancel=cancel)
     except llm.LLMError as e:
-        hub.publish({"type": "enhancing", "meeting_id": meeting_id, "state": "error", "text": str(e)})
+        quiet = cancel is not None and cancel.is_set()
+        hub.publish({"type": "enhancing", "meeting_id": meeting_id, "state": "idle" if quiet else "error", "text": str(e)})
+        return m["enhanced"] or []
+    if cancel is not None and cancel.is_set():
+        hub.publish({"type": "enhancing", "meeting_id": meeting_id, "state": "idle"})
         return m["enhanced"] or []
     old = {b.get("cue"): b.get("text") for b in (m["enhanced"] or [])}
     now = time.time()
@@ -199,27 +214,41 @@ def run_enhance(meeting_id: str, final: bool = False) -> list[dict]:
     return blocks
 
 
-def finish_meeting(meeting_id: str) -> None:
-    """After recording: final enhance, summary, auto title, then index into the knowledge base."""
+def run_summary(meeting_id: str) -> bool:
+    """The summary and the automatic title. Separate from the enhanced notes: it reads the whole meeting."""
     m = db.meeting(meeting_id)
     if not m:
-        return
+        return False
     transcript = db.transcript_text(meeting_id)
     ok, why = llm.ready()
-    if ok and transcript.strip():
-        run_enhance(meeting_id, final=True)
-        try:
-            hub.publish({"type": "summarizing", "meeting_id": meeting_id})
-            s = enhance.summarize(m["cues"], transcript, m["title"])
-            fields: dict[str, Any] = {"summary": s}
-            if not (db.meeting(meeting_id) or m)["title"].strip() and s.get("title"):
-                fields["title"] = s["title"]
-            db.update("meetings", meeting_id, fields)
-            hub.publish({"type": "summary", "meeting_id": meeting_id, "summary": s, "title": fields.get("title")})
-        except llm.LLMError as e:
-            hub.publish({"type": "warning", "meeting_id": meeting_id, "text": f"Summary failed: {e}"})
-    elif not ok:
+    if not ok:
         hub.publish({"type": "warning", "meeting_id": meeting_id, "text": why})
+        return False
+    if not transcript.strip():
+        hub.publish({"type": "warning", "meeting_id": meeting_id, "text": "There is no transcript to summarize."})
+        return False
+    try:
+        hub.publish({"type": "summarizing", "meeting_id": meeting_id})
+        s = enhance.summarize(m["cues"], transcript, m["title"])
+    except llm.LLMError as e:
+        hub.publish({"type": "warning", "meeting_id": meeting_id, "text": f"Summary failed: {e}"})
+        hub.publish({"type": "summary", "meeting_id": meeting_id, "summary": m["summary"] or {}, "title": None})
+        return False
+    fields: dict[str, Any] = {"summary": s}
+    if not (db.meeting(meeting_id) or m)["title"].strip() and s.get("title"):
+        fields["title"] = s["title"]
+    db.update("meetings", meeting_id, fields)
+    hub.publish({"type": "summary", "meeting_id": meeting_id, "summary": s, "title": fields.get("title")})
+    return True
+
+
+def finish_meeting(meeting_id: str, summary: bool = True) -> None:
+    """After recording: the summary and automatic title, then index into the knowledge base.
+    The notes are not enhanced here: they were enhanced while the meeting ran."""
+    if not db.meeting(meeting_id):
+        return
+    if summary:
+        run_summary(meeting_id)
     try:
         kb.index_meeting(meeting_id)
     except Exception:  # noqa: BLE001
@@ -228,10 +257,22 @@ def finish_meeting(meeting_id: str) -> None:
 
 
 def import_recording(meeting_id: str, path) -> None:  # noqa: ANN001
-    """Transcribe an uploaded audio/video file into a meeting, then finish it like a live one."""
+    """Transcribe an uploaded audio/video file into a meeting, then summarize it like a finished one.
+    There are no notes to enhance in an imported recording: it gets a transcript and a summary."""
+    db.update("meetings", meeting_id, {"audio": str(path)})
+    transcribe_meeting_audio(meeting_id)
+
+
+def transcribe_meeting_audio(meeting_id: str) -> None:
+    """(Re)transcribes the recording kept for an imported meeting; the old transcript is replaced."""
+    m = db.meeting(meeting_id)
+    path = (m or {}).get("audio") or ""
     try:
+        if not path or not Path(path).exists():
+            raise FileNotFoundError("the recording is no longer on disk")
         engine.load()
-        audio = load_audio_file(path)
+        audio = load_audio_file(Path(path))
+        db.x("DELETE FROM segments WHERE meeting_id=?", [meeting_id])
         db.update("meetings", meeting_id, {"status": "live", "started": time.time(), "duration": audio.size / 16000})
         hub.publish({"type": "live", "meeting_id": meeting_id, "state": "importing"})
 
@@ -247,7 +288,7 @@ def import_recording(meeting_id: str, path) -> None:  # noqa: ANN001
     except (NotReady, Exception) as e:  # noqa: BLE001
         log.exception("import failed")
         db.update("meetings", meeting_id, {"status": "done"})
-        hub.publish({"type": "warning", "meeting_id": meeting_id, "text": f"Import failed: {e}"})
+        hub.publish({"type": "warning", "meeting_id": meeting_id, "text": f"Transcription failed: {e}"})
         hub.publish({"type": "live", "meeting_id": meeting_id, "state": "done"})
 
 

@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.4`) | ✅ |
+| `0.1.x` (latest: `0.1.5`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -69,6 +69,8 @@ being exploited).
   restarts Lumina. It takes no input, so a web page cannot choose what runs; it is behind the same host and origin checks.
 - **macOS permissions.** The microphone and system audio go through one helper, `lumina-audiotap`, compiled on your Mac
   from `lumina/native/audiotap.swift`, signed ad hoc with a fixed identifier and rebuilt only when its source changes.
+- **Imported recordings** are kept in `uploads/` (so they can be transcribed again) until you delete the meeting;
+  `GET /api/meetings/{id}/audio` serves only that file, behind the same host and origin checks.
 - **PDF reading.** PDFs are read with PDFium (`pypdfium2`), which is native code; a malformed PDF falls back to the
   pure Python reader and a file that cannot be read is reported on its own row.
 

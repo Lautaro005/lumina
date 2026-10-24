@@ -30,7 +30,7 @@ from .embed import NotReady, embedder
 from .hub import hub
 from .kb import kb
 from .mcp_server import server as mcp
-from .session import import_recording, run_enhance, sessions
+from .session import finish_meeting, import_recording, run_enhance, sessions, transcribe_meeting_audio
 from .stt import engine
 from .updater import updater
 
@@ -325,6 +325,9 @@ def create_app(port: int) -> FastAPI:
     def delete_meeting(mid: str) -> dict:
         sessions.stop(mid)
         kb.remove_meeting(mid)
+        m = db.meeting(mid)
+        if m and m["audio"]:
+            Path(m["audio"]).unlink(missing_ok=True)
         db.x("DELETE FROM meetings WHERE id=?", [mid])
         return {"ok": True}
 
@@ -353,15 +356,34 @@ def create_app(port: int) -> FastAPI:
         if s and s.meeting_id == mid:
             threading.Thread(target=s.enhance_now, daemon=True).start()
         else:
-            threading.Thread(target=run_enhance, args=(mid, True), daemon=True).start()
+            threading.Thread(target=run_enhance, args=(mid,), daemon=True).start()
         return {"ok": True}
 
     @app.post("/api/meetings/{mid}/summarize")
     def summarize(mid: str) -> dict:
-        from .session import finish_meeting
-
+        """Writes the summary again (and the title if there is none), then indexes the meeting."""
+        if not db.meeting(mid):
+            raise HTTPException(404, "meeting not found")
         threading.Thread(target=finish_meeting, args=(mid,), daemon=True).start()
         return {"ok": True}
+
+    @app.post("/api/meetings/{mid}/retranscribe")
+    def retranscribe(mid: str) -> dict:
+        """Transcribes an imported recording again (for example after changing the speech model or language)."""
+        m = db.meeting(mid)
+        if not m:
+            raise HTTPException(404, "meeting not found")
+        if not m["audio"] or not Path(m["audio"]).exists():
+            raise HTTPException(409, "The recording of this meeting is no longer on disk.")
+        threading.Thread(target=transcribe_meeting_audio, args=(mid,), daemon=True).start()
+        return {"ok": True}
+
+    @app.get("/api/meetings/{mid}/audio")
+    def meeting_audio(mid: str) -> FileResponse:
+        m = db.meeting(mid)
+        if not m or not m["audio"] or not Path(m["audio"]).exists():
+            raise HTTPException(404, "no recording")
+        return FileResponse(m["audio"])
 
     @app.post("/api/meetings/{mid}/assists/{aid}/seen")
     def assist_seen(mid: str, aid: str) -> dict:
@@ -575,6 +597,15 @@ def create_app(port: int) -> FastAPI:
             raise HTTPException(404, "chat not found")
         return {**c, "messages": db.q("SELECT * FROM messages WHERE chat_id=? ORDER BY created", [cid])}
 
+    @app.patch("/api/chats/{cid}")
+    async def rename_chat(cid: str, request: Request) -> dict:
+        body = await request.json()
+        title = str(body.get("title", "")).strip()[:120]
+        if not title or not db.one("SELECT id FROM chats WHERE id=?", [cid]):
+            raise HTTPException(400, "a title is needed")
+        db.update("chats", cid, {"title": title})
+        return db.one("SELECT * FROM chats WHERE id=?", [cid]) or {}
+
     @app.delete("/api/chats/{cid}")
     def delete_chat(cid: str) -> dict:
         db.x("DELETE FROM chats WHERE id=?", [cid])
@@ -589,12 +620,15 @@ def create_app(port: int) -> FastAPI:
         web = body.get("web")
 
         def gen():
+            inner = chat.answer(cid, text, web, bool(body.get("replace_last")))
             try:
-                for ev in chat.answer(cid, text, web):
+                for ev in inner:
                     yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
             except Exception as e:  # noqa: BLE001
                 log.exception("chat failed")
                 yield f"data: {json.dumps({'type': 'error', 'text': str(e)})}\n\n"
+            finally:
+                inner.close()  # the browser closed the stream (Stop): the model stops and the partial answer is kept
 
         return StreamingResponse(gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

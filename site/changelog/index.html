@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina changelog">
 <meta property="og:description" content="What changed in each version of Lumina.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.4">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.5">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -36,12 +36,31 @@
 <main id="main" class="doc">
   <div class="wrap">
     <article class="page">
-      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-4-2026-10-24">0.1.4</a><a href="#0-1-3-2026-10-24">0.1.3 - 2026-10-24</a><a href="#0-1-2-2026-10-23">0.1.2 - 2026-10-23</a><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
+      <aside class="doc-nav"><nav aria-label="On this page"><b>On this page</b><a href="#0-1-5-2026-10-24">0.1.5</a><a href="#0-1-4-2026-10-24">0.1.4</a><a href="#0-1-3-2026-10-24">0.1.3 - 2026-10-24</a><a href="#0-1-2-2026-10-23">0.1.2 - 2026-10-23</a><a href="#0-1-1-2026-10-23">0.1.1 - 2026-10-23</a><a href="#0-1-0-2026-10-22">0.1.0 - 2026-10-22</a></nav></aside>
       <div class="doc-body">
         <header><h1>Changelog</h1><p>What changed in each version. Lumina follows semantic versioning.</p></header>
         <div class="prose">
 <p>All notable changes to Lumina are listed here. The format follows <a href="https://keepachangelog.com/">Keep a Changelog</a> and the
 project uses <a href="https://semver.org/">Semantic Versioning</a>.</p>
+<h2 id="0-1-5-2026-10-24"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.5">0.1.5</a> - 2026-10-24</h2>
+<h3>Added</h3>
+<ul>
+<li><strong>Regenerate summary</strong> on every finished meeting.</li>
+<li><strong>Imported recordings have their own page</strong>: player, summary and transcript, with <strong>Transcribe again</strong>; no notes columns.</li>
+<li><strong>Stop in the chat</strong> above Send (what was written is kept), and <strong>Answer again</strong> / <strong>Edit question</strong> under your last question.</li>
+<li><strong>Right-click</strong> on chats and meetings: Rename and Delete.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li><strong>Enhanced notes are only your notes, and automatic.</strong> No Enhance button and no "Lumina ·" notes of its own.</li>
+<li><strong>Faster enhancing</strong>: the model reuses the part of the transcript it already read, only your cues are answered, and it does not run when you wrote nothing.</li>
+<li><strong>Ending a meeting does not enhance</strong>; it cancels any enhancing and writes the summary. Enhanced notes and summary are separate.</li>
+<li>No scrollbar in the chat list.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li><strong>macOS permission windows</strong> (best effort): the app is signed ad hoc as a whole so macOS remembers the permissions; <code>lumina doctor</code> shows their state.</li>
+</ul>
 <h2 id="0-1-4-2026-10-24"><a href="https://github.com/Lautaro005/lumina/releases/tag/v0.1.4">0.1.4</a> - 2026-10-24</h2>
 <h3>Added</h3>
 <ul>
@@ -174,7 +193,7 @@ warn.</li>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.4 · Free to use, not to sell</span>
+    <span>Lumina 0.1.5 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -182,6 +201,6 @@ warn.</li>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.4" defer></script>
+<script src="../assets/site.js?v=0.1.5" defer></script>
 </body>
 </html>
