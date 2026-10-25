@@ -1,8 +1,8 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, Download, Loader2, Pencil, Trash2, X } from "lucide-react";
-import { api, fmtBytes, type Job, type Model } from "./api";
+import { Check, Download, Info, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { api, fmtBytes, type Job, type Model, type Permissions, type PermState } from "./api";
 import { useT } from "./i18n";
 import { useStore } from "./store";
 
@@ -16,6 +16,56 @@ export function Logo({ size = 28 }: { size?: number; onCover?: boolean }) {
         <circle cx="21.2" cy="10.6" r="2.5" fill="#7b9be0" />
       </g>
     </svg>
+  );
+}
+
+/** The macOS microphone and computer audio permissions, with the one button that asks for each. Shown in the
+ * first-run walkthrough and in Settings; recording itself never shows a permission window. */
+export function PermissionsPanel({ onChange }: { onChange?: (p: Permissions) => void }) {
+  const t = useT();
+  const [p, setP] = useState<Permissions | null>(null);
+  const [asking, setAsking] = useState("");
+  useEffect(() => {
+    const load = () => api.permissions().then((x) => { setP(x); onChange?.(x); }).catch(() => {});
+    load();
+    // coming back from System Settings: read the permissions again
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  if (!p || !p.needed) return null;
+  if (!p.helper) return <div className="callout warn"><Info size={18} /><span>{t("perm.noHelper")}</span></div>;
+  const ask = async (kind: "microphone" | "system_audio") => {
+    setAsking(kind);
+    try {
+      const x = await api.requestPermission(kind);
+      setP(x);
+      onChange?.(x);
+    } finally {
+      setAsking("");
+    }
+  };
+  const row = (kind: "microphone" | "system_audio", label: string, hint: string, state: PermState = "unknown") => (
+    <div className="perm-row" key={kind}>
+      <div><b>{label}</b><small>{hint}</small></div>
+      {state === "granted" ? <span className="chip ok"><Check size={13} /> {t("perm.allowed")}</span>
+        : state === "denied" || state === "restricted" ? (
+          <span className="perm-act">
+            <span className="chip warn">{t("perm.off")}</span>
+            <button className="btn sm" onClick={() => api.openPrivacy(kind === "microphone" ? "mic" : "screen")}>{t("perm.openSettings")}</button>
+          </span>
+        ) : (
+          <button className="btn sm primary" disabled={!!asking} onClick={() => ask(kind)}>
+            {asking === kind && <Loader2 size={14} className="spin" />}{t("perm.allow")}
+          </button>
+        )}
+    </div>
+  );
+  return (
+    <div className="perm-list">
+      {row("microphone", t("perm.mic"), t("perm.micHint"), p.microphone)}
+      {row("system_audio", t("perm.audio"), p.method === "screen" ? t("perm.audioHintScreen") : t("perm.audioHintTap"), p.system_audio)}
+    </div>
   );
 }
 

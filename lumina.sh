@@ -51,6 +51,8 @@ case "${1:-}" in
   update)
     shift
     if [ -d "$DIR/.git" ]; then
+      # uv.lock is written by uv on this computer (no longer part of the code): a local copy must not stop the update
+      git -C "$DIR" checkout --quiet -- uv.lock 2>/dev/null || true
       git -C "$DIR" pull --ff-only --quiet
     fi
     LUMINA_HOME="$DIR" exec sh "$DIR/install.sh" "$@"

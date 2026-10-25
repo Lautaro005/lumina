@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.5`) | ✅ |
+| `0.1.x` (latest: `0.1.6`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -68,7 +68,17 @@ being exploited).
   from this repository, `uv sync`, the desktop app from this repository's latest release) in a detached script, then
   restarts Lumina. It takes no input, so a web page cannot choose what runs; it is behind the same host and origin checks.
 - **macOS permissions.** The microphone and system audio go through one helper, `lumina-audiotap`, compiled on your Mac
-  from `lumina/native/audiotap.swift`, signed ad hoc with a fixed identifier and rebuilt only when its source changes.
+  from `lumina/native/audiotap.swift` into `data/bin/LuminaAudio.app`, signed ad hoc with a fixed identifier
+  (`app.lumina.audiotap`) and rebuilt only when its source changes. Since 0.1.6 it starts itself as its own
+  *responsible* process (`responsibility_spawnattrs_setdisclaim`), so macOS records the permissions for the helper, not
+  for `Lumina.app`, which every update replaces. Permissions are requested only from the first-run walkthrough or
+  Settings → Permissions (`POST /api/permissions/request`, behind the same host and origin checks); recording never
+  requests them and stops with a notice when one is missing. On macOS 14.2+ the computer's audio is a Core Audio
+  process tap, which needs only the System Audio Recording permission (no screen recording). To read the status of that
+  permission the helper calls `TCCAccessPreflight`/`TCCAccessRequest` from Apple's private TCC framework when present;
+  without them it simply starts the tap.
+- **Dependencies lock.** `uv.lock` is no longer in the repository; `uv sync` resolves the versions allowed by
+  `pyproject.toml` on each install. The update path discards a local `uv.lock` before `git pull`.
 - **Imported recordings** are kept in `uploads/` (so they can be transcribed again) until you delete the meeting;
   `GET /api/meetings/{id}/audio` serves only that file, behind the same host and origin checks.
 - **PDF reading.** PDFs are read with PDFium (`pypdfium2`), which is native code; a malformed PDF falls back to the

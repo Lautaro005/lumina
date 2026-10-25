@@ -21,7 +21,8 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from pydantic import BaseModel
 
 from . import __version__, chat, export, llm, memory, tts
-from .audio import list_inputs
+from .audio import list_inputs, request_permission
+from .audio import permissions as audio_permissions
 from .catalog import CATALOG, EU25, installed, languages_for, stt_choice
 from .config import DATA, UI_DIR, UPLOADS, settings, system_info
 from .db import db, new_id
@@ -290,6 +291,28 @@ def create_app(port: int) -> FastAPI:
             return {"ok": True, "text": text, "seconds": round(time.time() - t, 2)}
         except llm.LLMError as e:
             return {"ok": False, "error": str(e)}
+
+    @app.get("/api/permissions")
+    def get_permissions() -> dict[str, Any]:
+        """macOS privacy permissions for recording, read without asking. Elsewhere nothing is needed."""
+        if platform.system() != "Darwin":
+            return {"needed": False}
+        p = audio_permissions()
+        if p is None:
+            return {"needed": True, "helper": False}
+        return {"needed": True, "helper": True, **p}
+
+    @app.post("/api/permissions/request")
+    async def ask_permission(request: Request) -> dict[str, Any]:
+        """Show the macOS permission window once (first-run walkthrough or Settings). Recording never asks."""
+        body = await request.json()
+        kind = "system_audio" if body.get("kind") == "system_audio" else "microphone"
+        if platform.system() != "Darwin":
+            return {"needed": False}
+        p = await asyncio.to_thread(request_permission, kind)
+        if p is None:
+            return {"needed": True, "helper": False}
+        return {"needed": True, "helper": True, **p}
 
     @app.get("/api/audio/devices")
     def devices() -> dict[str, Any]:

@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,6 +28,12 @@ jobs:
       - run: uv run pytest -q
         env:
           LUMINA_DATA: ${{ runner.temp }}/lumina-data
+      - name: The macOS audio helper compiles
+        if: runner.os == 'macOS'
+        run: |
+          swiftc -O -o "$RUNNER_TEMP/lumina-audiotap" lumina/native/audiotap.swift \
+            -framework ScreenCaptureKit -framework CoreMedia -framework AVFoundation -framework CoreAudio
+          "$RUNNER_TEMP/lumina-audiotap" status
 
   ui:
     name: Web UI

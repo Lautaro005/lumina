@@ -109,6 +109,7 @@ def test_the_mac_helper_is_not_rebuilt_when_only_the_file_time_changes(tmp_path,
     helper.write_bytes(b"binary")
     helper.with_suffix(".sha").write_text(audio._helper_sha())
     monkeypatch.setattr(audio, "HELPER", helper)
+    monkeypatch.setattr(audio, "HELPER_SHA", helper.with_suffix(".sha"))
     monkeypatch.setattr(audio.platform, "system", lambda: "Darwin")
     monkeypatch.setattr(audio.subprocess, "run", lambda *a, **k: pytest.fail("rebuilt"))
     helper.touch()  # an update touching the files must not rebuild

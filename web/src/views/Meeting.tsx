@@ -145,6 +145,10 @@ export default function MeetingView({ id }: { id: string }) {
 
   const m = meeting && meeting.id === id ? meeting : null;
   const isMine = live.meetingId === id;
+  const openPermissions = () => {
+    go("/settings");
+    setTimeout(() => document.getElementById("permissions")?.scrollIntoView({ behavior: "smooth" }), 200);
+  };
   const recording = isMine && live.state === "recording";
   const paused = isMine && live.state === "paused";
   // a recording that was imported has a transcript and a summary, not notes of its own
@@ -320,11 +324,11 @@ export default function MeetingView({ id }: { id: string }) {
                 value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} aria-label={t("common.addTag")}
                 onKeyDown={(e) => { if (e.key === "Enter") addTag(tagDraft); }} onBlur={() => tagDraft && addTag(tagDraft)} />
             </div>
-            {isMine && live.sysDenied && (
+            {(live.micDenied || (isMine && live.sysDenied)) && (
               <div className="callout warn">
                 <FileAudio size={18} />
-                <span style={{ flex: 1 }}>{t("meeting.sysDenied")}</span>
-                <button className="btn sm" onClick={() => api.openPrivacy("screen")}>{t("meeting.openPermission")}</button>
+                <span style={{ flex: 1 }}>{live.micDenied ? t("meeting.micDenied") : t("meeting.sysDenied")}</span>
+                <button className="btn sm" onClick={openPermissions}>{t("meeting.openPermission")}</button>
               </div>
             )}
             {!status.llm_ready && (

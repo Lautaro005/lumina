@@ -12,6 +12,7 @@ type Live = {
   model: string;
   sources: string[];
   sysDenied: boolean;
+  micDenied: boolean;
 };
 
 type Toast = { id: number; text: string; kind: "info" | "warn" | "error" };
@@ -35,7 +36,7 @@ type State = {
 
 const initialLive: Live = {
   meetingId: null, state: "idle", elapsed: 0, levels: { you: 0, others: 0 }, partial: {}, enhancing: false,
-  model: "", sources: [], sysDenied: false,
+  model: "", sources: [], sysDenied: false, micDenied: false,
 };
 
 let toastId = 0;
@@ -109,6 +110,8 @@ export const useStore = create<State>((set, get) => ({
         if (ev.state === "recording" || ev.state === "paused") {
           Object.assign(live, { meetingId: ev.meeting_id, state: ev.state, sources: ev.sources || live.sources,
             model: ev.model || live.model, elapsed: ev.offset ?? live.elapsed });
+          if (live.sources.includes("you")) live.micDenied = false;
+          if (live.sources.includes("others")) live.sysDenied = false;
         } else if (ev.state === "processing" || ev.state === "importing") {
           Object.assign(live, { meetingId: ev.meeting_id, state: ev.state, partial: {}, levels: { you: 0, others: 0 } });
           // a recording being transcribed again starts from an empty transcript
@@ -157,6 +160,11 @@ export const useStore = create<State>((set, get) => ({
       case "assist":
         if (mine(ev.meeting_id) && s.meeting)
           set({ meeting: { ...s.meeting, assists: [ev.assist as Assist, ...(s.meeting.assists || [])] } });
+        break;
+      case "permission":
+        // a macOS permission is missing: the meeting shows where to allow it (recording never asks)
+        if (ev.kind === "microphone") set({ live: { ...s.live, micDenied: true } });
+        else set({ live: { ...s.live, sysDenied: true } });
         break;
       case "sysaudio":
         set({ live: { ...s.live, sysDenied: !ev.ok, sources: s.live.sources.filter((x) => x !== "others") } });

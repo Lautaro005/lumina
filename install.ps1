@@ -30,6 +30,7 @@ if (-not $uv) {
 
 if (Test-Path (Join-Path $Dir '.git')) {
   Say "Updating Lumina in $Dir"
+  try { git -C $Dir checkout --quiet -- uv.lock 2>$null } catch {}  # uv.lock is local now; never let it block the update
   git -C $Dir pull --ff-only --quiet
 } elseif (Test-Path (Join-Path $Dir 'pyproject.toml')) {
   if ($env:LUMINA_SKIP_PULL) {

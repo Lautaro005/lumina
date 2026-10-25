@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from . import enhance, llm
-from .audio import Mic, SystemAudio, load_audio_file
+from .audio import Mic, PermissionMissing, SystemAudio, load_audio_file
 from .config import settings
 from .db import db, new_id
 from .embed import NotReady as EmbedNotReady
@@ -56,15 +56,21 @@ class LiveSession:
         model = engine.load()  # raises NotReady with a clear message
         self.tr = Transcriber(self._on_event, self.clock)
         you = self.tr.stream("you")
+        mic_error: Exception | None = None
         try:
             dev = settings.get("mic_device")
-            self.mic = Mic(lambda x: None if self.paused else you.feed(x), int(dev) if dev not in (None, "") else None)
+            self.mic = Mic(lambda x: None if self.paused else you.feed(x), dev if dev not in (None, "") else None)
             self.mic.start()
             self.sources.append("you")
+        except PermissionMissing as e:
+            # never a macOS window here: the meeting says where to allow it
+            mic_error, self.mic = e, None
+            hub.publish({"type": "permission", "meeting_id": self.meeting_id, "kind": e.kind, "state": e.state,
+                         "text": str(e)})
         except Exception as e:  # noqa: BLE001
             log.exception("mic failed")
+            mic_error, self.mic = e, None
             hub.publish({"type": "warning", "meeting_id": self.meeting_id, "text": f"Microphone unavailable: {e}"})
-            self.mic = None
         if settings.get("system_audio"):
             others = self.tr.stream("others")
             self.sys = SystemAudio(lambda x: None if self.paused else others.feed(x), self._sys_failed)
@@ -72,7 +78,8 @@ class LiveSession:
                 self.sources.append("others")
         if not self.sources:
             self.tr.stop()
-            raise RuntimeError("No audio source could be opened. Check the microphone permission.")
+            raise RuntimeError(str(mic_error) if isinstance(mic_error, PermissionMissing) else
+                               "No audio source could be opened. Check the microphone permission.")
         now = time.time()
         db.update("meetings", self.meeting_id, {"status": "live", "started": m.get("started") or now,
                                                 "language": settings.get("stt_language")})

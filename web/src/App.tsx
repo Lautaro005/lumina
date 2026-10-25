@@ -65,15 +65,18 @@ function Rail() {
           </button>
         ))}
       </div>
-      {recording && live.meetingId && (
-        <button className="rail-live" onClick={() => go(`/meeting/${live.meetingId}`)}>
-          <i className={`dot ${live.state === "recording" ? "live" : ""}`} />
-          <b>{live.state === "recording" ? t("nav.recording") : t("meeting.paused")}</b>
-          <span>{fmtClock(live.elapsed)}</span>
-        </button>
-      )}
-      <IndexStatus compact />
-      <UpdateRail />
+      {/* status cards (recording, indexing, update) sit at the bottom, right above the privacy line */}
+      <div className="rail-status">
+        {recording && live.meetingId && (
+          <button className="rail-live" onClick={() => go(`/meeting/${live.meetingId}`)}>
+            <i className={`dot ${live.state === "recording" ? "live" : ""}`} />
+            <b>{live.state === "recording" ? t("nav.recording") : t("meeting.paused")}</b>
+            <span>{fmtClock(live.elapsed)}</span>
+          </button>
+        )}
+        <IndexStatus compact />
+        <UpdateRail />
+      </div>
       <div className="rail-foot">
         <ShieldCheck size={16} />
         <span>{t("nav.local")}</span>

@@ -9,6 +9,10 @@ export type Settings = Record<string, any> & {
   first_run_done: boolean;
 };
 
+/** macOS privacy permissions as the audio helper sees them. */
+export type PermState = "granted" | "denied" | "not_asked" | "restricted" | "unknown";
+export type Permissions = { needed: boolean; helper?: boolean; microphone?: PermState; system_audio?: PermState; method?: "tap" | "screen" };
+
 export type Job = { id: string; state: string; done: number; total: number; error: string; speed: number };
 
 export type Status = {
@@ -105,7 +109,9 @@ export const api = {
   removeModel: (id: string) => req("DELETE", `/api/models/${id}`),
   llmModels: (provider: string) => req<{ models: string[] }>("GET", `/api/llm/models?provider=${provider}`),
   llmTest: () => req<{ ok: boolean; text?: string; seconds?: number; error?: string }>("POST", "/api/llm/test"),
-  devices: () => req<{ inputs: { id: number; name: string; default: boolean }[] }>("GET", "/api/audio/devices"),
+  devices: () => req<{ inputs: { id: number | string; name: string; default: boolean }[] }>("GET", "/api/audio/devices"),
+  permissions: () => req<Permissions>("GET", "/api/permissions"),
+  requestPermission: (kind: "microphone" | "system_audio") => req<Permissions>("POST", "/api/permissions/request", { kind }),
 
   meetings: (p: { q?: string; tag?: string; since?: number } = {}) =>
     req<Meeting[]>("GET", `/api/meetings?q=${encodeURIComponent(p.q || "")}&tag=${encodeURIComponent(p.tag || "")}&since=${p.since || 0}`),

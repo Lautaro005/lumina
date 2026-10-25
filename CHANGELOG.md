@@ -3,6 +3,37 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.6] - 2026-10-25
+
+### Changed
+- **macOS asks for permissions once, in the walkthrough.** The first-run setup has a new last step, **Permissions**, with
+  an **Allow** button for the microphone and one for the computer's audio; the same panel is in Settings → Permissions.
+  Starting or resuming a meeting never opens a permission window any more: if a permission is missing, the meeting
+  shows a notice with a link to Settings (`GET /api/permissions`, `POST /api/permissions/request`).
+- **The permissions survive updates.** Following Apple's documentation (macOS keeps a privacy decision for the code
+  signature of the *responsible* app, and an ad hoc signature is tied to one exact build), the decision was being
+  recorded for `Lumina.app`, which every update replaced and re-signed, so macOS asked again. The audio helper now
+  lives in its own small bundle, `data/bin/LuminaAudio.app`, starts itself as its own responsible process and is
+  rebuilt only when its source changes, so macOS remembers the answer for it.
+- **Computer audio without screen recording** on macOS 14.2 and later: a Core Audio process tap replaces
+  ScreenCaptureKit, so the only permission is System Audio Recording (no "screen recording" window, no monthly
+  reminder). macOS 13 to 14.1 keep ScreenCaptureKit.
+- **No second microphone path on a Mac.** When the helper cannot start the microphone, Lumina no longer falls back to
+  PortAudio (which made macOS ask again, for another program); the microphone list and the chosen microphone now come
+  from the helper too.
+- **Sidebar:** the Recording, indexing and Update cards sit at the bottom, right above "Everything stays on this
+  computer", which is a little smaller so it fits on one line.
+
+### Fixed
+- **Updates failing because of `uv.lock`.** The file is no longer tracked in git (each computer's uv writes its own, and
+  a different uv version rewriting it blocked `git pull`); `lumina update`, the in-app update and the installers
+  discard a local copy before pulling. Coming from 0.1.5 or earlier, if the update still fails, delete
+  `~/.lumina/uv.lock` once.
+- **Tablet layout.** Fields in two-column settings no longer drift apart when the neighbour has a hint (Settings →
+  Knowledge: *Vector size* and *Web search engine* now line up); the notes-view cards keep their titles on one line;
+  the Settings index hides below 1100 px so the settings get the width; the meeting header keeps the buttons on the
+  date row and shares the left edge with the notes panels.
+
 ## [0.1.5] - 2026-10-24
 
 ### Added

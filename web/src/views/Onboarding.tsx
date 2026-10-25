@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { api, fmtBytes } from "../api";
-import { Logo, ModelRow, useModels, useSetting } from "../components";
+import { Logo, ModelRow, PermissionsPanel, useModels, useSetting } from "../components";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import { LanguageSelect, sttFor } from "./Settings";
@@ -66,7 +66,11 @@ export default function Onboarding() {
     location.hash = "/meetings";
   };
 
-  const steps = [t("setup.step1"), t("setup.step2"), t("setup.step3")];
+  // on a Mac the last step asks for the two recording permissions, once
+  const isMac = status.system.os === "Darwin";
+  const steps = [t("setup.step1"), t("setup.step2"), t("setup.step3"), ...(isMac ? [t("setup.step4")] : [])];
+  const last = steps.length;
+  const next = () => (step === last ? finish() : setStep(step + 1));
   const choice = (value: string, title: string, sub: string, extra?: React.ReactNode) => (
     <div role="radio" tabIndex={0} aria-checked={provider === value} className="choice"
       onClick={() => setProvider(value)} onKeyDown={(e) => (e.key === " " || e.key === "Enter") && setProvider(value)}>
@@ -153,16 +157,26 @@ export default function Onboarding() {
             </div>
           )}
 
+          {step === 4 && (
+            <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
+              <h2>{t("perm.title")}</h2>
+              <p className="lead">{t("perm.lead")}</p>
+              <PermissionsPanel />
+              <p className="hint">{t("perm.later")}</p>
+            </div>
+          )}
+
           <div className="setup-foot">
             {step > 0 ? <button className="btn ghost" onClick={() => setStep(step - 1)}><ArrowLeft size={16} /> {t("setup.back")}</button> : <span />}
             {step === 0 && <button className="btn primary" onClick={() => setStep(1)}>{t("setup.begin")} <ArrowRight size={16} /></button>}
-            {step > 0 && step < 3 && <button className="btn primary" onClick={() => setStep(step + 1)}>{t("setup.next")} <ArrowRight size={16} /></button>}
+            {step > 0 && step !== 3 && step < last && <button className="btn primary" onClick={next}>{t("setup.next")} <ArrowRight size={16} /></button>}
             {step === 3 && (
               <div className="actions">
-                {missing.length > 0 && !anyRunning && <button className="btn ghost" onClick={finish}>{t("setup.skip")}</button>}
-                <button className="btn primary" onClick={finish} disabled={missing.length > 0 && !anyRunning}>{t("setup.finish")} <ArrowRight size={16} /></button>
+                {missing.length > 0 && !anyRunning && <button className="btn ghost" onClick={next}>{t("setup.skip")}</button>}
+                <button className="btn primary" onClick={next} disabled={missing.length > 0 && !anyRunning}>{step === last ? t("setup.finish") : t("setup.next")} <ArrowRight size={16} /></button>
               </div>
             )}
+            {step === 4 && step === last && <button className="btn primary" onClick={finish}>{t("setup.finish")} <ArrowRight size={16} /></button>}
           </div>
         </div>
       </div>

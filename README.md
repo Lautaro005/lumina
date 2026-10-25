@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.1.5" src="https://img.shields.io/badge/version-0.1.5-20242c">
+  <img alt="Version 0.1.6" src="https://img.shields.io/badge/version-0.1.6-20242c">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -157,7 +157,7 @@ flowchart LR
   onnxruntime for Parakeet, Canary, EmbeddingGemma 2 and Silero, CTranslate2 for Whisper, llama.cpp for Gemma 4.
 - **Interface:** React + TypeScript, served by the backend; the same page runs in the browser and in the desktop app.
 - **Desktop:** Tauri 2 (Rust), a window and a tray icon that start and stop the local server.
-- **System audio:** ScreenCaptureKit on macOS, WASAPI loopback on Windows, the PulseAudio/PipeWire monitor on Linux.
+- **System audio:** a Core Audio process tap on macOS 14.2+ (ScreenCaptureKit on macOS 13), WASAPI loopback on Windows, the PulseAudio/PipeWire monitor on Linux.
 
 ## Build from source
 
@@ -169,6 +169,8 @@ uv sync
 (cd web && npm install && npm run build)   # builds the UI into lumina/ui
 uv run lumina                               # opens http://127.0.0.1:47770
 ```
+
+`uv.lock` is not committed (uv writes it on each computer).
 
 Desktop app: `cd apps/desktop && npm install && npm run tauri build`. Or let the installer build it:
 `curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh -s -- --build-app`.
@@ -184,6 +186,16 @@ Tests: `uv run pytest` · `cd apps/desktop/src-tauri && cargo test`.
 
 **Does it identify who is speaking?** It separates **You** (your microphone) from **Others** (the computer's audio).
 Telling apart several people in the same stream is planned.
+
+**Why does macOS ask for permissions, and how often?** Once. The last step of the first-run setup has an **Allow**
+button for the microphone and one for the computer's audio (also in Settings → Permissions). Starting a meeting never
+opens a permission window: if one is missing, the meeting says so and links to Settings. macOS keeps the answer for
+Lumina's small audio helper (`data/bin/LuminaAudio.app`), which updates do not replace, so updating does not ask again.
+On macOS 14.2 and later the computer's audio needs only **System Audio Recording**, not screen recording.
+
+**An update failed with an error about `uv.lock`.** Since 0.1.6 `uv.lock` is no longer part of the code: each computer
+keeps its own, so a different version of uv cannot block `git pull`. Updating from 0.1.5 or earlier: if it fails, delete
+`~/.lumina/uv.lock` one last time and run `lumina update`.
 
 **Is it a Google product?** No. It is an independent, open alternative to Google AI Edge Foresight that needs no Google
 account and runs on macOS, Windows and Linux.

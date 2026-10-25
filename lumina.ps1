@@ -30,7 +30,11 @@ switch ($cmd) {
     Start-Process $app
   }
   'update' {
-    if (Test-Path (Join-Path $Dir '.git')) { git -C $Dir pull --ff-only --quiet }
+    if (Test-Path (Join-Path $Dir '.git')) {
+      # uv.lock is written by uv on this computer (no longer part of the code): a local copy must not stop the update
+      try { git -C $Dir checkout --quiet -- uv.lock 2>$null } catch {}
+      git -C $Dir pull --ff-only --quiet
+    }
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Dir 'install.ps1') @rest
   }
   'uninstall' {

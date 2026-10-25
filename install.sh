@@ -61,6 +61,8 @@ fi
 if [ -d "$DIR/.git" ]; then
   if [ -z "${LUMINA_SKIP_PULL:-}" ]; then
     say "Updating Lumina in $DIR"
+    # uv.lock is written by uv on this computer (no longer part of the code): a local copy must not stop the update
+    git -C "$DIR" checkout --quiet -- uv.lock 2>/dev/null || true
     git -C "$DIR" pull --ff-only --quiet || warn "Could not update the code (local changes?). Continuing with what is there."
   fi
 elif [ -f "$DIR/pyproject.toml" ] && [ -f "$DIR/lumina/server.py" ]; then

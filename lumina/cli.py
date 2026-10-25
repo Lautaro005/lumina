@@ -105,9 +105,12 @@ def doctor() -> int:
             from .audio import permissions
 
             p = permissions() or {}
-            names = {0: "not asked yet", 1: "restricted", 2: "refused", 3: "allowed"}
+            names = {"granted": "allowed", "denied": "refused", "not_asked": "not asked yet (Settings → Permissions)",
+                     "restricted": "restricted", "unknown": "unknown"}
+            how = "Core Audio tap" if p.get("method") == "tap" else "ScreenCaptureKit"
             print(f"  Microphone permission: {names.get(p.get('microphone'), 'unknown')}")
-            print(f"  Screen & System Audio Recording permission: {'allowed' if p.get('screen') else 'not allowed (yet)'}")
+            print(f"  System audio permission ({how}): {names.get(p.get('system_audio'), 'unknown')}")
+            print("  (macOS keeps them for the helper app in the data folder: bin/LuminaAudio.app)")
     d = detect()
     print(f"\nGenerators: built-in {'ready' if d['builtin'] else 'not downloaded'} · "
           f"Ollama {'running' if d['ollama'] else 'off'} · LM Studio {'running' if d['lmstudio'] else 'off'}")

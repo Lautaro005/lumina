@@ -745,3 +745,37 @@ tr:hover .row-actions, .row-actions:focus-within { opacity: 1; }
 .import-media { padding: 18px 28px 0; }
 .import-transcript { padding: 0 28px 28px; }
 @media (max-width: 700px) { .import-media { padding: 14px 16px 0; } .import-transcript { padding: 0 16px 24px; } }
+
+/* 0.1.6 */
+/* a field's label, control and hint stay together at the top when the cell next to it is taller */
+.field { align-content: start; }
+.grid2 { align-items: start; }
+/* sidebar: status cards right above the privacy line, which fits on one line */
+.rail-status { margin-top: auto; display: grid; gap: 10px; padding-bottom: 14px; min-width: 0; }
+.rail-status:empty { padding-bottom: 0; }
+.rail-status > * { margin-top: 0; margin-bottom: 0; }
+.rail-foot { margin-top: 0; padding: 0 6px; font-size: 11.5px; gap: 6px; white-space: nowrap; min-width: 0; }
+.rail-foot svg { flex: none; }
+.rail-foot span { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1000px) { .rail-foot { justify-content: center; padding: 0; } .rail-status { justify-items: stretch; } }
+/* permissions (macOS) */
+.perm-list { display: grid; border-radius: var(--radius); box-shadow: 0 0 0 1px var(--rule-hair); background: var(--paper); overflow: hidden; }
+.perm-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; }
+.perm-row + .perm-row { border-top: 1px solid var(--rule-hair); }
+.perm-row > div { display: grid; gap: 2px; min-width: 0; }
+.perm-row b { font-size: 14.5px; }
+.perm-row small { color: var(--ink-3); font-size: 13px; }
+.perm-row .btn, .perm-row .chip { flex: none; }
+.perm-act { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 560px) { .perm-row { flex-direction: column; align-items: flex-start; } }
+/* tablets: below 1100px the settings index gives its width to the settings themselves */
+@media (max-width: 1100px) {
+  .settings { grid-template-columns: minmax(0, 1fr); }
+  .settings-nav { display: none; }
+}
+/* meeting header: title on top, the date line and the buttons on one row, same left edge as the panels below */
+.sheet-head { grid-template-columns: minmax(0, 1fr) auto; padding-left: 24px; padding-right: 24px; }
+.sheet-head > .actions, .sheet-title-row > .actions { align-self: start; }
+@media (max-width: 760px) { .sheet-head { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .sheet-head { padding-left: 16px; padding-right: 16px; } }
+.view-card { align-content: start; }

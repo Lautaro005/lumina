@@ -13,3 +13,5 @@ data/
 .claude/
 .impeccable/build/
 .impeccable/questions/
+# written by uv on each computer; tracking it made updates fail when another uv version rewrote it
+uv.lock

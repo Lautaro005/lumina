@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.5">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.6">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -203,7 +203,7 @@
 <h3>"Others" stays silent</h3>
 <p>macOS: allow Lumina or your terminal in System Settings → Privacy &amp; Security → <b>Screen &amp; System Audio Recording</b>, then start again. The helper needs the Xcode command line tools (<code>xcode-select --install</code>). Linux: make sure PulseAudio or PipeWire is running (<code>pactl info</code>).</p>
 <h3>macOS keeps asking for the microphone</h3>
-<p>Lumina records the microphone and the computer's audio through one helper, so each permission is asked once. If the questions come back after an update, run <code>lumina doctor</code> and check System Settings → Privacy &amp; Security → Microphone and Screen &amp; System Audio Recording for <b>lumina-audiotap</b> or Lumina.</p>
+<p>Lumina asks for the microphone and the computer's audio once, in the last step of the first-run setup (or Settings → Permissions). Starting a meeting never opens a permission window: if one is missing, the meeting tells you and links to Settings. The permissions belong to Lumina's audio helper (<code>data/bin/LuminaAudio.app</code>), which updates do not replace, so updating does not ask again. On macOS 14.2+ the computer's audio needs only System Audio Recording. <code>lumina doctor</code> prints both permissions as macOS reports them.</p>
 <h3>Enhanced notes do not appear</h3>
 <p>Check Settings → Notes model → <b>Test</b>. For Gemma 4, the first start loads the model (up to a minute on slow disks). For Ollama or LM Studio, make sure the server is running and has a model.</p>
 <h3>Update says the same version</h3>
@@ -224,7 +224,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.5 · Free to use, not to sell</span>
+    <span>Lumina 0.1.6 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -232,6 +232,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.5" defer></script>
+<script src="../assets/site.js?v=0.1.6" defer></script>
 </body>
 </html>

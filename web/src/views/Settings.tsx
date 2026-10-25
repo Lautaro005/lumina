@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Columns2, Download, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote, Trash2 } from "lucide-react";
 import { api, type Job, type Model, type UpdateInfo } from "../api";
-import { ConfirmDialog, CopyButton, ModelRow, Switch, useModels, useSetting } from "../components";
+import { ConfirmDialog, CopyButton, ModelRow, PermissionsPanel, Switch, useModels, useSetting } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
 
@@ -304,7 +304,7 @@ export default function Settings() {
   const [engine, setEngine] = useSetting<string>("stt_engine");
   const [lang, setLang] = useSetting<string>("stt_language");
   const [wsize, setWsize] = useSetting<string>("whisper_size");
-  const [mic, setMic] = useSetting<number | null>("mic_device");
+  const [mic, setMic] = useSetting<number | string | null>("mic_device");
   const [sysAudio, setSysAudio] = useSetting<boolean>("system_audio");
   const [partials, setPartials] = useSetting<boolean>("partials");
   const [autoEnh, setAutoEnh] = useSetting<boolean>("auto_enhance");
@@ -327,7 +327,7 @@ export default function Settings() {
   const [ttsEngine, setTtsEngine] = useSetting<string>("tts_engine");
   const [ttsVoice, setTtsVoice] = useSetting<string>("tts_voice");
 
-  const [devices, setDevices] = useState<{ id: number; name: string; default: boolean }[]>([]);
+  const [devices, setDevices] = useState<{ id: number | string; name: string; default: boolean }[]>([]);
   const [remote, setRemote] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text?: string; seconds?: number; error?: string } | "busy" | null>(null);
@@ -352,8 +352,9 @@ export default function Settings() {
   const claudeCmd = agents ? `claude mcp add lumina -- ${agents.stdio.command} mcp` : "";
   const httpJson = agents ? JSON.stringify({ mcpServers: { lumina: { url: agents.http.url, headers: { Authorization: `Bearer ${agents.http.token}` } } } }, null, 2) : "";
 
+  const isMac = status.system.os === "Darwin";
   const nav: [string, string][] = [
-    ["general", t("settings.general")], ["transcription", t("settings.transcription")], ["generation", t("settings.generation")],
+    ["general", t("settings.general")], ...(isMac ? [["permissions", t("perm.title")] as [string, string]] : []), ["transcription", t("settings.transcription")], ["generation", t("settings.generation")],
     ["knowledge", t("settings.knowledge")], ["speech", t("settings.speech")], ["models", t("settings.modelsNav")],
     ["agents", t("settings.agents")], ["delete", t("settings.delete")], ["about", t("settings.about")],
   ];
@@ -387,6 +388,13 @@ export default function Settings() {
             <Switch checked={!!saver} onChange={setSaver} label={t("settings.memorySaver")} />
             <p className="hint" style={{ marginLeft: 50 }}>{t("settings.memorySaverHint")}</p>
           </Section>
+
+          {isMac && (
+            <Section id="permissions" title={t("perm.title")}>
+              <p className="hint">{t("perm.lead")}</p>
+              <PermissionsPanel />
+            </Section>
+          )}
 
           <Section id="transcription" title={t("settings.transcription")}>
             <div className="grid2">
@@ -424,7 +432,7 @@ export default function Settings() {
             <div className="grid2">
               <div className="field">
                 <label htmlFor="mic">{t("settings.mic")}</label>
-                <select id="mic" className="input" value={mic ?? ""} onChange={(e) => setMic(e.target.value === "" ? null : Number(e.target.value))}>
+                <select id="mic" className="input" value={mic ?? ""} onChange={(e) => setMic(e.target.value === "" ? null : e.target.value)}>
                   <option value="">{t("settings.micDefault")}</option>
                   {devices.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
