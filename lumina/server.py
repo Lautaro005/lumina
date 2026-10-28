@@ -20,7 +20,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile, WebSocket
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
-from . import __version__, chat, export, llm, memory, tts
+from . import __version__, chat, export, integrations, llm, memory, tts
 from .audio import list_inputs, request_permission
 from .audio import permissions as audio_permissions
 from .catalog import CATALOG, EU25, installed, languages_for, stt_choice
@@ -28,10 +28,11 @@ from .config import DATA, UI_DIR, UPLOADS, settings, system_info
 from .db import db, new_id
 from .downloads import downloads
 from .embed import NotReady, embedder
+from .enhance import SUMMARY_PRESETS
 from .hub import hub
 from .kb import kb
 from .mcp_server import server as mcp
-from .session import finish_meeting, import_recording, run_enhance, sessions, transcribe_meeting_audio
+from .session import finish_meeting, import_recording, run_enhance, save_to_brain, sessions, transcribe_meeting_audio
 from .stt import engine
 from .updater import updater
 
@@ -383,11 +384,69 @@ def create_app(port: int) -> FastAPI:
         return {"ok": True}
 
     @app.post("/api/meetings/{mid}/summarize")
-    def summarize(mid: str) -> dict:
-        """Writes the summary again (and the title if there is none), then indexes the meeting."""
+    async def summarize(mid: str, request: Request) -> dict:
+        """Writes the summary again (and the title if there is none), then indexes the meeting. Optional body:
+        {"instructions": "how the user wants it", "preset": "expand|shorten|simplify|formal|actions"}."""
         if not db.meeting(mid):
             raise HTTPException(404, "meeting not found")
-        threading.Thread(target=finish_meeting, args=(mid,), daemon=True).start()
+        try:
+            body = await request.json()
+        except ValueError:
+            body = {}
+        body = body if isinstance(body, dict) else {}
+        preset = str(body.get("preset") or "")
+        if preset and preset not in SUMMARY_PRESETS:
+            raise HTTPException(400, "unknown preset")
+        instructions = str(body.get("instructions") or "")[:1200]
+        threading.Thread(target=finish_meeting, args=(mid,), kwargs={"instructions": instructions, "preset": preset},
+                         daemon=True).start()
+        return {"ok": True}
+
+    # --- the family of apps: brain, OpenCue, AI WorkStudio ----------------------------------------------------
+    @app.get("/api/integrations")
+    def integrations_status() -> dict[str, Any]:
+        return integrations.status()
+
+    @app.post("/api/integrations/{app_id}/open")
+    def integrations_open(app_id: str) -> dict:
+        try:
+            integrations.open_app(app_id)
+        except integrations.IntegrationError as e:
+            raise HTTPException(409, str(e)) from e
+        return {"ok": True}
+
+    @app.post("/api/meetings/{mid}/brain")
+    def meeting_to_brain(mid: str) -> dict:
+        """Saves (or updates) the meeting as a note in brain's vault. Answers when it is written."""
+        if not db.meeting(mid):
+            raise HTTPException(404, "meeting not found")
+        path = save_to_brain(mid)
+        if not path:
+            raise HTTPException(409, "brain could not save the meeting (see the notice).")
+        return {"ok": True, "path": path}
+
+    @app.post("/api/meetings/{mid}/opencue")
+    async def meeting_to_opencue(mid: str, request: Request) -> dict:
+        """Sends the meeting (summary, decisions, action items) to an OpenCue agent. The reply arrives as an
+        `opencue` event, since an agent can take minutes."""
+        m = db.meeting(mid)
+        if not m:
+            raise HTTPException(404, "meeting not found")
+        body = await request.json()
+        agent = str(body.get("agent") or "").strip()
+        if not agent:
+            raise HTTPException(400, "choose an agent")
+        message = integrations.meeting_message(m, str(body.get("message") or "")[:2000])
+
+        def run() -> None:
+            hub.publish({"type": "opencue", "meeting_id": mid, "agent": agent, "state": "sending"})
+            try:
+                reply = integrations.opencue_send(agent, message)
+                hub.publish({"type": "opencue", "meeting_id": mid, "agent": agent, "state": "done", "text": reply})
+            except integrations.IntegrationError as e:
+                hub.publish({"type": "opencue", "meeting_id": mid, "agent": agent, "state": "error", "text": str(e)})
+
+        threading.Thread(target=run, daemon=True, name="opencue-send").start()
         return {"ok": True}
 
     @app.post("/api/meetings/{mid}/retranscribe")
@@ -641,9 +700,10 @@ def create_app(port: int) -> FastAPI:
         if not text:
             raise HTTPException(400, "empty message")
         web = body.get("web")
+        use_brain = body.get("brain")
 
         def gen():
-            inner = chat.answer(cid, text, web, bool(body.get("replace_last")))
+            inner = chat.answer(cid, text, web, bool(body.get("replace_last")), use_brain)
             try:
                 for ev in inner:
                     yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"

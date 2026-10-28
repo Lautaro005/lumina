@@ -5,13 +5,14 @@
 Key facts:
 
 - Install on macOS/Linux: `curl -fsSL https://lautaro005.github.io/lumina/install.sh | sh`. On Windows (PowerShell): `irm https://lautaro005.github.io/lumina/install.ps1 | iex`. Start with `lumina` (browser) or `lumina app` (desktop app with tray icon).
-- Current version: 0.1.6 (October 25, 2026).
+- Current version: 0.1.7 (October 28, 2026).
 - License: Apache-2.0 with the Commons Clause: free to use, modify and share, not to sell.
 - Speech models: Parakeet TDT 0.6B v3 (25 European languages, auto-detects), Canary 1B v2 (same 25 languages, follows the chosen language), Whisper tiny to large-v3-turbo (99 languages), Silero VAD, plus an experimental English-only option built on EmbeddingGemma 2's audio encoder. The transcription language is a setting with "Automatic" plus every supported language.
 - Embeddings: EmbeddingGemma 2 (8-bit ONNX, 768 dimensions, truncatable to 512/256/128), downloaded from the app. Vector store: ChromaDB (collections documents, meetings, notes).
 - Notes model: Gemma 4 E2B, E4B or 12B (4-bit GGUF) run by llama.cpp inside Lumina, or Ollama, LM Studio or any OpenAI-compatible server.
 - Optional read-aloud: Kokoro 82M or the system voice. Optional web search in chat: DuckDuckGo or SearXNG, off by default.
-- MCP tools: search_knowledge, list_sources, get_document, add_note, query_meetings, get_meeting. stdio: `lumina mcp` (e.g. `claude mcp add lumina -- lumina mcp`). HTTP: `http://127.0.0.1:47770/mcp` with a bearer token from Settings → Agents.
+- MCP tools: search_knowledge, list_sources, get_document, add_note, query_meetings, get_meeting, rewrite_summary, save_meeting_to_brain.
+- Connected apps (0.1.7): saves meetings to brain and searches brain in its chat; sends meetings to OpenCue agents; embedded by AI WorkStudio, whose MCP hub includes Lumina's tools. stdio: `lumina mcp` (e.g. `claude mcp add lumina -- lumina mcp`). HTTP: `http://127.0.0.1:47770/mcp` with a bearer token from Settings → Agents.
 - Stack: Python (FastAPI) server on 127.0.0.1:47770, React + TypeScript interface, Tauri 2 desktop shell. Data folder: `~/.lumina/data`.
 - Updates: Lumina checks GitHub for a newer version (switchable) and updates itself from a button in the app. Models not in use are unloaded after a few minutes ("Free memory when idle").
 - System audio: ScreenCaptureKit on macOS, WASAPI loopback on Windows, PulseAudio/PipeWire monitor on Linux.

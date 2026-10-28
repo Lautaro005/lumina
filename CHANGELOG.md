@@ -3,6 +3,29 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.7] - 2026-10-28
+
+### Added
+- **Summary the way you want it.** Under the summary of a finished meeting or an imported recording there is a box to
+  say how you want it ("as an email to the team", "only the decisions, in English", "a table of tasks") and a
+  **Regenerate summary** button, plus one-click **Expand**, **Shorten**, **Simplify**, **More formal** and **Action
+  items first**, which rewrite the summary that is there. When you ask for a form the usual sections cannot hold, the
+  summary is shown (and exported, indexed and saved to brain) in that form. `POST /api/meetings/{id}/summarize` takes
+  `{"instructions", "preset"}`.
+- **Connected apps** (Settings → Connected apps): Lumina now works with the rest of the family on this computer.
+  - **brain**: **Save to brain** in the ⋯ menu writes the meeting (summary, decisions, action items, notes, optionally
+    the transcript) to `knowledge/lumina-<date>-<title>.md` through brain's own MCP server; a saved meeting is updated
+    when its summary changes, and a switch saves every finished meeting. Ask Lumina has a **brain** pill that adds
+    brain's search results (profile, projects, saved pages) to the sources while brain is open.
+  - **OpenCue**: **Send to an OpenCue agent…** in the ⋯ menu sends the summary, decisions and action items, with what
+    you want done, to the agent you pick; its reply appears under the summary.
+  - **AI WorkStudio**: shows whether it is installed, opens it, and tells whether Lumina's tools are in WorkStudio's
+    MCP server.
+- **Two MCP tools** for agents (and WorkStudio's hub): `rewrite_summary` and `save_meeting_to_brain`.
+
+### Changed
+- The summary's header shows "Writing the summary…" while it runs; the button lives next to the instructions box.
+
 ## [0.1.6] - 2026-10-25
 
 ### Changed

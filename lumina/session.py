@@ -221,8 +221,10 @@ def run_enhance(meeting_id: str, cancel: threading.Event | None = None) -> list[
     return blocks
 
 
-def run_summary(meeting_id: str) -> bool:
-    """The summary and the automatic title. Separate from the enhanced notes: it reads the whole meeting."""
+def run_summary(meeting_id: str, instructions: str = "", preset: str = "") -> bool:
+    """The summary and the automatic title. Separate from the enhanced notes: it reads the whole meeting.
+    `instructions` (free text) and `preset` (expand, shorten...) say how the user wants it; a preset rewrites the
+    summary that is there."""
     m = db.meeting(meeting_id)
     if not m:
         return False
@@ -236,7 +238,11 @@ def run_summary(meeting_id: str) -> bool:
         return False
     try:
         hub.publish({"type": "summarizing", "meeting_id": meeting_id})
-        s = enhance.summarize(m["cues"], transcript, m["title"])
+        asked = "\n".join(x for x in (enhance.SUMMARY_PRESETS.get(preset, ""), instructions.strip()) if x)
+        previous = m["summary"] if preset and m["summary"] else None
+        s = enhance.summarize(m["cues"], transcript, m["title"], asked, previous)
+        if preset and s.get("request"):
+            s["request"] = instructions.strip() or preset
     except llm.LLMError as e:
         hub.publish({"type": "warning", "meeting_id": meeting_id, "text": f"Summary failed: {e}"})
         hub.publish({"type": "summary", "meeting_id": meeting_id, "summary": m["summary"] or {}, "title": None})
@@ -249,18 +255,42 @@ def run_summary(meeting_id: str) -> bool:
     return True
 
 
-def finish_meeting(meeting_id: str, summary: bool = True) -> None:
-    """After recording: the summary and automatic title, then index into the knowledge base.
-    The notes are not enhanced here: they were enhanced while the meeting ran."""
+def finish_meeting(meeting_id: str, summary: bool = True, instructions: str = "", preset: str = "",
+                   auto_brain: bool = True) -> None:
+    """After recording: the summary and automatic title, then index into the knowledge base (and, if the user
+    turned it on, save the meeting in brain). The notes are not enhanced here: they ran with the meeting."""
     if not db.meeting(meeting_id):
         return
     if summary:
-        run_summary(meeting_id)
+        run_summary(meeting_id, instructions, preset)
     try:
         kb.index_meeting(meeting_id)
     except Exception:  # noqa: BLE001
         log.exception("index meeting failed")
     hub.publish({"type": "live", "meeting_id": meeting_id, "state": "done"})
+    m = db.meeting(meeting_id)
+    if auto_brain and m and (settings.get("brain_autosave") or m.get("brain_path")):
+        # kept in step: a meeting already in brain is updated there when its summary changes
+        save_to_brain(meeting_id, quiet=True)
+
+
+def save_to_brain(meeting_id: str, quiet: bool = False) -> str | None:
+    """Writes the meeting into brain's vault (knowledge/lumina-<date>-<title>.md) and remembers where."""
+    from . import integrations
+
+    m = db.meeting(meeting_id)
+    if not m:
+        return None
+    transcript = db.transcript_text(meeting_id) if settings.get("brain_transcript") else ""
+    path, content = integrations.meeting_note(m, transcript)
+    try:
+        integrations.brain_write(path, content)
+    except integrations.IntegrationError as e:
+        hub.publish({"type": "brain", "meeting_id": meeting_id, "ok": False, "text": str(e), "quiet": quiet})
+        return None
+    db.update("meetings", meeting_id, {"brain_path": path, "brain_saved": time.time()})
+    hub.publish({"type": "brain", "meeting_id": meeting_id, "ok": True, "path": path, "quiet": quiet})
+    return path
 
 
 def import_recording(meeting_id: str, path) -> None:  # noqa: ANN001

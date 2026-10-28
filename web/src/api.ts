@@ -52,6 +52,17 @@ export type Block = { cue: string; text: string; auto?: boolean; changed?: numbe
 export type Summary = {
   title?: string; overview?: string; decisions?: string[]; action_items?: string[];
   topics?: string[]; open_questions?: string[];
+  /** the summary in the form the user asked for (an email, one paragraph...), Markdown */
+  text?: string;
+  /** how the user asked for it, if they did */
+  request?: string;
+};
+export type SummaryPreset = "expand" | "shorten" | "simplify" | "formal" | "actions";
+export type AppLink = { id: string; installed: boolean; running?: boolean; version?: string; url?: string };
+export type Integrations = {
+  brain: AppLink & { can_write: boolean };
+  opencue: AppLink & { agents: { id: string; name: string }[]; can_send: boolean };
+  workstudio: AppLink & { hub: boolean };
 };
 export type Segment = { id: number; meeting_id?: string; source: string; t0: number; t1: number; text: string; language?: string };
 export type Assist = { id: string; question: string; answer: string; sources: any[]; created: number; seen: number };
@@ -66,6 +77,8 @@ export type Meeting = {
   status: "draft" | "live" | "done"; language: string; tags: string[]; cues: string;
   enhanced: Block[]; summary: Summary; duration: number; indexed?: number | null; audio?: string;
   segments?: Segment[]; assists?: Assist[];
+  /** where the meeting was saved in brain's vault, if it was */
+  brain_path?: string;
 };
 
 export type Source = {
@@ -126,7 +139,12 @@ export const api = {
   pause: (id: string, paused: boolean) => req("POST", `/api/meetings/${id}/pause`, { paused }),
   stop: (id: string) => req("POST", `/api/meetings/${id}/stop`),
   enhance: (id: string) => req("POST", `/api/meetings/${id}/enhance`),
-  summarize: (id: string) => req("POST", `/api/meetings/${id}/summarize`),
+  summarize: (id: string, opts: { instructions?: string; preset?: SummaryPreset } = {}) =>
+    req("POST", `/api/meetings/${id}/summarize`, opts),
+  integrations: () => req<Integrations>("GET", "/api/integrations"),
+  openApp: (app: "brain" | "opencue" | "workstudio") => req("POST", `/api/integrations/${app}/open`),
+  toBrain: (id: string) => req<{ ok: boolean; path: string }>("POST", `/api/meetings/${id}/brain`),
+  toOpenCue: (id: string, agent: string, message: string) => req("POST", `/api/meetings/${id}/opencue`, { agent, message }),
   assistSeen: (mid: string, aid: string) => req("POST", `/api/meetings/${mid}/assists/${aid}/seen`),
   importRecording: (file: File) => {
     const f = new FormData();
@@ -169,11 +187,11 @@ export const api = {
 /** POST a chat message and read the server-sent events it streams back. */
 /** Sends a question and streams the answer. `signal` stops it; `replace` replaces the last question and its answer. */
 export async function sendChat(chatId: string, text: string, web: boolean, onEvent: (ev: any) => void,
-  opts: { signal?: AbortSignal; replace?: boolean } = {}) {
+  opts: { signal?: AbortSignal; replace?: boolean; brain?: boolean } = {}) {
   const r = await fetch(`/api/chats/${chatId}/messages`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, web, replace_last: !!opts.replace }),
+    body: JSON.stringify({ text, web, replace_last: !!opts.replace, ...(opts.brain === undefined ? {} : { brain: opts.brain }) }),
     signal: opts.signal,
   });
   if (!r.ok || !r.body) throw new Error(await r.text());

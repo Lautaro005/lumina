@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 import time
 from typing import Any
 
@@ -101,6 +103,61 @@ def get_meeting(meeting_id: str, include_transcript: bool = True) -> dict[str, A
     if include_transcript:
         out["transcript"] = db.transcript_text(meeting_id)
     return out
+
+
+def _api(method: str, path: str, body: dict | None = None, timeout: float = 15) -> Any:
+    """The running Lumina app (it owns the notes model and tells the open window). None if it is not running."""
+    import httpx
+
+    from .config import DEFAULT_PORT
+
+    port = int(os.environ.get("LUMINA_PORT", DEFAULT_PORT))
+    try:
+        r = httpx.request(method, f"http://127.0.0.1:{port}{path}", json=body, timeout=timeout)
+    except httpx.HTTPError:
+        return None
+    if r.status_code >= 400:
+        raise ValueError(r.text[:300])
+    return r.json()
+
+
+@server.tool(description="Rewrite a finished meeting's summary the way the user asks (free instructions such as "
+                        "'as an email to the team' or 'only decisions, in English') or with a preset: expand, shorten, "
+                        "simplify, formal, actions. Needs the Lumina app open; waits for the new summary.")
+def rewrite_summary(meeting_id: str, instructions: str = "", preset: str = "") -> dict[str, Any]:
+    m = db.meeting(meeting_id)
+    if not m:
+        return {"error": "not found"}
+    before = json.dumps(m["summary"] or {}, sort_keys=True)
+    try:
+        if _api("POST", f"/api/meetings/{meeting_id}/summarize", {"instructions": instructions, "preset": preset}) is None:
+            return {"error": "Lumina is not open. Open it (lumina app) and try again."}
+    except ValueError as e:
+        return {"error": str(e)}
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        time.sleep(2)
+        now = (db.meeting(meeting_id) or {}).get("summary") or {}
+        if json.dumps(now, sort_keys=True) != before:
+            return {"id": meeting_id, "summary": now}
+    return {"error": "the summary is still being written; read it later with get_meeting"}
+
+
+@server.tool(description="Save a meeting (summary, decisions, action items, notes) as a note in the user's brain "
+                        "vault (knowledge/lumina-<date>-<title>.md), or update it if it was saved before.")
+def save_meeting_to_brain(meeting_id: str) -> dict[str, Any]:
+    if not db.meeting(meeting_id):
+        return {"error": "not found"}
+    try:
+        r = _api("POST", f"/api/meetings/{meeting_id}/brain", timeout=150)
+    except ValueError as e:
+        return {"error": str(e)}
+    if r is None:  # the app is closed: write it from here
+        from .session import save_to_brain
+
+        path = save_to_brain(meeting_id)
+        return {"path": path} if path else {"error": "brain could not save the meeting (is brain installed?)"}
+    return {"path": r.get("path")}
 
 
 def run_stdio() -> None:

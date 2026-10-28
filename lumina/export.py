@@ -23,7 +23,9 @@ def markdown(mid: str) -> str:
     if m["tags"]:
         out.append("Tags: " + ", ".join(m["tags"]))
     s = m["summary"] or {}
-    if s.get("overview"):
+    if s.get("text"):  # a summary the user asked for in a form of their own (an email, a paragraph...)
+        out += ["", "## Summary", "", s["text"]]
+    elif s.get("overview"):
         out += ["", "## Summary", "", s["overview"]]
     for key, label in (("decisions", "Decisions"), ("action_items", "Action items"), ("open_questions", "Open questions"),
                        ("topics", "Topics")):

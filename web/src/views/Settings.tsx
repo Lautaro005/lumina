@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Columns2, Download, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote, Trash2 } from "lucide-react";
-import { api, type Job, type Model, type UpdateInfo } from "../api";
+import { api, type Integrations, type Job, type Model, type UpdateInfo } from "../api";
 import { ConfirmDialog, CopyButton, ModelRow, PermissionsPanel, Switch, useModels, useSetting } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
@@ -282,6 +282,65 @@ function ModelGroups({ models, jobs }: { models: Model[]; jobs: Record<string, J
   );
 }
 
+/** brain, OpenCue and AI WorkStudio: what is installed and open, and what Lumina does with each one. */
+function ConnectedApps() {
+  const t = useT();
+  const toast = useStore((s) => s.toast);
+  const [apps, setApps] = useState<Integrations | null>(null);
+  const [brainChat, setBrainChat] = useSetting<boolean>("brain_chat");
+  const [brainAuto, setBrainAuto] = useSetting<boolean>("brain_autosave");
+  const [brainTr, setBrainTr] = useSetting<boolean>("brain_transcript");
+  useEffect(() => {
+    const load = () => api.integrations().then(setApps).catch(() => {});
+    load();
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
+  }, []);
+  if (!apps) return null;
+  const open = (id: "brain" | "opencue" | "workstudio") => api.openApp(id).catch((e) => toast((e as Error).message, "error"));
+  const state = (a: { installed: boolean; running?: boolean }) =>
+    a.running ? <span className="chip ok">{t("apps.running")}</span>
+      : a.installed ? <span className="chip">{t("apps.installed")}</span>
+      : <span className="chip">{t("apps.missing")}</span>;
+  const action = (id: "brain" | "opencue" | "workstudio", installed: boolean, site: string) => installed
+    ? <button className="btn sm" onClick={() => open(id)}>{t("apps.open")}</button>
+    : <a className="btn sm" href={site} target="_blank" rel="noopener">{t("apps.install")}</a>;
+  return (
+    <div className="app-links">
+      <div className="app-link">
+        <header>
+          <span className="app-mark brain" aria-hidden="true">b</span>
+          <div><b>brain</b>{apps.brain.version && <small> · {apps.brain.version}</small>}<p>{t("apps.brain")}</p></div>
+          <span className="app-act">{state(apps.brain)}{action("brain", apps.brain.installed, "https://lautaro005.github.io/brain/")}</span>
+        </header>
+        {apps.brain.installed && (
+          <div className="app-opts">
+            <Switch checked={brainChat !== false} onChange={setBrainChat} label={t("apps.brainChat")} />
+            <Switch checked={!!brainAuto} onChange={setBrainAuto} label={t("apps.brainAuto")} />
+            <Switch checked={!!brainTr} onChange={setBrainTr} label={t("apps.brainTranscript")} />
+            <p className="hint">{t("apps.brainWhere")}</p>
+          </div>
+        )}
+      </div>
+      <div className="app-link">
+        <header>
+          <span className="app-mark opencue" aria-hidden="true">o</span>
+          <div><b>OpenCue</b>{apps.opencue.agents.length > 0 && <small> · {t("apps.agents", { n: apps.opencue.agents.length })}</small>}<p>{t("apps.opencue")}</p></div>
+          <span className="app-act">{state(apps.opencue)}{action("opencue", apps.opencue.installed, "https://lautaro005.github.io/opencue/")}</span>
+        </header>
+      </div>
+      <div className="app-link">
+        <header>
+          <span className="app-mark workstudio" aria-hidden="true">w</span>
+          <div><b>AI WorkStudio</b><p>{t("apps.workstudio")}</p>
+            {apps.workstudio.installed && <p className="hint">{apps.workstudio.hub ? t("apps.hubOn") : t("apps.hubOff")}</p>}</div>
+          <span className="app-act">{state(apps.workstudio)}{action("workstudio", apps.workstudio.installed, "https://lautaro005.github.io/workstudio/")}</span>
+        </header>
+      </div>
+    </div>
+  );
+}
+
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section className="section" id={id}>
@@ -356,7 +415,7 @@ export default function Settings() {
   const nav: [string, string][] = [
     ["general", t("settings.general")], ...(isMac ? [["permissions", t("perm.title")] as [string, string]] : []), ["transcription", t("settings.transcription")], ["generation", t("settings.generation")],
     ["knowledge", t("settings.knowledge")], ["speech", t("settings.speech")], ["models", t("settings.modelsNav")],
-    ["agents", t("settings.agents")], ["delete", t("settings.delete")], ["about", t("settings.about")],
+    ["apps", t("apps.title")], ["agents", t("settings.agents")], ["delete", t("settings.delete")], ["about", t("settings.about")],
   ];
 
   return (
@@ -569,6 +628,11 @@ export default function Settings() {
             <RunningModels />
             <p className="lead" style={{ marginTop: 0 }}>{t("settings.modelsLead")}</p>
             <ModelGroups models={models} jobs={jobs} />
+          </Section>
+
+          <Section id="apps" title={t("apps.title")}>
+            <p className="hint">{t("apps.lead")}</p>
+            <ConnectedApps />
           </Section>
 
           <Section id="agents" title={t("settings.agents")}>

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { api, type Assist, type Block, type Job, type Meeting, type Segment, type Status } from "./api";
+import { translate, uiLang } from "./i18n";
 
 type Partial_ = { you?: string; others?: string; file?: string };
 type Live = {
@@ -16,6 +17,8 @@ type Live = {
 };
 
 type Toast = { id: number; text: string; kind: "info" | "warn" | "error" };
+/** A meeting sent to an OpenCue agent: the agent's reply arrives later. */
+export type AgentReply = { agent: string; state: "sending" | "done" | "error"; text?: string };
 
 type State = {
   status: Status | null;
@@ -23,6 +26,8 @@ type State = {
   route: string;
   live: Live;
   summarizing: string; // id of the meeting whose summary is being written
+  replies: Record<string, AgentReply>; // by meeting id
+  dropReply: (meetingId: string) => void;
   meeting: Meeting | null;
   toasts: Toast[];
   refresh: () => Promise<void>;
@@ -47,6 +52,8 @@ export const useStore = create<State>((set, get) => ({
   route: location.hash.slice(1) || "/meetings",
   live: initialLive,
   summarizing: "",
+  replies: {},
+  dropReply: (meetingId) => set((st) => { const r = { ...st.replies }; delete r[meetingId]; return { replies: r }; }),
   meeting: null,
   toasts: [],
 
@@ -160,6 +167,17 @@ export const useStore = create<State>((set, get) => ({
       case "assist":
         if (mine(ev.meeting_id) && s.meeting)
           set({ meeting: { ...s.meeting, assists: [ev.assist as Assist, ...(s.meeting.assists || [])] } });
+        break;
+      case "brain":
+        if (ev.ok) {
+          if (mine(ev.meeting_id) && s.meeting) set({ meeting: { ...s.meeting, brain_path: ev.path } });
+          if (!ev.quiet) get().toast(translate(uiLang(s.status?.settings.ui_language), "brain.saved", { path: ev.path }));
+        } else {
+          get().toast(`brain: ${ev.text}`, "warn");
+        }
+        break;
+      case "opencue":
+        set({ replies: { ...s.replies, [ev.meeting_id]: { agent: ev.agent, state: ev.state, text: ev.text } } });
         break;
       case "permission":
         // a macOS permission is missing: the meeting shows where to allow it (recording never asks)

@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.6`) | ✅ |
+| `0.1.x` (latest: `0.1.7`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -77,6 +77,18 @@ being exploited).
   process tap, which needs only the System Audio Recording permission (no screen recording). To read the status of that
   permission the helper calls `TCCAccessPreflight`/`TCCAccessRequest` from Apple's private TCC framework when present;
   without them it simply starts the tap.
+- **Connected apps (0.1.7).** Lumina talks to brain, OpenCue and AI WorkStudio only on this computer:
+  `GET /api/version` and `POST /api/search` on brain's dashboard (`127.0.0.1:8765`, with its `X-Brain: 1` header),
+  brain's own MCP server started as a child process (`uv run --directory ~/.brain python server.py`) to write a meeting
+  with its `write_file` tool (path `knowledge/lumina-<date>-<title>.md`, so brain's history, metadata and guards
+  apply), OpenCue's agent list read-only from its `opencue.db`, and `opencue mcp-serve` with the `send_to_agent` tool.
+  Those child processes get a minimal environment (HOME, PATH, SHELL, TERM). Nothing is sent anywhere unless you press
+  **Save to brain**, turn on automatic saving, or send a meeting to an agent; brain search in Ask Lumina runs only while
+  brain is open and can be switched off. An OpenCue agent that uses an online model sends what it receives to that
+  provider; the dialog says so. The new endpoints (`/api/integrations`, `/api/meetings/{id}/brain`,
+  `/api/meetings/{id}/opencue`) are behind the same host and origin checks as the rest of the API.
+- **Summary instructions.** What you type to shape a summary goes to your notes model inside a `<request>` block, with
+  a rule that it only changes the summary; it is stored with the summary so you can see how it was written.
 - **Dependencies lock.** `uv.lock` is no longer in the repository; `uv sync` resolves the versions allowed by
   `pyproject.toml` on each install. The update path discards a local `uv.lock` before `git pull`.
 - **Imported recordings** are kept in `uploads/` (so they can be transcribed again) until you delete the meeting;

@@ -21,8 +21,9 @@ log = logging.getLogger("lumina.chat")
 SYSTEM_PROMPT = """\
 You are Lumina, the assistant inside a private, local-first app for meeting notes and personal knowledge. Everything \
 you know about the user comes from material they chose to keep on their own computer: meeting notes and \
-transcripts, summaries, saved notes and indexed files. Nothing leaves their machine unless web results appear among \
-the sources.
+transcripts, summaries, saved notes and indexed files, and, when the user's brain app is open, notes from their \
+brain vault (type "brain": their profile, projects and saved pages). Nothing leaves their machine unless web results \
+appear among the sources.
 
 # How you work
 Each turn you receive a <context> block, a <sources> block and the user's <question>. Sources are numbered. Build \
@@ -200,7 +201,8 @@ def select(hits: list[dict]) -> list[dict]:
     return out
 
 
-def gather(question: str, web: bool, meeting_id: str | None = None, query: str | None = None) -> list[dict]:
+def gather(question: str, web: bool, meeting_id: str | None = None, query: str | None = None,
+           use_brain: bool = False) -> list[dict]:
     sources: list[dict] = []
     query = query or question
     try:
@@ -220,6 +222,13 @@ def gather(question: str, web: bool, meeting_id: str | None = None, query: str |
             sources = [s for s in sources if s.get("meeting_id") != meeting_id]
             sources.insert(0, {"kind": "meeting", "title": m["title"] or "This meeting", "meeting_id": meeting_id,
                                "text": meeting_digest(m, full=True), "score": 1, "limit": MEETING_CHARS + 1200})
+    if use_brain and not meeting_id:
+        # the user's long-term memory in brain (profile, projects, saved pages), while brain is open
+        from . import integrations
+
+        for b in integrations.brain_search(query, k=4):
+            sources.append({"kind": "brain", "title": b["title"], "text": b["text"], "path": b["path"],
+                            "url": b["url"], "score": 0})
     if web:
         for w in web_search(query):
             sources.append({"kind": "web", "title": w["title"], "text": w["text"], "url": w["url"], "score": 0})
@@ -308,8 +317,10 @@ def drop_last_turn(chat_id: str) -> None:
         db.x("DELETE FROM messages WHERE id=?", [rows.pop()["id"]])
 
 
-def answer(chat_id: str, question: str, web: bool | None = None, replace_last: bool = False) -> Iterator[dict]:
+def answer(chat_id: str, question: str, web: bool | None = None, replace_last: bool = False,
+           use_brain: bool | None = None) -> Iterator[dict]:
     web = settings.get("web_search") if web is None else web
+    use_brain = settings.get("brain_chat") if use_brain is None else use_brain
     chat = db.one("SELECT * FROM chats WHERE id=?", [chat_id])
     if not chat:
         raise KeyError(chat_id)
@@ -321,7 +332,7 @@ def answer(chat_id: str, question: str, web: bool | None = None, replace_last: b
         db.update("chats", chat_id, {"title": question[:80]})
     yield {"type": "status", "text": "searching"}
     query = rewrite_query(question, history)
-    sources = gather(question, bool(web), chat.get("meeting_id"), query)
+    sources = gather(question, bool(web), chat.get("meeting_id"), query, bool(use_brain))
     yield {"type": "sources", "sources": [public(s) for s in sources]}
     messages = build_messages(question, history, sources, format_context(chat, bool(web), sources))
     full = []

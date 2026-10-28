@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, BookOpen, Check, Copy, FileText, Globe, Pencil, Plus, RotateCw, Square, StickyNote, Volume2 } from "lucide-react";
+import { ArrowUp, BookOpen, Brain, Check, Copy, FileText, Globe, Pencil, Plus, RotateCw, Square, StickyNote, Volume2 } from "lucide-react";
 import { api, sendChat, type ChatT, type Message } from "../api";
 import { ConfirmDialog, ContextMenu, Markdown, RenameInput, guessLang, speak } from "../components";
 import { useT } from "../i18n";
@@ -11,7 +11,7 @@ const MAX_CHIPS = 4;
 
 function SourceChip({ s, n }: { s: any; n: number }) {
   const go = useStore((st) => st.go);
-  const Icon = s.kind === "web" ? Globe : s.kind === "meetings" || s.kind === "meeting" ? BookOpen : s.kind === "notes" ? StickyNote : FileText;
+  const Icon = s.kind === "web" ? Globe : s.kind === "brain" ? Brain : s.kind === "meetings" || s.kind === "meeting" ? BookOpen : s.kind === "notes" ? StickyNote : FileText;
   const open = () => {
     if (s.url) window.open(s.url, "_blank", "noopener");
     else if (s.meeting_id) go(`/meeting/${s.meeting_id}`);
@@ -72,6 +72,10 @@ export default function Chat({ chatId }: { chatId?: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [web, setWeb] = useState<boolean>(!!status.settings.web_search);
+  // brain as a source: offered while the brain app is open (its search runs there)
+  const [brainOpen, setBrainOpen] = useState(false);
+  const [useBrain, setUseBrain] = useState<boolean>(status.settings.brain_chat !== false);
+  useEffect(() => { api.integrations().then((x) => setBrainOpen(!!x.brain.running)).catch(() => {}); }, []);
   const [live, setLive] = useState<Live>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState("");
@@ -125,7 +129,7 @@ export default function Chat({ chatId }: { chatId?: string }) {
         else if (ev.type === "delta") setLive((l) => (l ? { ...l, text: l.text + ev.text } : l));
         else if (ev.type === "error") toast(ev.text, "error");
         else if (ev.type === "done") setMessages((m) => [...m, ev.message]);
-      }, { signal: ctl.signal, replace });
+      }, { signal: ctl.signal, replace, brain: brainOpen && useBrain });
     } catch (e) {
       if ((e as Error).name === "AbortError") {
         // stopped by the user: the server kept what was written so far
@@ -169,6 +173,11 @@ export default function Chat({ chatId }: { chatId?: string }) {
           <button type="button" className="web-toggle" aria-pressed={web} title={t("chat.webHint")} onClick={() => setWeb(!web)}>
             <Globe size={15} /> {t("chat.web")}
           </button>
+          {brainOpen && (
+            <button type="button" className="web-toggle" aria-pressed={useBrain} title={t("brain.chatHint")} onClick={() => setUseBrain(!useBrain)}>
+              <Brain size={15} /> brain
+            </button>
+          )}
           <span className="send-wrap">
             {live && (
               <button type="button" className="stop" onClick={stop} aria-label={t("chat.stop")} title={t("chat.stop")}>

@@ -77,6 +77,10 @@ DEFAULTS: dict[str, Any] = {
     "watched_folders": [],
     # chat
     "web_search": False,
+    "brain_chat": True,        # Ask Lumina also searches brain's vault when brain is open
+    "brain_autosave": False,   # save every finished meeting in brain's vault
+    "brain_transcript": False, # include the transcript in the note saved in brain
+    "opencue_agent": "",       # the OpenCue agent last used for "Send to an agent"
     "search_provider": "duckduckgo",  # duckduckgo | searxng
     "searxng_url": "http://127.0.0.1:8888",
     # speech

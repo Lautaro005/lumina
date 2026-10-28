@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  Download, FileAudio, Highlighter, Loader2, MessageSquareText, MoreHorizontal, Pause, Play,
-  RotateCw, ScrollText, Search, Sparkles, Square, Trash2, Volume2, X,
+  Bot, Brain, Download, FileAudio, Highlighter, Loader2, MessageSquareText, MoreHorizontal, Pause, Play,
+  RotateCw, ScrollText, Search, Send, Sparkles, Square, Trash2, Volume2, Wand2, X,
 } from "lucide-react";
-import { api, fmtClock, type Block, type Meeting as M, type Segment } from "../api";
+import { api, fmtClock, type Block, type Integrations, type Meeting as M, type Segment, type SummaryPreset } from "../api";
 import { CopyButton, Markdown, Meter, Popover, guessLang, speak, stopSpeaking } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
@@ -190,7 +190,17 @@ export default function MeetingView({ id }: { id: string }) {
   };
   const pause = () => api.pause(id, true);
   const enhanceNow = () => api.enhance(id).catch((e) => toast(e.message, "error"));
-  const summarize = () => api.summarize(id).catch((e) => toast(e.message, "error"));
+  const summarize = (opts: { instructions?: string; preset?: SummaryPreset } = {}) =>
+    api.summarize(id, opts).catch((e) => toast(e.message, "error"));
+  // the family of apps: brain (save the meeting) and OpenCue (send it to an agent)
+  const [apps, setApps] = useState<Integrations | null>(null);
+  useEffect(() => { api.integrations().then(setApps).catch(() => {}); }, [id]);
+  const [toBrain, setToBrain] = useState(false);
+  const saveToBrain = async () => {
+    setToBrain(true);
+    try { await api.toBrain(id); } catch { /* the notice comes as an event */ } finally { setToBrain(false); }
+  };
+  const [agentDialog, setAgentDialog] = useState(false);
   const retranscribe = async () => {
     setBusy(true);
     try { await api.retranscribe(id); } catch (e) { toast((e as Error).message, "error"); } finally { setBusy(false); }
@@ -285,6 +295,14 @@ export default function MeetingView({ id }: { id: string }) {
                     <button role="menuitem" onClick={() => { setMenu(""); readNotes(); }}><Volume2 size={16} /> {t("common.readAloud")}</button>
                     {m.status === "done" && !imported && m.cues.trim() && (
                       <button role="menuitem" disabled={!status.llm_ready} onClick={() => { setMenu(""); enhanceNow(); }}><Sparkles size={16} /> {t("meeting.enhanceAgain")}</button>
+                    )}
+                    {m.status === "done" && apps?.brain.can_write && (
+                      <button role="menuitem" disabled={toBrain} onClick={() => { setMenu(""); saveToBrain(); }}>
+                        {toBrain ? <Loader2 size={16} className="spin" /> : <Brain size={16} />} {m.brain_path ? t("brain.update") : t("brain.save")}
+                      </button>
+                    )}
+                    {m.status === "done" && apps?.opencue.installed && (
+                      <button role="menuitem" onClick={() => { setMenu(""); setAgentDialog(true); }}><Bot size={16} /> {t("opencue.send")}</button>
                     )}
                     <hr />
                     {confirmDel ? (
@@ -409,6 +427,7 @@ export default function MeetingView({ id }: { id: string }) {
 
           {!imported && <Summary m={m} canWrite={m.status === "done" && segments.length > 0 && !processing} onWrite={summarize} />}
         </article>
+        {agentDialog && apps && <SendToAgent meetingId={id} agents={apps.opencue.agents} onClose={() => setAgentDialog(false)} />}
 
         {showGutter && <Gutter m={m} />}
       </div>
@@ -481,10 +500,17 @@ function NotesPanels({ view, tab, setTab, raw, onRaw, blocks, recording, paused,
   );
 }
 
-function Summary({ m, canWrite, onWrite }: { m: M; canWrite: boolean; onWrite: () => void }) {
+const PRESETS: SummaryPreset[] = ["expand", "shorten", "simplify", "formal", "actions"];
+
+function Summary({ m, canWrite, onWrite }: {
+  m: M; canWrite: boolean; onWrite: (opts?: { instructions?: string; preset?: SummaryPreset }) => void;
+}) {
   const t = useT();
   const writing = useStore((s) => s.summarizing === m.id);
   const ready = useStore((s) => s.status?.llm_ready);
+  const reply = useStore((s) => s.replies[m.id]);
+  const dropReply = useStore((s) => s.dropReply);
+  const [ask, setAsk] = useState("");
   const s = m.summary || {};
   const cols: [string, string[] | undefined][] = [
     [t("meeting.decisions"), s.decisions],
@@ -492,34 +518,122 @@ function Summary({ m, canWrite, onWrite }: { m: M; canWrite: boolean; onWrite: (
     [t("meeting.questions"), s.open_questions],
     [t("meeting.topics"), s.topics],
   ];
-  const has = s.overview || cols.some(([, v]) => v && v.length);
+  const has = s.overview || s.text || cols.some(([, v]) => v && v.length);
+  const busy = writing || !ready;
+  const regenerate = () => onWrite(ask.trim() ? { instructions: ask.trim() } : {});
   return (
     <section className="summary-band" aria-label={t("meeting.summary")}>
       <div className="summary-head">
         <h2>{t("meeting.summary")}</h2>
-        {canWrite && (
-          <button className="btn sm" onClick={onWrite} disabled={writing || !ready}>
-            {writing ? <Loader2 size={15} className="spin" /> : <RotateCw size={15} />}
-            {writing ? t("meeting.summarizing") : has ? t("meeting.regenerate") : t("meeting.writeSummary")}
-          </button>
-        )}
+        {writing && <span className="chip blue"><Loader2 size={13} className="spin" /> {t("meeting.summarizing")}</span>}
       </div>
       {has ? (
         <>
-          {s.overview && <p className="overview">{s.overview}</p>}
-          <div className="summary-cols">
-            {cols.filter(([, v]) => v && v.length).map(([label, v]) => (
-              <div key={label}>
-                <h3>{label}</h3>
-                <ul>{v!.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          {s.request && <p className="summary-asked"><Wand2 size={13} /> {t("summary.asked", { request: s.request })}</p>}
+          {s.text ? <Markdown text={s.text} className="md summary-text" /> : (
+            <>
+              {s.overview && <p className="overview">{s.overview}</p>}
+              <div className="summary-cols">
+                {cols.filter(([, v]) => v && v.length).map(([label, v]) => (
+                  <div key={label}>
+                    <h3>{label}</h3>
+                    <ul>{v!.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </>
       ) : (
         <p className="placeholder-line">{t("meeting.summaryEmpty")}</p>
       )}
+      {canWrite && (
+        <div className="summary-tools">
+          <form className="summary-ask" onSubmit={(e) => { e.preventDefault(); regenerate(); }}>
+            <label className="sr" htmlFor={`ask-${m.id}`}>{t("summary.askLabel")}</label>
+            <Wand2 size={16} aria-hidden="true" />
+            <input id={`ask-${m.id}`} value={ask} onChange={(e) => setAsk(e.target.value)} maxLength={1200}
+              placeholder={`${t("summary.askLabel")} ${t("summary.ask")}`} disabled={busy} />
+            <button className="btn sm primary" type="submit" disabled={busy}>
+              {writing ? <Loader2 size={15} className="spin" /> : <RotateCw size={15} />} {has ? t("meeting.regenerate") : t("meeting.writeSummary")}
+            </button>
+          </form>
+          {has && (
+            <div className="summary-presets" role="group" aria-label={t("summary.askLabel")}>
+              {PRESETS.map((p) => (
+                <button key={p} className="chip-btn" disabled={busy}
+                  onClick={() => onWrite({ preset: p, ...(ask.trim() ? { instructions: ask.trim() } : {}) })}>
+                  {t(`summary.${p}`)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {reply && (
+        <div className={`agent-reply ${reply.state}`} aria-live="polite">
+          <header>
+            {reply.state === "sending" ? <Loader2 size={15} className="spin" /> : <Bot size={15} />}
+            <b>{reply.state === "sending" ? t("opencue.sending", { agent: reply.agent })
+              : reply.state === "done" ? t("opencue.reply", { agent: reply.agent })
+              : t("opencue.failed", { error: "" }).replace(/: $/, "")}</b>
+            {reply.state !== "sending" && <button className="btn sm ghost icon" aria-label={t("meeting.dismiss")} onClick={() => dropReply(m.id)}><X size={14} /></button>}
+          </header>
+          {reply.text && (reply.state === "done" ? <Markdown text={reply.text} /> : <p>{reply.text}</p>)}
+        </div>
+      )}
     </section>
+  );
+}
+
+/** Send the meeting to one of the user's OpenCue agents; its reply shows under the summary. */
+function SendToAgent({ meetingId, agents, onClose }: { meetingId: string; agents: { id: string; name: string }[]; onClose: () => void }) {
+  const t = useT();
+  const toast = useStore((s) => s.toast);
+  const last = useStore((s) => s.status?.settings.opencue_agent) || "";
+  const [agent, setAgent] = useState(agents.some((a) => a.name === last) ? last : agents[0]?.name || "");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    setBusy(true);
+    try {
+      await api.toOpenCue(meetingId, agent, message);
+      api.settings({ opencue_agent: agent }).catch(() => {});
+      onClose();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="send-agent">
+        <h2 id="send-agent">{t("opencue.title")}</h2>
+        <p>{t("opencue.lead")}</p>
+        {agents.length === 0 ? <p className="hint">{t("opencue.none")}</p> : (
+          <>
+            <div className="field">
+              <label htmlFor="agent">{t("opencue.agent")}</label>
+              <select id="agent" className="input" value={agent} onChange={(e) => setAgent(e.target.value)}>
+                {agents.map((a) => <option key={a.id} value={a.name}>{a.name}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="agent-msg">{t("opencue.message")}</label>
+              <textarea id="agent-msg" className="input" rows={3} value={message} maxLength={2000}
+                placeholder={t("opencue.placeholder")} onChange={(e) => setMessage(e.target.value)} />
+            </div>
+          </>
+        )}
+        <div className="actions">
+          <button className="btn ghost" onClick={onClose}>{t("common.cancel")}</button>
+          <button className="btn primary" disabled={busy || !agent} onClick={send}>
+            {busy ? <Loader2 size={15} className="spin" /> : <Send size={15} />} {t("opencue.go")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

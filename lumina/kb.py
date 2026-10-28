@@ -570,6 +570,8 @@ class KnowledgeBase:
         date = time.strftime("%Y-%m-%d %H:%M", time.localtime(m["started"] or m["created"]))
         s = m["summary"] or {}
         head = [f"# {job.title} ({date})"]
+        if s.get("text"):
+            head.append(s["text"])
         if s.get("overview"):
             head.append(s["overview"])
         for key, label in (("decisions", "Decisions"), ("action_items", "Action items"), ("topics", "Topics")):
