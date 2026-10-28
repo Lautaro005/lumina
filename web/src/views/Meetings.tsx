@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FileAudio, Plus, Search } from "lucide-react";
+import { FileAudio, Loader2, Plus, Search } from "lucide-react";
 import { api, fmtClock, type Meeting } from "../api";
 import { ConfirmDialog, ContextMenu, RenameInput } from "../components";
 import { useT } from "../i18n";
@@ -127,7 +127,9 @@ export default function Meetings() {
                       {renaming === m.id
                         ? <RenameInput value={m.title} label={t("common.rename")} onSave={(v) => rename(m.id, v)} onCancel={() => setRenaming("")} />
                         : (m.title || t("common.untitled"))}{" "}
-                      {(m.status === "live" || liveId === m.id) && <span className="chip live" style={{ verticalAlign: 2 }}><i className="dot live" /> {t("list.live")}</span>}
+                      {(m.status === "live" || liveId === m.id) && (m.tags.includes("imported") || m.audio
+                        ? <span className="chip blue" style={{ verticalAlign: 2 }}><Loader2 size={12} className="spin" /> {t("list.transcribing")}</span>
+                        : <span className="chip live" style={{ verticalAlign: 2 }}><i className="dot live" /> {t("list.live")}</span>)}
                     </div>
                     {m.summary?.overview && <div className="t-sub">{m.summary.overview}</div>}
                     {m.tags.length > 0 && <div className="t-tags">{m.tags.map((x) => <span key={x} className="tag">{x}</span>)}</div>}

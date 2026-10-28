@@ -26,9 +26,9 @@ def test_enhance_only_expands_what_the_user_wrote(monkeypatch):
     monkeypatch.setattr(llm, "complete_json", fake)
     out = enhance.enhance("- gpu\n- token", "Others: the GPU has 24 GB", "T")
     assert [b["cue"] for b in out] == ["gpu", "token"]
-    assert out[0]["text"] == "- GPU is 24 GB" and out[1]["text"] == "" and not any(b["auto"] for b in out)
+    assert out[0]["text"] == "GPU is 24 GB" and out[1]["text"] == "" and not any(b["auto"] for b in out)
     # the transcript comes before the cues, so the model server can reuse the start of the prompt
-    assert seen["user"].index("Transcript:") < seen["user"].index("User's cues:")
+    assert seen["user"].index("Transcript:") < seen["user"].index("The user's lines:")
 
 
 def test_enhance_without_cues_or_transcript_does_not_call_the_model(monkeypatch):

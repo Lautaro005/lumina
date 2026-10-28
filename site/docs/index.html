@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.7">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.8">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -89,7 +89,7 @@
 <h3>Summary</h3>
 <p>At the foot of the page: an overview, decisions, action items with owners and dates, open questions and topics. Lumina also titles the meeting if you did not. The meeting, its notes and its transcript are then added to your knowledge base.</p>
 <h3>Live assistance</h3>
-<p>When someone asks a question (Lumina recognises questions in English, Spanish, Portuguese, French, German and Italian) and your sources contain an answer, a yellow card appears with a short answer you can say out loud and where it came from. Turn it off in Settings → Transcription.</p>
+<p>When someone asks a question (in English, Spanish, Portuguese, French, German or Italian), your notes model first checks that it is a complete question on the meeting's subject: rhetorical questions ("right?"), half sentences, small talk and questions about someone's own plans are skipped. A yellow card then shows a short answer you can say out loud, from your sources (only the ones it used are listed) or, when they do not answer it, from the web, with links to the pages. Only the question is searched, never the transcript. Turn it off with the switch next to <b>Live assistance</b> in the meeting; the web search has its own switch in Settings → Transcription.</p>
 <h3>Import, search and export</h3>
 <ul>
 <li><b>Import a recording</b> (Meetings page): any audio or video file is transcribed and summarised like a live meeting.</li>
@@ -235,7 +235,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.7 · Free to use, not to sell</span>
+    <span>Lumina 0.1.8 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -243,6 +243,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.7" defer></script>
+<script src="../assets/site.js?v=0.1.8" defer></script>
 </body>
 </html>

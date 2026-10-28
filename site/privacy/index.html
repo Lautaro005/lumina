@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina privacy policy">
 <meta property="og:description" content="Lumina has no servers, accounts or telemetry. What stays on your computer and the few cases where Lumina uses the network.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.7">
+<link rel="stylesheet" href="../assets/site.css?v=0.1.8">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -45,7 +45,7 @@
 <ul>
 <li>Lumina has no servers, no accounts and no telemetry. The author receives nothing about you or your use.</li>
 <li>Your recordings, transcripts, notes, summaries, embeddings, chats and indexed files stay on your computer.</li>
-<li>Lumina connects to the internet only to download models and updates, to search the web when you turn web search on, and to reach a model server you configure.</li>
+<li>Lumina connects to the internet only to download models and updates, to search the web when you turn web search on or live assistance looks up a question, and to reach a model server you configure.</li>
 <li>Your other local apps (brain, OpenCue, AI WorkStudio) are reached only on this computer, when you save a meeting to brain, send one to an OpenCue agent or turn on automatic saving. An OpenCue agent that uses an online model shares what you send it with that provider.</li>
 </ul>
 <h2 id="on-device">What stays on your computer</h2>
@@ -59,6 +59,7 @@
 <tr><td>Install and update</td><td>When you run the installer or <code>lumina update</code></td><td>GitHub, astral.sh (uv), PyPI</td><td>Standard download requests</td></tr>
 <tr><td>Version check</td><td>When Lumina starts and every 6 hours (switch it off in Settings → About)</td><td>GitHub (raw.githubusercontent.com)</td><td>A request for one small file with the version number; nothing about you or your data</td></tr>
 <tr><td>Web search</td><td>Only for chat messages sent with Web search on (off by default)</td><td>DuckDuckGo, or your SearXNG</td><td>The text of your question</td></tr>
+<tr><td>Live assistance on the web</td><td>When live assistance is on and your sources do not answer a question asked in a meeting (on by default; Settings → Transcription)</td><td>DuckDuckGo, or your SearXNG</td><td>The question only, never the transcript</td></tr>
 <tr><td>Notes model</td><td>When Lumina writes notes or answers, if you chose a server that is not on this computer</td><td>The server you configured</td><td>Your notes, the transcript and matching passages from your sources</td></tr>
 </tbody>
 </table>
@@ -84,7 +85,7 @@
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.7 · Free to use, not to sell</span>
+    <span>Lumina 0.1.8 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -92,6 +93,6 @@
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.7" defer></script>
+<script src="../assets/site.js?v=0.1.8" defer></script>
 </body>
 </html>

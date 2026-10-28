@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 from collections import deque
@@ -39,7 +40,10 @@ class LiveSession:
         self.cancel = threading.Event()  # set when the meeting ends: nothing is enhanced after that
         self.segments_since = 0
         self.enhancing = threading.Lock()
-        self.last_assist = 0.0
+        self.last_assist = 0.0  # last card shown
+        self.last_triage = 0.0  # last time the model was asked whether a line is a question worth answering
+        self.asked: set[str] = set()  # questions already answered in this meeting
+        self.assisting = threading.Lock()
         self.sources: list[str] = []
         self.recent: deque[dict[str, str]] = deque(maxlen=8)  # last sentences, for the notch
         self.speaking: dict[str, str] = {}  # what each source is saying right now (not final yet)
@@ -159,38 +163,77 @@ class LiveSession:
             self.enhancing.release()
 
     def _assist(self, text: str) -> None:
-        if time.time() - self.last_assist < 15:
-            return
-        self.last_assist = time.time()
-        question = enhance.extract_question(text)
-        try:
-            hits = kb.search(question, k=4, min_score=0.42)
-        except EmbedNotReady:
-            return
-        except Exception:  # noqa: BLE001
-            log.exception("assist search failed")
-            return
-        hits = [h for h in hits if h.get("meeting_id") != self.meeting_id]
-        if not hits:
+        """Live assistance: a question from the meeting, on its subject, answered from the user's sources or,
+        when they do not have it and the user allows it, from the web."""
+        now = time.time()
+        if now - self.last_assist < 15 or now - self.last_triage < 6 or not self.assisting.acquire(blocking=False):
             return
         try:
+            self.last_triage = now
             ok, _ = llm.ready()
             if not ok:
                 return
-            answer = enhance.assist_answer(question, hits, db.transcript_text(self.meeting_id, max(0, self.clock() - 120)))
-        except llm.LLMError as e:
-            log.warning("assist failed: %s", e)
-            return
-        if not answer:
-            return
-        aid = new_id()
-        srcs = [{"title": h.get("title", ""), "path": h.get("path", ""), "meeting_id": h.get("meeting_id", ""),
-                 "snippet": h["text"][:240], "score": h["score"]} for h in hits]
-        db.x("INSERT INTO assists(id,meeting_id,created,question,answer,sources) VALUES(?,?,?,?,?,?)",
-             [aid, self.meeting_id, time.time(), question, answer, json.dumps(srcs, ensure_ascii=False)])
-        hub.publish({"type": "assist", "meeting_id": self.meeting_id,
-                     "assist": {"id": aid, "question": question, "answer": answer, "sources": srcs,
-                                "created": time.time(), "seen": 0}})
+            m = db.meeting(self.meeting_id) or {}
+            topic = " · ".join(x for x in (m.get("title", ""), " / ".join(enhance.cue_lines(m.get("cues", ""))[:8])) if x)
+            context = db.transcript_text(self.meeting_id, max(0, self.clock() - 150))
+            try:
+                question = enhance.assist_triage(enhance.extract_question(text), context, topic)
+            except llm.LLMError as e:
+                log.warning("assist triage failed: %s", e)
+                return
+            key = re.sub(r"\W+", " ", question.lower()).strip()
+            if not question or key in self.asked:
+                return
+            card = self._answer(question, context)
+            if not card:
+                return
+            self.asked.add(key)
+            self.last_assist = time.time()
+            aid = new_id()
+            db.x("INSERT INTO assists(id,meeting_id,created,question,answer,sources) VALUES(?,?,?,?,?,?)",
+                 [aid, self.meeting_id, time.time(), question, card["answer"],
+                  json.dumps(card["sources"], ensure_ascii=False)])
+            hub.publish({"type": "assist", "meeting_id": self.meeting_id,
+                         "assist": {"id": aid, "question": question, "answer": card["answer"],
+                                    "sources": card["sources"], "created": time.time(), "seen": 0}})
+        finally:
+            self.assisting.release()
+
+    def _answer(self, question: str, context: str) -> dict | None:
+        """Your sources first (only the ones the answer uses are listed), then the web."""
+        hits: list[dict] = []
+        try:
+            hits = [h for h in kb.search(question, k=4, min_score=0.42) if h.get("meeting_id") != self.meeting_id]
+        except EmbedNotReady:
+            pass
+        except Exception:  # noqa: BLE001
+            log.exception("assist search failed")
+        tries = [("kb", hits)] if hits else []
+        if settings.get("assist_web"):
+            tries.append(("web", None))
+        for kind, found in tries:
+            if found is None:
+                from .chat import web_search
+
+                found = [{"title": w["title"], "text": w["text"], "url": w["url"]} for w in web_search(question, 5)
+                         if w.get("text")]
+                if not found:
+                    continue
+            try:
+                answer, used = enhance.assist_answer(question, found, context)
+            except llm.LLMError as e:
+                log.warning("assist failed: %s", e)
+                return None
+            if not answer:
+                continue
+            srcs = []
+            for n in used:
+                h = found[n - 1]
+                srcs.append({"kind": kind, "title": h.get("title", ""), "path": h.get("path", ""),
+                             "meeting_id": h.get("meeting_id", ""), "url": h.get("url", ""),
+                             "snippet": h["text"][:240], "score": h.get("score", 0)})
+            return {"answer": enhance.renumber(answer, used), "sources": srcs}
+        return None
 
 
 def run_enhance(meeting_id: str, cancel: threading.Event | None = None) -> list[dict]:
@@ -203,8 +246,9 @@ def run_enhance(meeting_id: str, cancel: threading.Event | None = None) -> list[
         hub.publish({"type": "warning", "meeting_id": meeting_id, "text": why})
         return m["enhanced"] or []
     hub.publish({"type": "enhancing", "meeting_id": meeting_id, "state": "start"})
+    old = {b.get("cue"): plain_or_keep(b.get("text") or "") for b in (m["enhanced"] or []) if not b.get("auto")}
     try:
-        blocks = enhance.enhance(m["cues"], db.transcript_text(meeting_id), m["title"], cancel=cancel)
+        blocks = enhance.enhance(m["cues"], db.transcript_text(meeting_id), m["title"], cancel=cancel, current=old)
     except llm.LLMError as e:
         quiet = cancel is not None and cancel.is_set()
         hub.publish({"type": "enhancing", "meeting_id": meeting_id, "state": "idle" if quiet else "error", "text": str(e)})
@@ -212,13 +256,20 @@ def run_enhance(meeting_id: str, cancel: threading.Event | None = None) -> list[
     if cancel is not None and cancel.is_set():
         hub.publish({"type": "enhancing", "meeting_id": meeting_id, "state": "idle"})
         return m["enhanced"] or []
-    old = {b.get("cue"): b.get("text") for b in (m["enhanced"] or [])}
+    before = {b.get("cue"): b for b in (m["enhanced"] or [])}
     now = time.time()
     for b in blocks:
-        b["changed"] = now if old.get(b["cue"]) != b["text"] and b["text"] else 0
+        b["text"] = enhance.keep_growing(old.get(b["cue"], ""), b["text"])
+        prev = before.get(b["cue"]) or {}
+        b["changed"] = now if b["text"] and prev.get("text") != b["text"] else prev.get("changed", 0)
     db.update("meetings", meeting_id, {"enhanced": blocks})
     hub.publish({"type": "enhanced", "meeting_id": meeting_id, "blocks": blocks})
     return blocks
+
+
+def plain_or_keep(text: str) -> str:
+    """Notes written by older versions had list markers; they are read back as plain text."""
+    return enhance.plain_note(text) or text.strip()
 
 
 def run_summary(meeting_id: str, instructions: str = "", preset: str = "") -> bool:
@@ -293,6 +344,22 @@ def save_to_brain(meeting_id: str, quiet: bool = False) -> str | None:
     return path
 
 
+_transcribing: set[str] = set()
+_transcribing_lock = threading.Lock()
+
+
+def begin_transcription(meeting_id: str) -> bool:
+    """Marks an imported recording as being transcribed and says so right away, before the speech model loads
+    and the file is decoded (that can take a while). False when it is already being transcribed."""
+    with _transcribing_lock:
+        if meeting_id in _transcribing:
+            return False
+        _transcribing.add(meeting_id)
+    db.update("meetings", meeting_id, {"status": "live"})
+    hub.publish({"type": "live", "meeting_id": meeting_id, "state": "importing"})
+    return True
+
+
 def import_recording(meeting_id: str, path) -> None:  # noqa: ANN001
     """Transcribe an uploaded audio/video file into a meeting, then summarize it like a finished one.
     There are no notes to enhance in an imported recording: it gets a transcript and a summary."""
@@ -300,8 +367,11 @@ def import_recording(meeting_id: str, path) -> None:  # noqa: ANN001
     transcribe_meeting_audio(meeting_id)
 
 
-def transcribe_meeting_audio(meeting_id: str) -> None:
-    """(Re)transcribes the recording kept for an imported meeting; the old transcript is replaced."""
+def transcribe_meeting_audio(meeting_id: str, begun: bool = False) -> None:
+    """(Re)transcribes the recording kept for an imported meeting; the old transcript is replaced.
+    `begun`: the caller already called begin_transcription (so the notice went out before the work started)."""
+    if not begun and not begin_transcription(meeting_id):
+        return
     m = db.meeting(meeting_id)
     path = (m or {}).get("audio") or ""
     try:
@@ -311,7 +381,7 @@ def transcribe_meeting_audio(meeting_id: str) -> None:
         audio = load_audio_file(Path(path))
         db.x("DELETE FROM segments WHERE meeting_id=?", [meeting_id])
         db.update("meetings", meeting_id, {"status": "live", "started": time.time(), "duration": audio.size / 16000})
-        hub.publish({"type": "live", "meeting_id": meeting_id, "state": "importing"})
+        hub.publish({"type": "live", "meeting_id": meeting_id, "state": "importing"})  # clears the old transcript
 
         def emit(ev: Event) -> None:
             if ev.kind == "final":
@@ -321,12 +391,16 @@ def transcribe_meeting_audio(meeting_id: str) -> None:
 
         transcribe_file(audio, emit, settings.get("stt_language") or "auto")
         db.update("meetings", meeting_id, {"status": "done", "ended": time.time()})
+        hub.publish({"type": "live", "meeting_id": meeting_id, "state": "processing"})  # now the summary
         finish_meeting(meeting_id)
     except (NotReady, Exception) as e:  # noqa: BLE001
         log.exception("import failed")
         db.update("meetings", meeting_id, {"status": "done"})
         hub.publish({"type": "warning", "meeting_id": meeting_id, "text": f"Transcription failed: {e}"})
         hub.publish({"type": "live", "meeting_id": meeting_id, "state": "done"})
+    finally:
+        with _transcribing_lock:
+            _transcribing.discard(meeting_id)
 
 
 class Sessions:

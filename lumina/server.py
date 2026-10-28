@@ -32,7 +32,14 @@ from .enhance import SUMMARY_PRESETS
 from .hub import hub
 from .kb import kb
 from .mcp_server import server as mcp
-from .session import finish_meeting, import_recording, run_enhance, save_to_brain, sessions, transcribe_meeting_audio
+from .session import (
+    begin_transcription,
+    finish_meeting,
+    run_enhance,
+    save_to_brain,
+    sessions,
+    transcribe_meeting_audio,
+)
 from .stt import engine
 from .updater import updater
 
@@ -457,7 +464,9 @@ def create_app(port: int) -> FastAPI:
             raise HTTPException(404, "meeting not found")
         if not m["audio"] or not Path(m["audio"]).exists():
             raise HTTPException(409, "The recording of this meeting is no longer on disk.")
-        threading.Thread(target=transcribe_meeting_audio, args=(mid,), daemon=True).start()
+        if not begin_transcription(mid):  # the notice goes out now, before the model loads
+            raise HTTPException(409, "This recording is already being transcribed.")
+        threading.Thread(target=transcribe_meeting_audio, args=(mid, True), daemon=True).start()
         return {"ok": True}
 
     @app.get("/api/meetings/{mid}/audio")
@@ -479,9 +488,11 @@ def create_app(port: int) -> FastAPI:
         with open(dest, "wb") as f:
             shutil.copyfileobj(file.file, f)
         m = db.create_meeting("", settings.get("stt_language"), ["imported"])
-        db.update("meetings", m["id"], {"cues": ""})
-        threading.Thread(target=import_recording, args=(m["id"], dest), daemon=True).start()
-        return m
+        db.update("meetings", m["id"], {"cues": "", "audio": str(dest)})
+        # "Transcribing…" shows as soon as the meeting opens, not when the speech model has loaded
+        begin_transcription(m["id"])
+        threading.Thread(target=transcribe_meeting_audio, args=(m["id"], True), daemon=True).start()
+        return db.meeting(m["id"]) or m
 
     @app.get("/api/meetings/{mid}/export")
     def export_meeting(mid: str, format: str = "md") -> Response:  # noqa: A002

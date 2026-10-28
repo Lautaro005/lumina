@@ -40,33 +40,80 @@ def _tail(text: str, limit: int, step: int = 4000) -> str:
     return text[(nl + 1 if nl != -1 else cut):]
 
 
-def enhance(cues: str, transcript: str, title: str = "", cancel: threading.Event | None = None) -> list[dict[str, Any]]:
+_MARKER = re.compile(r"^\s*(?:(?:[-*•·–—]|\d+[.)])\s+)+")
+_EMPTY_NOTE = re.compile(
+    r"^(?:\(?\s*(?:none|n/?a|empty|vac[ií]o|nada)\s*\)?|.*\b(?:no (?:information|info|details|mention)|not (?:yet )?"
+    r"(?:mentioned|discussed|covered)|nothing (?:yet|was said|about)|no (?:hay|se (?:dijo|mencion[oó]|habl[oó]))|"
+    r"(?:sin|todav[ií]a no hay) (?:informaci[oó]n|datos))\b.*)$", re.IGNORECASE)
+
+
+def plain_note(text: str) -> str:
+    """A note as plain text: no list markers (the rows already are the list), no 'nothing was said' fillers."""
+    lines = [_MARKER.sub("", ln).strip() for ln in str(text or "").replace("\r", "").split("\n")]
+    lines = [ln for ln in lines if ln and not ln.startswith("#")]
+    # several bullet lines become sentences of one note
+    out = " ".join(ln if i == len(lines) - 1 or ln[-1] in ".!?…:;" else ln + "." for i, ln in enumerate(lines))
+    # only a short note that is nothing but a filler is dropped; a real note may say "not discussed yet" in passing
+    return "" if len(out) < 90 and _EMPTY_NOTE.match(out) else out
+
+
+def enhance(cues: str, transcript: str, title: str = "", cancel: threading.Event | None = None,
+            current: dict[str, str] | None = None) -> list[dict[str, Any]]:
     """Expands each of the user's cues into a note, row-aligned with the cue. Returns [{cue, text, auto}].
 
-    Only what the user wrote is enhanced: Lumina does not add notes of its own (that is the summary's job)."""
+    Only what the user wrote is enhanced: Lumina does not add notes of its own (that is the summary's job).
+    `current` holds the notes already written (cue → text): the model builds on them instead of starting again."""
     lines = cue_lines(cues)
+    current = current or {}
     if not lines or not transcript.strip():
-        return [{"cue": c, "text": "", "auto": False} for c in lines]
-    numbered = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(lines))
+        return [{"cue": c, "text": current.get(c, ""), "auto": False} for c in lines]
+    numbered = "\n".join(
+        f"{i + 1}. {c}" + (f"\n   current note: {current[c]}" if current.get(c) else "") for i, c in enumerate(lines))
     system = (
-        "You are Lumina, a meeting note-taker. The user types short cues (shorthand) while listening. For each cue, "
-        "write the note it stands for, using only facts from the transcript: who said what, numbers, dates, "
-        "decisions. Keep each note to 1-3 short markdown bullets, no headings, no preamble. If the transcript has "
-        "not said anything about a cue yet, give an empty text for it. Never add notes for things the user did not "
-        "write. " + LANG_RULE + ' Answer with JSON only: {"blocks":[{"n":1,"text":"- ..."}]}'
+        "You are Lumina. While a meeting goes on, the user types short notes, one idea per line. For each line, "
+        "write the fuller version of that same note, as the user would have written it with time: keep their "
+        "point and their words, and complete it with the specifics the transcript gives (names, numbers, dates, "
+        "reasons, what was decided or still open). Write the note itself, not a report about the meeting: never "
+        "start with or use phrases like 'they talked about', 'it was mentioned that', 'the speaker says', "
+        "'se habló de', 'se mencionó que', 'se dijo que', 'es…'. "
+        "Plain sentences only: 1 to 3 sentences, no bullets, no list markers, no headings, no preamble. "
+        "Each note is about its own line only: never move facts between lines, never merge lines. "
+        "When a line has a current note, keep everything it says and add what is new; if nothing new was said, "
+        "return the current note exactly as it is. If the transcript has nothing about a line yet, return its "
+        "current note, or an empty text when it has none; never write that there is no information. "
+        + LANG_RULE + ' Answer with JSON only: {"notes":[{"n":1,"text":"..."}]} with one item per line.'
     )
-    # the transcript comes first and only grows, the cues come last: the prompt prefix is reused between runs
+    # the transcript comes first and only grows, the lines come last: the prompt prefix is reused between runs
     user = (f"Meeting: {title or 'untitled'}\n\nTranscript:\n{_tail(transcript, 24000)}\n\n"
-            f"User's cues:\n{numbered}")
+            f"The user's lines:\n{numbered}")
     data = llm.complete_json([{"role": "system", "content": system}, {"role": "user", "content": user}],
-                             temperature=0.2, max_tokens=300 + 140 * len(lines), cancel=cancel)
+                             temperature=0.2, max_tokens=300 + 160 * len(lines), cancel=cancel)
+    items = []
+    if isinstance(data, dict):
+        items = data.get("notes") or data.get("blocks") or []
+    elif isinstance(data, list):
+        items = data
     by_n: dict[int, str] = {}
-    for b in data.get("blocks", []) if isinstance(data, dict) else []:
-        try:
-            by_n[int(b.get("n"))] = str(b.get("text", "")).strip()
-        except (TypeError, ValueError, AttributeError):
+    for pos, b in enumerate(items if isinstance(items, list) else []):
+        if not isinstance(b, dict):
             continue
+        try:
+            n = int(b.get("n", pos + 1))
+        except (TypeError, ValueError):
+            continue
+        by_n[n] = plain_note(b.get("text", ""))
     return [{"cue": c, "text": by_n.get(i + 1, ""), "auto": False} for i, c in enumerate(lines)]
+
+
+def keep_growing(old: str, new: str) -> str:
+    """A note only grows: an empty answer, or one much shorter than what was there, keeps the note as it was
+    (small models sometimes answer 'nothing yet' or shrink a note on the next pass)."""
+    old, new = (old or "").strip(), (new or "").strip()
+    if not old:
+        return new
+    if not new or len(new) < 0.7 * len(old):
+        return old
+    return new
 
 
 # One-click changes to a summary that already exists (the buttons under the summary).
@@ -126,14 +173,16 @@ def summarize(cues: str, transcript: str, title: str = "", instructions: str = "
     return clean
 
 
+# A first, cheap filter on each transcript line; the model then decides whether it is a question worth answering.
+# Spanish words like "que", "como" or "cuando" start many sentences, so without "?" only their accented
+# (question) forms count.
 QUESTION_START = re.compile(
     r"^(what|who|when|where|why|how|which|can|could|do|does|did|is|are|should|would|will|"
-    r"qué|que|quién|quien|cuándo|cuando|dónde|donde|por qué|cómo|como|cuál|cual|cuánto|cuanto|podemos|puedes|"
-    r"pueden|hay|tenemos|sabés|sabes|"
+    r"qué|quién|quiénes|cuándo|dónde|por qué|cómo|cuál|cuáles|cuánto|cuánta|cuántos|cuántas|"
     r"o que|quem|quando|onde|qual|quanto|"
     r"qu'est|quoi|quand|où|pourquoi|comment|quel|quelle|est-ce|"
     r"was|wer|wann|wo|warum|wie|welche|"
-    r"cosa|chi|quando|dove|perché|come|quale)\b",
+    r"cosa|chi|dove|perché|come|quale)\b",
     re.IGNORECASE,
 )
 
@@ -142,7 +191,7 @@ def looks_like_question(text: str) -> bool:
     t = text.strip()
     if len(t.split()) < 4:
         return False
-    if "?" in t:
+    if "?" in t or "¿" in t:
         return True
     return bool(QUESTION_START.match(t))
 
@@ -153,14 +202,67 @@ def extract_question(text: str) -> str:
     return (qs[-1] if qs else parts[-1]).strip()
 
 
-def assist_answer(question: str, hits: list[dict], context: str) -> str:
+def assist_triage(candidate: str, conversation: str, topic: str = "") -> str:
+    """Is this a real question worth answering for the user right now? Returns it as a complete, standalone
+    question, or "" (rhetorical, cut off, small talk, about someone's own plans or opinion, off topic...)."""
+    system = (
+        "You help someone during a live meeting. A line of the transcript may be a question. Decide if it is a "
+        "real, complete question about a fact or a concept, on the subject of this meeting, that the user would "
+        "want answered from documents or the web. Say no to: rhetorical or checking questions ('right?', "
+        "'¿entienden?', 'do you see?'), questions cut off or unclear, small talk, questions about someone's own "
+        "plans, feelings or opinion, instructions to the class or the team, and questions already answered in "
+        "the conversation. If yes, write it as one complete question that makes sense on its own (fill in what "
+        "'it' or 'that' refers to from the conversation), in the language it was asked. "
+        'Answer with JSON only: {"ask": true, "question": "..."} or {"ask": false, "question": ""}.'
+    )
+    user = (f"Meeting subject: {topic or '(unknown)'}\n\nRecent conversation:\n{conversation[-1800:]}\n\n"
+            f"Line to check: {candidate}")
+    data = llm.complete_json([{"role": "system", "content": system}, {"role": "user", "content": user}],
+                             temperature=0.0, max_tokens=200)
+    if not isinstance(data, dict) or data.get("ask") not in (True, "true", "yes"):
+        return ""
+    q = str(data.get("question") or "").strip()
+    return q if len(q.split()) >= 3 else ""
+
+
+# small reasoning models sometimes think out loud instead of answering; that is never shown
+_REASONING = re.compile(
+    r"^(the user|user asks|i need to|i should|let me|looking at|checking|based on the sources|"
+    r"el usuario|la usuaria|debo|tengo que|necesito|revisando|voy a|seg[uú]n las fuentes)\b", re.IGNORECASE)
+
+
+def assist_answer(question: str, hits: list[dict], context: str) -> tuple[str, list[int]]:
+    """A short answer from the sources, and which sources it used (1-based). ("", []) when they do not answer."""
     sources = "\n\n".join(f"[{i + 1}] {h.get('title', '')}\n{h['text'][:1200]}" for i, h in enumerate(hits))
     system = (
-        "Someone in a live meeting just asked a question. Using only the sources, give the user a short answer "
-        "they can say out loud: 1-3 sentences, then cite sources like [1]. If the sources do not answer it, reply "
-        "exactly NONE. " + LANG_RULE.replace("user's notes and the transcript", "question")
+        "Someone in a live meeting just asked a question. Answer it for the user using only the numbered "
+        "sources: the answer itself, in 1-3 short sentences they could say out loud, citing like [1]. Do not "
+        "describe the sources, the question or your reasoning. If the sources do not answer this exact question, "
+        'give an empty answer. Answer with JSON only: {"answer": "...", "used": [1]}. '
+        + LANG_RULE.replace("user's notes and the transcript", "question")
     )
     user = f"Question: {question}\n\nRecent conversation:\n{context[-1500:]}\n\nSources:\n{sources}"
-    ans = llm.complete([{"role": "system", "content": system}, {"role": "user", "content": user}],
-                       temperature=0.1, max_tokens=300)
-    return "" if ans.strip().upper().startswith("NONE") else ans.strip()
+    data = llm.complete_json([{"role": "system", "content": system}, {"role": "user", "content": user}],
+                             temperature=0.1, max_tokens=400)
+    if not isinstance(data, dict):
+        return "", []
+    ans = re.sub(r"<think>.*?(</think>|$)", "", str(data.get("answer") or ""), flags=re.S).strip()
+    if not ans or ans.upper().startswith("NONE") or _REASONING.match(ans):
+        return "", []
+    used: list[int] = []
+    for n in list(data.get("used") or []) + [int(x) for x in re.findall(r"\[(\d+)\]", ans)]:
+        try:
+            n = int(n)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= n <= len(hits) and n not in used:
+            used.append(n)
+    if not used:  # an answer that cites nothing is not from the sources
+        return "", []
+    return ans, used
+
+
+def renumber(answer: str, used: list[int]) -> str:
+    """Citations follow the order of the sources kept for the card: [3] becomes [1] when 3 is the first one."""
+    pos = {n: i + 1 for i, n in enumerate(used)}
+    return re.sub(r"\[(\d+)\]", lambda m: f"[{pos[int(m.group(1))]}]" if int(m.group(1)) in pos else "", answer)

@@ -368,6 +368,7 @@ export default function Settings() {
   const [partials, setPartials] = useSetting<boolean>("partials");
   const [autoEnh, setAutoEnh] = useSetting<boolean>("auto_enhance");
   const [assist, setAssist] = useSetting<boolean>("live_assistance");
+  const [assistWeb, setAssistWeb] = useSetting<boolean>("assist_web");
   const [notch, setNotch] = useSetting<boolean>("notch_live");
   const [saver, setSaver] = useSetting<boolean>("memory_saver");
   const [provider, setProvider] = useSetting<string>("llm_provider");
@@ -502,6 +503,10 @@ export default function Settings() {
               <Switch checked={!!partials} onChange={setPartials} label={t("settings.partials")} />
               <Switch checked={!!autoEnh} onChange={setAutoEnh} label={t("settings.autoEnhance")} />
               <Switch checked={!!assist} onChange={setAssist} label={t("settings.assist")} />
+              <div>
+                <Switch checked={!!assistWeb} onChange={setAssistWeb} label={t("settings.assistWeb")} />
+                <p className="hint" style={{ marginLeft: 50 }}>{t("settings.assistWebHint")}</p>
+              </div>
               <div>
                 <Switch checked={!!notch} onChange={setNotch} label={t("settings.notch")} />
                 <p className="hint" style={{ marginLeft: 50 }}>{t("settings.notchHint")}{!status.system.app && <> {t("settings.notchBrowser")}</>}</p>

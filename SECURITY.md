@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.7`) | ✅ |
+| `0.1.x` (latest: `0.1.8`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -89,6 +89,13 @@ being exploited).
   `/api/meetings/{id}/opencue`) are behind the same host and origin checks as the rest of the API.
 - **Summary instructions.** What you type to shape a summary goes to your notes model inside a `<request>` block, with
   a rule that it only changes the summary; it is stored with the summary so you can see how it was written.
+- **Live assistance and the web (0.1.8).** When your sources do not answer a question asked in a meeting, Lumina can
+  search the web for it. Only the question, rewritten by your notes model so it stands on its own, is sent to the
+  search engine chosen in Settings → Knowledge (DuckDuckGo by default, or your SearXNG); the transcript, your notes and
+  your sources never leave the computer. It is on by default and can be turned off in Settings → Transcription
+  ("Search the web when your sources do not answer"); turning live assistance off (the switch next to its title in a
+  meeting) stops both. Web results are untrusted text: the model is told to answer only from them and the card links
+  to the pages it used.
 - **Dependencies lock.** `uv.lock` is no longer in the repository; `uv sync` resolves the versions allowed by
   `pyproject.toml` on each install. The update path discards a local `uv.lock` before `git pull`.
 - **Imported recordings** are kept in `uploads/` (so they can be transcribed again) until you delete the meeting;

@@ -4,7 +4,7 @@ import {
   RotateCw, ScrollText, Search, Send, Sparkles, Square, Trash2, Volume2, Wand2, X,
 } from "lucide-react";
 import { api, fmtClock, type Block, type Integrations, type Meeting as M, type Segment, type SummaryPreset } from "../api";
-import { CopyButton, Markdown, Meter, Popover, guessLang, speak, stopSpeaking } from "../components";
+import { CopyButton, Markdown, Meter, Popover, guessLang, speak, stopSpeaking, useSetting } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
 
@@ -153,7 +153,9 @@ export default function MeetingView({ id }: { id: string }) {
   const paused = isMine && live.state === "paused";
   // a recording that was imported has a transcript and a summary, not notes of its own
   const imported = !!m && (m.tags.includes("imported") || !!m.audio);
-  const processing = isMine && (live.state === "processing" || live.state === "importing");
+  // an imported recording being transcribed shows it even before (or without) the live notice
+  const transcribing = !!m && imported && m.status === "live" && !(isMine && live.state === "processing");
+  const processing = (isMine && (live.state === "processing" || live.state === "importing")) || transcribing;
   const otherLive = !!live.meetingId && !isMine && (live.state === "recording" || live.state === "paused");
 
   const blocks: Block[] = m?.enhanced || [];
@@ -203,7 +205,11 @@ export default function MeetingView({ id }: { id: string }) {
   const [agentDialog, setAgentDialog] = useState(false);
   const retranscribe = async () => {
     setBusy(true);
-    try { await api.retranscribe(id); } catch (e) { toast((e as Error).message, "error"); } finally { setBusy(false); }
+    try {
+      await api.retranscribe(id);
+      // shows "Transcribing…" at once; the server sends the same notice
+      if (m) setMeeting({ ...m, status: "live" });
+    } catch (e) { toast((e as Error).message, "error"); } finally { setBusy(false); }
   };
   // window.confirm does not open in the desktop webview, so the confirmation lives in the menu
   const [confirmDel, setConfirmDel] = useState(false);
@@ -239,7 +245,8 @@ export default function MeetingView({ id }: { id: string }) {
   };
 
   const assists = m?.assists || [];
-  const showGutter = status.settings.live_assistance || assists.length > 0;
+  // the assistance column stays (with its on/off switch) on meetings you record; imported ones have no live part
+  const showGutter = !imported || assists.length > 0;
   const view = (["columns", "rows", "tabs"] as const).find((v) => v === status.settings.notes_view) || "columns";
 
   if (!m) return <div className="empty"><Loader2 className="spin" /></div>;
@@ -262,7 +269,7 @@ export default function MeetingView({ id }: { id: string }) {
                     <button className="btn stop" onClick={stop} disabled={busy}><Square size={14} fill="currentColor" /> {t("meeting.stop")}</button>
                   </>
                 ) : processing ? (
-                  <span className="chip blue"><Loader2 size={14} className="spin" /> {live.state === "importing" ? t("meeting.importing") : t("meeting.processing")}</span>
+                  <span className="chip blue"><Loader2 size={14} className="spin" /> {(isMine && live.state === "importing") || transcribing ? t("meeting.importing") : t("meeting.processing")}</span>
                 ) : imported ? (
                   <button className="btn" onClick={retranscribe} disabled={busy || !m.audio || !sttReady}>
                     <RotateCw size={16} /> {t("meeting.retranscribe")}
@@ -410,7 +417,6 @@ export default function MeetingView({ id }: { id: string }) {
                   </div>
                 );
               })}
-              {cues.length <= 1 && <div className="cue-hint">{t("meeting.cueHint")}</div>}
               {autoBlocks.map((b, i) => (
                 <div className="row" key={`auto-${i}`}>
                   <div className="cue auto">{b.cue}</div>
@@ -418,7 +424,10 @@ export default function MeetingView({ id }: { id: string }) {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : null}
+          {/* under the notebook, not crossed by the margin line; it goes once you start typing */}
+          {!imported && view === "rows" && !cues.join("").trim() && <div className="cue-hint">{t("meeting.cueHint")}</div>}
+          {imported || view === "rows" ? null : (
             <NotesPanels
               view={view} tab={tab} setTab={setTab} raw={raw} onRaw={updateRaw} blocks={[...userBlocks, ...autoBlocks]}
               recording={recording} paused={paused} elapsed={elapsed} speaking={speaking} onRead={readNotes}
@@ -429,10 +438,15 @@ export default function MeetingView({ id }: { id: string }) {
         </article>
         {agentDialog && apps && <SendToAgent meetingId={id} agents={apps.opencue.agents} onClose={() => setAgentDialog(false)} />}
 
-        {showGutter && <Gutter m={m} />}
+        {showGutter && <Gutter m={m} live={!imported} />}
       </div>
 
-      {!imported && <Strip segments={segments} onOpen={() => setDrawer(true)} />}
+      {!imported && (
+        // same left and right edges as the sheet and the assistance column above
+        <div className={`strip-wrap ${showGutter ? "" : "no-gutter"}`}>
+          <Strip segments={segments} onOpen={() => setDrawer(true)} />
+        </div>
+      )}
       {drawer && <TranscriptDrawer segments={segments} onClose={() => setDrawer(false)} />}
     </>
   );
@@ -511,6 +525,18 @@ function Summary({ m, canWrite, onWrite }: {
   const reply = useStore((s) => s.replies[m.id]);
   const dropReply = useStore((s) => s.dropReply);
   const [ask, setAsk] = useState("");
+  const askRef = useRef<HTMLTextAreaElement | null>(null);
+  const wasWriting = useRef(false);
+  // the request is used once: when the new summary is written, the box is empty again
+  useEffect(() => {
+    if (wasWriting.current && !writing) setAsk("");
+    wasWriting.current = writing;
+  }, [writing]);
+  // the box grows a line at a time as the request gets longer
+  useLayoutEffect(() => {
+    const el = askRef.current;
+    if (el) { el.style.height = "0px"; el.style.height = `${Math.min(el.scrollHeight, 180)}px`; }
+  }, [ask]);
   const s = m.summary || {};
   const cols: [string, string[] | undefined][] = [
     [t("meeting.decisions"), s.decisions],
@@ -552,8 +578,9 @@ function Summary({ m, canWrite, onWrite }: {
           <form className="summary-ask" onSubmit={(e) => { e.preventDefault(); regenerate(); }}>
             <label className="sr" htmlFor={`ask-${m.id}`}>{t("summary.askLabel")}</label>
             <Wand2 size={16} aria-hidden="true" />
-            <input id={`ask-${m.id}`} value={ask} onChange={(e) => setAsk(e.target.value)} maxLength={1200}
-              placeholder={`${t("summary.askLabel")} ${t("summary.ask")}`} disabled={busy} />
+            <textarea id={`ask-${m.id}`} ref={askRef} rows={1} value={ask} onChange={(e) => setAsk(e.target.value)}
+              maxLength={1200} placeholder={`${t("summary.askLabel")} ${t("summary.ask")}`} disabled={busy}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); regenerate(); } }} />
             <button className="btn sm primary" type="submit" disabled={busy}>
               {writing ? <Loader2 size={15} className="spin" /> : <RotateCw size={15} />} {has ? t("meeting.regenerate") : t("meeting.writeSummary")}
             </button>
@@ -679,9 +706,10 @@ function ImportedBody({ m, segments, summary }: { m: M; segments: Segment[]; sum
   );
 }
 
-function Gutter({ m }: { m: M }) {
+function Gutter({ m, live }: { m: M; live: boolean }) {
   const t = useT();
   const assists = m.assists || [];
+  const [on, setOn] = useSetting<boolean>("live_assistance");
   const [hidden, setHidden] = useState<string[]>([]);
   useEffect(() => {
     const unseen = assists.filter((a) => !a.seen);
@@ -692,8 +720,16 @@ function Gutter({ m }: { m: M }) {
   const visible = assists.filter((a) => !hidden.includes(a.id));
   return (
     <aside className="gutter" aria-label={t("meeting.assist")}>
-      <h2><Highlighter size={15} /> {t("meeting.assist")}</h2>
-      {visible.length === 0 && <p className="hint">{t("meeting.assistHint")}</p>}
+      <div className="gutter-head">
+        <h2><Highlighter size={15} /> {t("meeting.assist")}</h2>
+        {live && (
+          <label className="switch sm" title={on ? t("meeting.assistOn") : t("meeting.assistOff")}>
+            <input type="checkbox" role="switch" checked={!!on} onChange={(e) => setOn(e.target.checked)}
+              aria-label={t("meeting.assist")} />
+          </label>
+        )}
+      </div>
+      {visible.length === 0 && <p className="hint">{live && !on ? t("meeting.assistOffHint") : t("meeting.assistHint")}</p>}
       {visible.map((a) => (
         <div key={a.id} className={`assist ${a.seen ? "" : "new"}`}>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -702,7 +738,12 @@ function Gutter({ m }: { m: M }) {
           </div>
           <Markdown className="ans" text={a.answer} cites />
           {a.sources?.length > 0 && (
-            <div className="src">{t("meeting.assistSources")} {a.sources.slice(0, 3).map((s: any, i: number) => <span key={i}>{i + 1}. {s.title}</span>)}</div>
+            <div className="src">
+              {a.sources[0]?.kind === "web" ? t("meeting.assistWeb") : t("meeting.assistSources")}{" "}
+              {a.sources.slice(0, 3).map((s: any, i: number) => s.url
+                ? <a key={i} href={s.url} target="_blank" rel="noreferrer noopener">{i + 1}. {s.title || s.url}</a>
+                : <span key={i}>{i + 1}. {s.title}</span>)}
+            </div>
           )}
         </div>
       ))}

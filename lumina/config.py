@@ -68,6 +68,7 @@ DEFAULTS: dict[str, Any] = {
     "auto_enhance": True,
     "enhance_interval": 45,
     "live_assistance": True,
+    "assist_web": True,  # live assistance searches the web when your sources do not answer
     "notes_view": "columns",  # columns (Foresight style) | rows (Cornell) | tabs
     "update_check": True,  # look for a newer version in the background and offer it in the app
     "memory_saver": True,  # unload models nobody is using, so Lumina stays small

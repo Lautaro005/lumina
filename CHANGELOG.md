@@ -3,6 +3,32 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.8] - 2026-10-28
+
+### Changed
+- **Live assistance answers real questions.** A line from the transcript is no longer answered just because it starts
+  like a question: the notes model first checks that it is a complete question on the meeting's subject (rhetorical
+  "¿entienden?", half sentences, small talk and questions about someone's plans are skipped) and rewrites it so it
+  stands on its own. The answer comes from your sources, listing only the ones it used; when they do not answer it,
+  Lumina searches the web (new switch in Settings → Transcription, on by default; only the question is sent). Models
+  that think out loud no longer show their reasoning in the card, and the same question is not answered twice.
+- **On/off switch** for live assistance on the same row as its title, in every meeting you record.
+- **Enhanced notes read like your notes.** Each line becomes the fuller version of what you wrote, in plain sentences
+  (no "they talked about…", no bullets, no double bullets in the notebook view), only with what was said about that
+  line. Notes build on what is already there: a later pass never empties or shrinks a note.
+- **Summary box:** the request is cleared once the new summary is written, and the box grows line by line (Enter sends,
+  Shift+Enter adds a line).
+- **Sidebar:** Settings sits at the very bottom, under "Everything stays on this computer" and a thin grey rule.
+- **Notebook view:** "Type short notes while you listen…" sits under the notebook (the margin line no longer crosses
+  it) and goes as soon as you type; the transcript bar keeps the left and right edges of the page and the assistance
+  column instead of running edge to edge.
+
+### Fixed
+- **Imported recordings say "Transcribing" at once**, in the meeting and in the list, instead of after the speech model
+  loaded and the file was decoded; after the transcript the chip says the summary is being written.
+- **Transcribe again** works: it shows its state right away and cannot start a second run over one in progress (that
+  used to happen when the button was pressed before "Transcribing" appeared).
+
 ## [0.1.7] - 2026-10-28
 
 ### Added

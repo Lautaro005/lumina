@@ -35,7 +35,6 @@ function Rail() {
     { id: "meetings", icon: BookOpen, label: t("nav.meetings") },
     { id: "sources", icon: FolderOpen, label: t("nav.sources") },
     { id: "chat", icon: MessageSquareText, label: t("nav.chat") },
-    { id: "settings", icon: Cog, label: t("nav.settings") },
   ];
   const newMeeting = async () => {
     try {
@@ -77,9 +76,16 @@ function Rail() {
         <IndexStatus compact />
         <UpdateRail />
       </div>
+      {/* the privacy line, a thin rule, then Settings at the very bottom */}
       <div className="rail-foot">
         <ShieldCheck size={16} />
         <span>{t("nav.local")}</span>
+      </div>
+      <div className="nav rail-settings">
+        <button onClick={() => go("/settings")} aria-current={section === "settings" ? "page" : undefined}>
+          <Cog size={19} />
+          <span>{t("nav.settings")}</span>
+        </button>
       </div>
     </nav>
   );
