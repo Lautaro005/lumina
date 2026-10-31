@@ -179,12 +179,14 @@ export default function Chat({ chatId }: { chatId?: string }) {
             </button>
           )}
           <span className="send-wrap">
-            {live && (
-              <button type="button" className="stop" onClick={stop} aria-label={t("chat.stop")} title={t("chat.stop")}>
+            {/* one button: send, or stop while the answer is being written */}
+            {live ? (
+              <button type="button" className="send stopping" onClick={stop} aria-label={t("chat.stop")} title={t("chat.stop")}>
                 <Square size={13} fill="currentColor" />
               </button>
+            ) : (
+              <button type="submit" className="send" aria-label={t("chat.send")} disabled={!draft.trim()}><ArrowUp size={18} /></button>
             )}
-            <button type="submit" className="send" aria-label={t("chat.send")} disabled={!draft.trim() || !!live}><ArrowUp size={18} /></button>
           </span>
         </div>
       </div>

@@ -49,7 +49,7 @@ def test_a_preset_rewrites_the_current_summary(monkeypatch):
     db.update("meetings", m["id"], {"summary": {"overview": "Long overview", "decisions": ["a", "b", "c", "d"]}})
     seen = {}
 
-    def fake(cues, transcript, title, instructions="", previous=None):
+    def fake(cues, transcript, title, instructions="", previous=None, style=""):
         seen.update(instructions=instructions, previous=previous)
         return {"title": "", "overview": "Short", "decisions": ["a"], "action_items": [], "topics": [],
                 "open_questions": [], "request": instructions}

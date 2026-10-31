@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import { ChevronRight, FileAudio, FileText, Folder, FolderOpen, NotebookPen, RefreshCw, Search, StickyNote, Trash2, Upload, X } from "lucide-react";
-import { api, fmtBytes, type Meeting, type Source } from "../api";
+import { Fragment, useEffect, useState } from "react";
+import { ChevronRight, ExternalLink, FileAudio, FileText, Folder, FolderOpen, Globe, Loader2, NotebookPen, RefreshCw, Search, Sparkles, StickyNote, Trash2, Upload, X } from "lucide-react";
+import { api, fmtBytes, type Meeting, type Source, type WebPreview } from "../api";
 import { IndexStatus, ProgressBar } from "../components";
 import { useT, type Key } from "../i18n";
 import { useStore } from "../store";
 
-const statusChip: Record<string, string> = { ready: "ok", error: "err", indexing: "blue", pending: "", skipped: "warn" };
+const statusChip: Record<string, string> = { ready: "ok", error: "err", indexing: "blue", pending: "", skipped: "warn", summarizing: "blue" };
+// a web address typed in the path box (with or without https://)
+const isUrl = (v: string) => /^(https?:\/\/|www\.)\S+$/i.test(v.trim()) || /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}(\/\S*)?$/i.test(v.trim());
 
 export default function Sources() {
   const t = useT();
@@ -44,8 +46,31 @@ export default function Sources() {
   };
   const rel = (folder: Source, k: Source) => (k.path.startsWith(folder.path) ? k.path.slice(folder.path.length).replace(/^[\\/]+/, "") : k.title);
 
+  // a web page: read it first, then ask whether to keep its text or a summary
+  const [web, setWeb] = useState<{ url: string; preview?: WebPreview; busy?: "read" | "content" | "summary"; error?: string } | null>(null);
+  const readPage = async (url: string) => {
+    setWeb({ url, busy: "read" });
+    try {
+      setWeb({ url, preview: await api.webPreview(url) });
+    } catch (e) {
+      setWeb({ url, error: (e as Error).message });
+    }
+  };
+  const saveWeb = async (mode: "content" | "summary") => {
+    if (!web?.preview) return;
+    setWeb({ ...web, busy: mode });
+    try {
+      await api.addWeb(web.preview.url, mode);
+      setWeb(null);
+      setPath("");
+      load();
+    } catch (e) {
+      setWeb({ ...web, busy: undefined, error: (e as Error).message });
+    }
+  };
   const add = async (p: string) => {
     if (!p.trim()) return;
+    if (isUrl(p)) { readPage(p.trim()); return; }
     try {
       await api.addSource(p.trim(), watch);
       setPath("");
@@ -83,7 +108,7 @@ export default function Sources() {
 
   const top = rows.filter((r) => !r.parent);
   const children = (id: string) => rows.filter((r) => r.parent === id);
-  const Icon = (k: string) => (k === "folder" ? Folder : k === "note" ? StickyNote : FileText);
+  const Icon = (k: string) => (k === "folder" ? Folder : k === "note" ? StickyNote : k === "web" ? Globe : FileText);
 
   return (
     <div className="view">
@@ -111,12 +136,44 @@ export default function Sources() {
             </div>
             <form className="addbar" onSubmit={(e) => { e.preventDefault(); add(path); }}>
               <input className="input" style={{ flex: 1 }} placeholder={t("sources.path")} value={path} onChange={(e) => setPath(e.target.value)} aria-label={t("sources.path")} />
-              <button className="btn" type="submit" disabled={!path.trim()}>{t("sources.add")}</button>
+              <button className="btn" type="submit" disabled={!path.trim()}>{isUrl(path) ? <><Globe size={16} /> {t("web.read")}</> : t("sources.add")}</button>
             </form>
             <div className="hint">{over ? t("sources.drop") : t("sources.counts", status.kb)}</div>
           </div>
 
           <IndexStatus />
+
+          {web && (
+            <div className="panel web-ask" role="dialog" aria-label={t("web.title")}>
+              <div className="web-ask-head">
+                <span className="kind-ic"><Globe size={17} /></span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <b className="src-title">{web.preview?.title || web.url}</b>
+                  <div className="src-path">{web.preview?.url || web.url}</div>
+                </div>
+                <button className="btn sm ghost icon" aria-label={t("common.cancel")} onClick={() => setWeb(null)}><X size={15} /></button>
+              </div>
+              {web.busy === "read" && <p className="hint"><Loader2 size={14} className="spin" /> {t("web.reading")}</p>}
+              {web.error && <p className="hint" style={{ color: "var(--margin-ink)" }}>{web.error}</p>}
+              {web.preview && (
+                <>
+                  <p className="web-excerpt">{web.preview.chars > 400 ? `${web.preview.excerpt.trimEnd().replace(/[.…\s]+$/, "")}…` : web.preview.excerpt}</p>
+                  <p className="hint" style={{ margin: 0 }}>{t("web.ask", { n: web.preview.chars.toLocaleString() })}</p>
+                  <div className="web-choices">
+                    <button className="web-choice" disabled={!!web.busy} onClick={() => saveWeb("content")}>
+                      {web.busy === "content" ? <Loader2 size={18} className="spin" /> : <FileText size={18} />}
+                      <span><b>{t("web.content")}</b><small>{t("web.contentHint")}</small></span>
+                    </button>
+                    <button className="web-choice" disabled={!!web.busy || !status.llm_ready} onClick={() => saveWeb("summary")}
+                      title={status.llm_ready ? undefined : t("web.noModel")}>
+                      {web.busy === "summary" ? <Loader2 size={18} className="spin" /> : <Sparkles size={18} />}
+                      <span><b>{t("web.summary")}</b><small>{status.llm_ready ? t("web.summaryHint") : t("web.noModel")}</small></span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {note && (
             <form className="panel" style={{ padding: 16, display: "grid", gap: 10 }}
@@ -136,7 +193,7 @@ export default function Sources() {
             <table className="table">
               <tbody>
                 {top.map((s) => {
-                  const kids = children(s.id);
+                  const kids = children(s.id).filter((k) => k.status !== "excluded"); // files taken out stay hidden
                   const I = Icon(s.kind);
                   const ready = kids.filter((k) => k.status === "ready").length;
                   const st = s.kind === "folder" ? (kids.some((k) => k.status === "indexing" || k.status === "pending") ? "indexing" : "ready") : s.status;
@@ -144,7 +201,8 @@ export default function Sources() {
                   const files = [...kids].sort((a, b) => rel(s, a).localeCompare(rel(s, b)));
                   const busy = s.kind === "folder" && kids.some((k) => k.status === "indexing" || k.status === "pending");
                   return (
-                    <tr key={s.id}>
+                    <Fragment key={s.id}>
+                    <tr className={s.kind === "folder" && isOpen ? "has-files" : ""}>
                       <td>
                         <div className="src-row">
                           <span className="kind-ic"><I size={17} /></span>
@@ -158,13 +216,16 @@ export default function Sources() {
                             ) : (
                               <div className="src-title">{s.title}</div>
                             )}
-                            {s.path && <div className="src-path">{s.path}</div>}
+                            {s.kind === "web" ? (
+                              <a className="src-path src-link" href={s.path} target="_blank" rel="noreferrer noopener">{s.path} <ExternalLink size={11} /></a>
+                            ) : s.path && <div className="src-path">{s.path}</div>}
                             <div className="t-tags">
                               <span className={`chip ${statusChip[st] ?? ""}`}>{t(`sources.status.${st}` as Key)}</span>
                               <span className="chip">
                                 {s.kind === "folder" ? `${ready}/${kids.length} ${t("sources.files")}` : `${s.chunks} ${t("sources.chunks")}`}
                                 {s.kind === "file" && s.size ? ` · ${fmtBytes(s.size)}` : ""}
                               </span>
+                              {s.kind === "web" && <span className="chip">{s.ext === "summary" ? t("web.isSummary") : t("web.isContent")}</span>}
                               {s.tags.map((x) => (
                                 <span key={x} className="tag">{x}<button aria-label={`${t("common.remove")} ${x}`} onClick={() => setTags(s, s.tags.filter((y) => y !== x))}><X size={12} /></button></span>
                               ))}
@@ -178,30 +239,46 @@ export default function Sources() {
                             </div>
                             {busy && <ProgressBar value={kids.length ? ready / kids.length : 0} label={t("sources.index.files", { done: ready, total: kids.length })} />}
                             {s.error && s.status === "error" && <div className="hint" style={{ color: "var(--margin-ink)", marginTop: 6 }}>{s.error}</div>}
-                            {s.kind === "folder" && isOpen && (
-                              <ul className="folder-files" id={`ff-${s.id}`}>
-                                {files.length === 0 && <li className="ff-empty">{t("sources.noFiles")}</li>}
-                                {files.map((k) => (
-                                  <li key={k.id} title={k.path}>
-                                    <FileText size={14} />
-                                    <span className="ff-name">{rel(s, k)}</span>
-                                    <span className="ff-meta">{k.status === "ready" ? `${k.chunks} ${t("sources.chunks")}` : ""}{k.size ? `${k.status === "ready" ? " · " : ""}${fmtBytes(k.size)}` : ""}</span>
-                                    <span className={`chip ${statusChip[k.status] ?? ""}`}>{t(`sources.status.${k.status}` as Key)}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
                           </div>
                         </div>
                       </td>
                       <td className="act-col">
                         <div className="row-actions">
                           <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={t("sources.reindex")} onClick={() => api.reindex(s.id).then(load)}><RefreshCw size={15} /></button>
-                          {s.path && <button className="btn sm ghost icon" title={t("sources.reveal")} aria-label={t("sources.reveal")} onClick={() => api.reveal(s.id)}><FolderOpen size={15} /></button>}
+                          {s.path && s.kind !== "web" && <button className="btn sm ghost icon" title={t("sources.reveal")} aria-label={t("sources.reveal")} onClick={() => api.reveal(s.id)}><FolderOpen size={15} /></button>}
                           <button className="btn sm ghost icon danger" title={t("common.remove")} aria-label={t("common.remove")} onClick={() => remove(s.id)}><Trash2 size={15} /></button>
                         </div>
                       </td>
                     </tr>
+                    {s.kind === "folder" && isOpen && (
+                      // its own row, so the list runs to the folder's delete button
+                      <tr className="ff-row">
+                        <td colSpan={2}>
+                          <ul className="folder-files" id={`ff-${s.id}`}>
+                            {files.length === 0 && <li className="ff-empty">{t("sources.noFiles")}</li>}
+                            {files.map((k) => (
+                              <li key={k.id} title={k.path}>
+                                <div className="ff-top">
+                                  <FileText size={14} />
+                                  <span className="ff-name">{rel(s, k)}</span>
+                                  <span className="ff-actions">
+                                    <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={`${t("sources.reindex")} ${k.title}`} onClick={() => api.reindex(k.id).then(load)}><RefreshCw size={14} /></button>
+                                    <button className="btn sm ghost icon danger" title={t("sources.removeFile")} aria-label={`${t("sources.removeFile")} ${k.title}`} onClick={() => remove(k.id)}><Trash2 size={14} /></button>
+                                  </span>
+                                </div>
+                                <div className="ff-sub">
+                                  {k.status === "ready" && <span>{k.chunks} {t("sources.chunks")}</span>}
+                                  {k.size > 0 && <span>{fmtBytes(k.size)}</span>}
+                                  <span className={`chip ${statusChip[k.status] ?? ""}`}>{t(`sources.status.${k.status}` as Key)}</span>
+                                </div>
+                                {k.status === "error" && k.error && <div className="ff-error">{k.error}</div>}
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>

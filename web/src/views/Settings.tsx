@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Columns2, Download, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote, Trash2 } from "lucide-react";
 import { api, type Integrations, type Job, type Model, type UpdateInfo } from "../api";
 import { ConfirmDialog, CopyButton, ModelRow, PermissionsPanel, Switch, useModels, useSetting } from "../components";
-import { langName, useT } from "../i18n";
+import { langName, useT, type Key } from "../i18n";
 import { useStore } from "../store";
 
 const EU25 = ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "ru", "sk", "sl", "es", "sv", "uk"];
@@ -341,6 +341,46 @@ function ConnectedApps() {
   );
 }
 
+const STYLES = ["standard", "brief", "class", "minutes", "actions", "custom"] as const;
+
+/** How every meeting summary is laid out: five fixed layouts and one of your own (blank = standard). */
+function SummaryStyles() {
+  const t = useT();
+  const [style, setStyle] = useSetting<string>("summary_style");
+  const [custom, setCustom] = useSetting<string>("summary_custom");
+  const [draft, setDraft] = useState(custom || "");
+  useEffect(() => { setDraft(custom || ""); }, [custom]);
+  const current = (STYLES as readonly string[]).includes(style) ? style : "standard";
+  return (
+    <div className="styles">
+      <p className="hint" style={{ margin: 0 }}>{t("style.lead")}</p>
+      <div className="style-grid" role="radiogroup" aria-label={t("style.title")}>
+        {STYLES.map((id) => (
+          <label key={id} className={`style-card ${current === id ? "on" : ""}`}>
+            <input type="radio" name="summary-style" value={id} checked={current === id} onChange={() => setStyle(id)} />
+            <b>{t(`style.${id}` as Key)}</b>
+            <small>{t(`style.${id}Hint` as Key)}</small>
+            {id !== "custom" && (
+              <ol className="style-outline">
+                {t(`style.${id}Outline` as Key).split("|").map((h) => <li key={h}>{h}</li>)}
+              </ol>
+            )}
+          </label>
+        ))}
+      </div>
+      {current === "custom" && (
+        <div className="field">
+          <label htmlFor="summary-custom">{t("style.customLabel")}</label>
+          <textarea id="summary-custom" className="input" rows={5} maxLength={2000} value={draft}
+            placeholder={t("style.customPlaceholder")} onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => draft !== (custom || "") && setCustom(draft)} />
+          <p className="hint">{draft.trim() ? t("style.customHint") : t("style.customEmpty")}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section className="section" id={id}>
@@ -415,7 +455,7 @@ export default function Settings() {
   const isMac = status.system.os === "Darwin";
   const nav: [string, string][] = [
     ["general", t("settings.general")], ...(isMac ? [["permissions", t("perm.title")] as [string, string]] : []), ["transcription", t("settings.transcription")], ["generation", t("settings.generation")],
-    ["knowledge", t("settings.knowledge")], ["speech", t("settings.speech")], ["models", t("settings.modelsNav")],
+    ["summary", t("style.title")], ["knowledge", t("settings.knowledge")], ["speech", t("settings.speech")], ["models", t("settings.modelsNav")],
     ["apps", t("apps.title")], ["agents", t("settings.agents")], ["delete", t("settings.delete")], ["about", t("settings.about")],
   ];
 
@@ -580,6 +620,10 @@ export default function Settings() {
                 ? <span className="chip ok">{t("settings.testOk", { s: test.seconds ?? "" })}</span>
                 : <span className="chip err" style={{ height: "auto", padding: "4px 10px", whiteSpace: "normal" }}>{test.error}</span>)}
             </div>
+          </Section>
+
+          <Section id="summary" title={t("style.title")}>
+            <SummaryStyles />
           </Section>
 
           <Section id="knowledge" title={t("settings.knowledge")}>

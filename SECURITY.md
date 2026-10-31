@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.1.x` (latest: `0.1.8`) | ✅ |
+| `0.2.x` (latest: `0.2.0`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -89,6 +89,13 @@ being exploited).
   `/api/meetings/{id}/opencue`) are behind the same host and origin checks as the rest of the API.
 - **Summary instructions.** What you type to shape a summary goes to your notes model inside a `<request>` block, with
   a rule that it only changes the summary; it is stored with the summary so you can see how it was written.
+- **Web pages as sources (0.2.0).** A page is fetched only when you paste its address in Sources and press
+  **Read page**, or an agent calls the `add_web_page` MCP tool. Only `http` and `https` are accepted; addresses that
+  point to this computer (`localhost`, loopback), link-local addresses (such as the cloud metadata address
+  `169.254.169.254`) and multicast are refused, before the request and after redirects. Pages are limited to 8 MB and
+  read as HTML, PDF or text; scripts are never run. The text is stored in Lumina's database like a note. With
+  **Save a summary**, the page text goes to your notes model with the rule that instructions written in the page are
+  ignored; with an online model, its provider sees the page text.
 - **Live assistance and the web (0.1.8).** When your sources do not answer a question asked in a meeting, Lumina can
   search the web for it. Only the question, rewritten by your notes model so it stands on its own, is sent to the
   search engine chosen in Settings → Knowledge (DuckDuckGo by default, or your SearXNG); the transcript, your notes and

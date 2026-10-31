@@ -548,6 +548,48 @@ def create_app(port: int) -> FastAPI:
     def add_note(body: NoteIn) -> dict:
         return kb.add_note(body.title, body.text, body.tags)
 
+    @app.post("/api/sources/web/preview")
+    def web_preview(body: dict) -> dict:
+        """Reads a page before it is saved, so the user can choose between its text and a summary."""
+        from . import webpage
+
+        try:
+            page = webpage.fetch(str(body.get("url") or ""))
+        except webpage.PageError as e:
+            raise HTTPException(422, str(e)) from e
+        return {"url": page["url"], "title": page["title"], "kind": page["kind"], "chars": len(page["text"]),
+                "excerpt": page["text"][:400]}
+
+    @app.post("/api/sources/web")
+    def web_add(body: dict) -> dict:
+        """Saves a web page as a source: its readable text (`mode: content`) or a summary by the notes model."""
+        from . import webpage
+
+        mode = body.get("mode") or "content"
+        if mode not in ("content", "summary"):
+            raise HTTPException(400, "mode is content or summary")
+        tags = [str(x) for x in body.get("tags") or []]
+        try:
+            page = webpage.fetch(str(body.get("url") or ""))
+        except webpage.PageError as e:
+            raise HTTPException(422, str(e)) from e
+        if mode == "content":
+            return kb.add_web(page["url"], page["title"], page["text"], tags, mode="content")
+        ok, why = llm.ready()
+        if not ok:
+            raise HTTPException(409, why)
+        row = kb.add_web(page["url"], page["title"], "", tags, status="summarizing", mode="summary")
+
+        def write() -> None:
+            try:
+                kb.add_web(page["url"], page["title"], webpage.summarize(page), tags, mode="summary")
+            except (webpage.PageError, llm.LLMError) as e:
+                db.update("sources", row["id"], {"status": "error", "error": f"Summary failed: {e}"})
+                kb._emit({"type": "source", "id": row["id"], "status": "error"})
+
+        threading.Thread(target=write, daemon=True, name="web-summary").start()
+        return row
+
     @app.get("/api/sources/{sid}")
     def get_source(sid: str) -> dict:
         row = db.one("SELECT * FROM sources WHERE id=?", [sid])
@@ -573,7 +615,11 @@ def create_app(port: int) -> FastAPI:
 
     @app.delete("/api/sources/{sid}")
     def delete_source(sid: str) -> dict:
-        kb.remove(sid)
+        row = db.one("SELECT parent FROM sources WHERE id=?", [sid])
+        if row and row["parent"] and db.one("SELECT id FROM sources WHERE id=?", [row["parent"]]):
+            kb.exclude(sid)  # a file of a watched folder: taken out, so the next scan does not bring it back
+        else:
+            kb.remove(sid)
         return {"ok": True}
 
     @app.post("/api/sources/{sid}/reindex")
@@ -586,6 +632,8 @@ def create_app(port: int) -> FastAPI:
                 kb._scan_folder(sid, Path(row["path"]))
 
             threading.Thread(target=rescan, daemon=True).start()
+        elif row and row["status"] == "excluded":
+            kb.include(sid)  # a file taken out of its folder comes back
         elif row:
             kb.enqueue(sid, force=True)
         return {"ok": True}

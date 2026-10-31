@@ -3,6 +3,30 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-10-31
+
+### Added
+- **Summary layouts** (Settings → Summary). Five fixed layouts change what Lumina asks the notes model for every
+  meeting summary: **Standard** (the classic one, default), **Executive brief** (in one line, key points, decisions,
+  next steps, risks), **Class notes** (topic, key concepts with definitions, explanation, examples and cases, to
+  review), **Detailed minutes** (participants, agenda, discussion topic by topic, agreements, action items table, next
+  meeting) and **Action plan** (goal, tasks table, blockers, decisions, follow-ups). **Custom** takes your own
+  description; left blank, summaries use Standard. Each card shows its sections. The box under a summary can still ask
+  for something else.
+- **Web pages as sources.** Paste an address in Sources (with or without `https://`) and press **Read page**: Lumina
+  reads the page (HTML, PDF or text, up to 8 MB), shows its title and the start of its text, and asks what to keep:
+  **the page's content** (its readable text, without menus, scripts or footers) or **a summary** written by your notes
+  model. The page is indexed like a note and cited with its address in the chat and in live assistance (the card and
+  the source link open it). Saving the same address again updates it. New MCP tool `add_web_page`.
+
+### Changed
+- **Folder file lists** in Sources: each file has its name on one line with **Index again** and **Take out of this
+  folder** on the right, and its passages, size and state underneath; no background, and the list runs the whole
+  width of the folder, to its delete button. A file taken out stays out when the folder is scanned again; its own
+  Index again button brings it back.
+- **Chat:** the send button becomes the stop button while the answer is being written (one button instead of two).
+- **Imported recordings:** without the assistance column, the summary uses the whole width of the page.
+
 ## [0.1.8] - 2026-10-28
 
 ### Changed

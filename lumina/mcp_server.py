@@ -61,7 +61,7 @@ def get_document(source_id: str, max_chars: int = 40000) -> dict[str, Any]:
     row = db.one("SELECT * FROM sources WHERE id=?", [source_id])
     if not row:
         return {"error": "not found"}
-    if row["kind"] == "note":
+    if row["kind"] in ("note", "web"):
         text = row["text"]
     else:
         from pathlib import Path
@@ -74,6 +74,20 @@ def get_document(source_id: str, max_chars: int = 40000) -> dict[str, Any]:
             return {"error": str(e)}
     return {"id": row["id"], "title": row["title"], "path": row["path"], "tags": row["tags"],
             "text": text[:max_chars], "truncated": len(text) > max_chars}
+
+
+@server.tool(description="Save a web page into the user's knowledge base: its readable text, or (summarize=true) a "
+                        "summary written by the user's notes model. Returns the new source.")
+def add_web_page(url: str, summarize: bool = False, tags: list[str] | None = None) -> dict[str, Any]:
+    from . import webpage
+
+    try:
+        page = webpage.fetch(url)
+        text = webpage.summarize(page) if summarize else page["text"]
+    except Exception as e:  # noqa: BLE001  (PageError, LLMError)
+        return {"error": str(e)}
+    row = kb.add_web(page["url"], page["title"], text, tags or ["agent"], mode="summary" if summarize else "content")
+    return {"id": row["id"], "title": row["title"], "url": row["path"], "status": "queued for indexing"}
 
 
 @server.tool(description="Save a note into the user's knowledge base (it becomes searchable).")

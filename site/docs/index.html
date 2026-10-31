@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.1.8">
+<link rel="stylesheet" href="../assets/site.css?v=0.2.0">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -88,6 +88,7 @@
 <p>During the meeting this happens every 45 seconds or so once there is enough new speech (Settings → Transcription → <i>Enhance notes during the meeting</i>), or when you click <b>Enhance now</b>. A final pass runs when the meeting ends. New or changed notes are briefly highlighted.</p>
 <h3>Summary</h3>
 <p>At the foot of the page: an overview, decisions, action items with owners and dates, open questions and topics. Lumina also titles the meeting if you did not. The meeting, its notes and its transcript are then added to your knowledge base.</p>
+<p><b>Settings → Summary</b> chooses the layout of every summary: <b>Standard</b> (above, the default), <b>Executive brief</b>, <b>Class notes</b>, <b>Detailed minutes</b>, <b>Action plan</b>, or <b>Custom</b>, where you describe it in your own words (left blank, Standard is used). Each card lists its sections.</p>
 <h3>Live assistance</h3>
 <p>When someone asks a question (in English, Spanish, Portuguese, French, German or Italian), your notes model first checks that it is a complete question on the meeting's subject: rhetorical questions ("right?"), half sentences, small talk and questions about someone's own plans are skipped. A yellow card then shows a short answer you can say out loud, from your sources (only the ones it used are listed) or, when they do not answer it, from the web, with links to the pages. Only the question is searched, never the transcript. Turn it off with the switch next to <b>Live assistance</b> in the meeting; the web search has its own switch in Settings → Transcription.</p>
 <h3>Import, search and export</h3>
@@ -129,7 +130,7 @@
 
 <h2 id="sources">Sources</h2>
 <p>Sources are what Lumina searches when it writes notes, answers questions or helps live. Meetings are added on their own when they end.</p>
-<p>While files are being read and indexed, a progress bar shows the file in hand, files done out of total and a rough time left (also under the sidebar on every page). A folder has an arrow: click it to list the files inside with their status, passages and size. Reading is fast: PDFs go through PDFium, two files are read while the model embeds a third, and a file whose text did not change is not embedded again.</p>
+<p>While files are being read and indexed, a progress bar shows the file in hand, files done out of total and a rough time left (also under the sidebar on every page). A folder has an arrow: click it to list the files inside with their passages, size and status; each file has <b>Index again</b> and <b>Take out of this folder</b> (a file taken out stays out until you index it again). Reading is fast: PDFs go through PDFium, two files are read while the model embeds a third, and a file whose text did not change is not embedded again.</p>
 <p>Finished meetings are listed under <b>Meetings</b> in Sources, with their summary: click one to open it.</p>
 <p>Deleting a source removes its passages with it. <b>Settings → Delete data</b> deletes all chats, all sources, all meetings or everything (your settings and downloaded models stay).</p>
 <h2 id="notch">The notch</h2>
@@ -138,6 +139,7 @@
 <li><b>Add folder</b> or <b>Add files</b> opens your system's file chooser; you can also paste a path or drop files on the page.</li>
 <li>Folders are <b>watched</b>: new, changed and deleted files are re-indexed automatically. Hidden folders, <code>node_modules</code> and <code>.git</code> are skipped.</li>
 <li><b>New note</b> writes a note straight into the knowledge base.</li>
+<li><b>Web pages</b>: paste an address in the path box and press <b>Read page</b>. Lumina shows the page title and the start of its text and asks whether to keep <b>the page's content</b> or <b>a summary</b> written by your notes model. Pages on this computer are not read.</li>
 <li>Formats: PDF, DOCX, PPTX, XLSX, Markdown, text, HTML, CSV, JSON and source code. Files larger than 60 MB are skipped.</li>
 <li><b>Try a search</b> shows which passages match a question and how closely.</li>
 </ul>
@@ -170,6 +172,7 @@
 <tr><td><code>list_sources</code></td><td>Files, folders and notes with their status</td></tr>
 <tr><td><code>get_document</code></td><td>Full text of a source, or of a meeting (<code>meeting:&lt;id&gt;</code>)</td></tr>
 <tr><td><code>add_note</code></td><td>Save a note into the knowledge base</td></tr>
+<tr><td><code>add_web_page</code></td><td>Save a web page: its text, or a summary</td></tr>
 <tr><td><code>query_meetings</code></td><td>List meetings by text and date</td></tr>
 <tr><td><code>get_meeting</code></td><td>Notes, enhanced notes, summary and transcript of one meeting</td></tr>
 <tr><td><code>rewrite_summary</code></td><td>Rewrite a meeting's summary the way you ask (or expand, shorten, simplify, formal, actions)</td></tr>
@@ -235,7 +238,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.1.8 · Free to use, not to sell</span>
+    <span>Lumina 0.2.0 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -243,6 +246,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.1.8" defer></script>
+<script src="../assets/site.js?v=0.2.0" defer></script>
 </body>
 </html>

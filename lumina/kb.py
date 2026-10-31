@@ -191,6 +191,8 @@ class KnowledgeBase:
                 continue
             seen.add(str(f))
             row = known.get(str(f))
+            if row and row["status"] == "excluded":
+                continue
             mtime = f.stat().st_mtime
             if row and abs(row["mtime"] - mtime) < 1 and row["status"] == "ready":
                 continue
@@ -219,6 +221,44 @@ class KnowledgeBase:
             db.x("INSERT INTO sources(id,kind,title,tags,added,mtime,text) VALUES(?,?,?,?,?,?,?)",
                  [sid, "note", title, json.dumps(tags or []), time.time(), time.time(), text])
         self.enqueue(sid)
+        return db.one("SELECT * FROM sources WHERE id=?", [sid])  # type: ignore[return-value]
+
+    def exclude(self, sid: str) -> None:
+        """Takes one file out of a watched folder: its passages go, and later scans leave it out.
+        Indexing it again (its own button) brings it back."""
+        with self._wlock:
+            row = db.one("SELECT * FROM sources WHERE id=?", [sid])
+            if not row:
+                return
+            try:
+                self.col("documents").delete(where={"source_id": sid})
+            except Exception:  # noqa: BLE001
+                log.exception("could not delete the passages of %s", sid)
+            db.update("sources", sid, {"status": "excluded", "chunks": 0, "hash": "", "error": ""})
+        self._emit({"type": "source", "id": sid, "status": "excluded"})
+        self._emit_counts()
+
+    def include(self, sid: str) -> None:
+        db.update("sources", sid, {"status": "pending"})
+        self.enqueue(sid, force=True)
+
+    def add_web(self, url: str, title: str, text: str, tags: list[str] | None = None, status: str = "pending",
+                mode: str = "content") -> dict:
+        """A web page, saved as its text or as a summary (`mode`); indexed like a note, cited with its address."""
+        row = db.one("SELECT id FROM sources WHERE kind='web' AND path=?", [url])
+        sid = row["id"] if row else new_id()
+        fields = {"title": title, "text": text, "ext": mode, "mtime": time.time(), "size": len(text.encode()),
+                  "status": status, "error": ""}
+        if row:
+            db.update("sources", sid, fields)
+        else:
+            db.x("INSERT INTO sources(id,kind,path,title,ext,tags,added,mtime,size,status,text) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                 [sid, "web", url, title, mode, json.dumps(tags or []), time.time(), time.time(),
+                  len(text.encode()), status, text])
+        if text:
+            self.enqueue(sid, force=True)
+        else:
+            self._emit({"type": "source", "id": sid, "status": status})
         return db.one("SELECT * FROM sources WHERE id=?", [sid])  # type: ignore[return-value]
 
     def remove(self, sid: str) -> None:
@@ -307,14 +347,18 @@ class KnowledgeBase:
         return n
 
     def enqueue(self, sid: str, kind: str = "source", force: bool = False) -> None:
+        if kind == "source":
+            row = db.one("SELECT status FROM sources WHERE id=?", [sid])
+            if row and row["status"] == "excluded":  # taken out of its folder by the user
+                return
         key = (kind, sid)
         with self._plock:
             if key in self._queued:
                 return
             self._queued.add(key)
             self._track_new()
-        if kind == "source":
-            db.update("sources", sid, {"status": "pending", "error": ""})
+        if kind == "source":  # never over a file the user just took out of its folder
+            db.x("UPDATE sources SET status='pending', error='' WHERE id=? AND status!='excluded'", [sid])
         self._q.put((kind, sid, force))
         self._progress(force=True)
         if not embedder.loaded:  # load the model while the first file is still being read
@@ -446,6 +490,11 @@ class KnowledgeBase:
         job.title, job.coll = title, "documents"
         if row["kind"] == "note":
             job.coll, text, job.mtime, job.size = "notes", row["text"], row["mtime"], len(row["text"])
+        elif row["kind"] == "web":
+            if not row["text"].strip():  # the summary is still being written
+                job.outcome = "unchanged"
+                return job
+            text, job.mtime, job.size = row["text"], row["mtime"], len(row["text"].encode())
         else:
             p = Path(row["path"])
             if not p.exists():
@@ -490,6 +539,9 @@ class KnowledgeBase:
         if job.kind == "meeting":
             return self._run_meeting(job)
         sid = job.sid
+        cur = db.one("SELECT status FROM sources WHERE id=?", [sid])
+        if cur and cur["status"] == "excluded":
+            return  # taken out of its folder while it waited
         if job.outcome == "gone":
             with self._wlock:
                 row = db.one("SELECT path FROM sources WHERE id=?", [sid])
@@ -514,8 +566,9 @@ class KnowledgeBase:
         self._emit({"type": "source", "id": sid, "status": "indexing"})
         vecs = self._embed(job)
         with self._wlock:
-            if not db.one("SELECT id FROM sources WHERE id=?", [sid]):
-                return  # removed while it was being embedded: write nothing
+            now_row = db.one("SELECT status FROM sources WHERE id=?", [sid])
+            if not now_row or now_row["status"] == "excluded":
+                return  # removed (or taken out of its folder) while it was being embedded: write nothing
             col = self.col(job.coll)
             col.delete(where={"source_id": sid})
             for s in range(0, len(job.texts), ADD_BATCH):
@@ -662,7 +715,7 @@ class KnowledgeBase:
                 self._watch(f["id"], p)
                 threading.Thread(target=self._scan_folder, args=(f["id"], p), daemon=True).start()
         # files that were waiting when Lumina was closed
-        for s in db.q("SELECT id FROM sources WHERE kind IN ('file','note') AND status IN ('pending','indexing')"):
+        for s in db.q("SELECT id FROM sources WHERE kind IN ('file','note','web') AND status IN ('pending','indexing')"):
             self.enqueue(s["id"])
 
     def _watch(self, folder_id: str, root: Path) -> None:

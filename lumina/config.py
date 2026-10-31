@@ -68,6 +68,8 @@ DEFAULTS: dict[str, Any] = {
     "auto_enhance": True,
     "enhance_interval": 45,
     "live_assistance": True,
+    "summary_style": "standard",  # standard | brief | class | minutes | actions | custom (Settings → Summary)
+    "summary_custom": "",  # the custom layout; blank means standard
     "assist_web": True,  # live assistance searches the web when your sources do not answer
     "notes_view": "columns",  # columns (Foresight style) | rows (Cornell) | tabs
     "update_check": True,  # look for a newer version in the background and offer it in the app

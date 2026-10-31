@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.1.8" src="https://img.shields.io/badge/version-0.1.8-20242c">
+  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-20242c">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -50,10 +50,10 @@ plus the notes model). After that it works offline.
 | 🎙️ **Listens** | Records your microphone (**You**) and your computer's audio (**Others**: Zoom, Meet, Teams…) and transcribes both live, on the CPU. |
 | ✍️ **Writes your notes** | You type short cues while you listen. Lumina writes the full note for each one, automatically while the meeting runs. Three views: side by side, Cornell rows, or one at a time. |
 | 🔄 **Updates itself** | Lumina looks for new versions and updates from a button inside the app (Settings → About), keeping your data. |
-| 📋 **Sums it up** | When the meeting ends you get an overview, decisions, action items and open questions, and an automatic title. Tell Lumina how you want it ("as an email to the team", "only decisions, in English") and regenerate, or use **Expand**, **Shorten**, **Simplify**, **More formal** and **Action items first**. Imported recordings get a page with the player, summary and transcript. |
+| 📋 **Sums it up** | When the meeting ends you get an overview, decisions, action items and open questions, and an automatic title. Pick the layout in Settings → Summary (Executive brief, Class notes, Detailed minutes, Action plan, or your own). Tell Lumina how you want it ("as an email to the team", "only decisions, in English") and regenerate, or use **Expand**, **Shorten**, **Simplify**, **More formal** and **Action items first**. Imported recordings get a page with the player, summary and transcript. |
 | 🧩 **Works with your apps** | [brain](https://lautaro005.github.io/brain/): save a meeting to your vault (or every meeting, automatically) and search brain from Ask Lumina. [OpenCue](https://lautaro005.github.io/opencue/): send a meeting to an agent and read its reply under the summary. [AI WorkStudio](https://lautaro005.github.io/workstudio/): it opens Lumina inside and gives your agents Lumina's tools. Settings → Connected apps. |
 | 💡 **Helps live** | When someone asks a real question on the meeting's subject, a short answer appears beside your notes, from your documents or, when they do not have it, from the web (only the question is searched). A switch next to the title turns it off. |
-| 📚 **Knows your files** | Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, or whole folders it keeps up to date. A progress bar shows the indexing, a folder opens like a dropdown to list its files, and your finished meetings are listed there too. |
+| 📚 **Knows your files** | Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, whole folders it keeps up to date, or web pages (their text or a summary). A progress bar shows the indexing, a folder opens like a dropdown to list its files, and your finished meetings are listed there too. |
 | 💬 **Answers questions** | Ask "what did we decide about pricing?" across every meeting and file. Every answer cites its sources. Web search in the chat is optional and off by default. |
 | 🤖 **Works with your agents** | Claude, Cursor, Codex or any MCP client can search your meetings and files through Lumina's MCP server. |
 | 🔊 **Reads aloud** | Notes and answers can be read with a natural voice (Kokoro) or your system voice. |
@@ -106,7 +106,7 @@ OpenAI-compatible server works too.
 
 ## Connect your agents (MCP)
 
-Lumina exposes eight tools: `search_knowledge`, `list_sources`, `get_document`, `add_note`, `query_meetings`,
+Lumina exposes nine tools: `search_knowledge`, `list_sources`, `get_document`, `add_note`, `add_web_page`, `query_meetings`,
 `get_meeting`, `rewrite_summary` (a meeting's summary the way you ask, or with a preset) and `save_meeting_to_brain`.
 If you use [AI WorkStudio](https://lautaro005.github.io/workstudio/), its single MCP server already includes them as
 `lumina__*`.

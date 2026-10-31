@@ -230,7 +230,8 @@ class LiveSession:
             for n in used:
                 h = found[n - 1]
                 srcs.append({"kind": kind, "title": h.get("title", ""), "path": h.get("path", ""),
-                             "meeting_id": h.get("meeting_id", ""), "url": h.get("url", ""),
+                             "meeting_id": h.get("meeting_id", ""),
+                             "url": h.get("url") or (h.get("path", "") if str(h.get("path", "")).startswith("http") else ""),
                              "snippet": h["text"][:240], "score": h.get("score", 0)})
             return {"answer": enhance.renumber(answer, used), "sources": srcs}
         return None
@@ -291,9 +292,12 @@ def run_summary(meeting_id: str, instructions: str = "", preset: str = "") -> bo
         hub.publish({"type": "summarizing", "meeting_id": meeting_id})
         asked = "\n".join(x for x in (enhance.SUMMARY_PRESETS.get(preset, ""), instructions.strip()) if x)
         previous = m["summary"] if preset and m["summary"] else None
-        s = enhance.summarize(m["cues"], transcript, m["title"], asked, previous)
+        style_id, style = enhance.summary_style(settings.get)  # the layout chosen in Settings → Summary
+        s = enhance.summarize(m["cues"], transcript, m["title"], asked, previous, style)
         if preset and s.get("request"):
             s["request"] = instructions.strip() or preset
+        if style:
+            s["style"] = style_id
     except llm.LLMError as e:
         hub.publish({"type": "warning", "meeting_id": meeting_id, "text": f"Summary failed: {e}"})
         hub.publish({"type": "summary", "meeting_id": meeting_id, "summary": m["summary"] or {}, "title": None})

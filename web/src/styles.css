@@ -858,3 +858,54 @@ tr:hover .row-actions, .row-actions:focus-within { opacity: 1; }
 .switch.sm input:checked::after { transform: translateX(14px); }
 .assist .src a { background: color-mix(in srgb, var(--hi) 45%, transparent); padding: 1px 7px; border-radius: 4px; color: inherit; text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .assist .src a:hover { text-decoration: underline; }
+
+/* 0.2.0 */
+/* chat: the send button turns into the stop button while the answer is being written */
+.send.stopping { animation: rise 0.2s ease-out; }
+/* settings → summary: one card per layout */
+.styles { display: grid; gap: 14px; }
+.style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.style-card { position: relative; display: grid; align-content: start; gap: 4px; padding: 12px 14px; border-radius: var(--radius-sm); box-shadow: 0 0 0 1px var(--rule-soft); background: var(--paper); cursor: pointer; }
+.style-card:hover { box-shadow: 0 0 0 1px var(--rule); }
+.style-card.on { box-shadow: 0 0 0 2px var(--rule); background: var(--blue-wash); }
+.style-card input { position: absolute; opacity: 0; pointer-events: none; }
+.style-card:has(input:focus-visible) { outline: 2px solid var(--rule-ink); outline-offset: 2px; }
+.style-card b { font-size: 14px; }
+.style-card small { color: var(--ink-3); font-size: 12.5px; }
+.style-outline { margin: 6px 0 0; padding-left: 1.2em; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 1px; }
+.style-outline li::marker { color: var(--rule); }
+/* without the assistance column (imported recordings) the summary uses the whole width of the page */
+.meeting.no-gutter .overview, .meeting.no-gutter .summary-text { max-width: none; }
+/* sources: a folder's files in their own row, as wide as the folder (to its delete button), no background */
+.sources-main .table tr.has-files td { border-bottom: 0; }
+.sources-main .table tr.ff-row td { border-top: 0; padding: 0 16px 14px 60px; }
+.folder-files { margin: 0; padding: 0; background: none; box-shadow: none; border-radius: 0; max-height: 360px; border-top: 1px solid var(--rule-hair); }
+.folder-files li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 8px 0; font-size: 13px; }
+.folder-files li + li { border-top: 1px solid var(--rule-hair); }
+.ff-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ff-top .ff-name { flex: 1; min-width: 0; font-weight: 600; color: var(--ink); }
+.ff-actions { display: inline-flex; gap: 2px; margin-right: -6px; opacity: 0.55; transition: opacity 0.15s; }
+.folder-files li:hover .ff-actions, .ff-actions:focus-within { opacity: 1; }
+.ff-actions .btn.icon { width: 28px; height: 28px; }
+.ff-sub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-left: 22px; color: var(--ink-3); font-size: 12.5px; }
+.ff-sub span + span:not(.chip)::before { content: "·"; margin-right: 10px; }
+.ff-error { padding-left: 22px; color: var(--margin-ink); font-size: 12.5px; }
+@media (max-width: 760px) {
+  .sources-main .table tr.ff-row td { padding-left: 16px; padding-right: 8px; }
+  .folder-files li { grid-template-columns: minmax(0, 1fr); padding: 8px 0; }
+  .folder-files .ff-meta { display: inline; }
+}
+/* sources: add a web page */
+.web-ask { padding: 16px; display: grid; gap: 12px; }
+.web-ask-head { display: flex; gap: 12px; align-items: flex-start; }
+.web-excerpt { margin: 0; color: var(--ink-2); font: 400 14.5px/1.55 var(--serif); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.web-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.web-choice { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 12px 14px; border: 0; border-radius: var(--radius-sm); background: var(--paper); box-shadow: 0 0 0 1px var(--rule-soft); color: var(--ink); cursor: pointer; font: inherit; }
+.web-choice:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--rule); background: var(--blue-wash); }
+.web-choice:disabled { opacity: 0.55; cursor: default; }
+.web-choice svg { color: var(--rule-ink); flex: none; margin-top: 2px; }
+.web-choice span { display: grid; gap: 2px; }
+.web-choice b { font-size: 14px; }
+.web-choice small { color: var(--ink-3); font-size: 12.5px; line-height: 1.4; }
+.src-link { color: var(--ink-3); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.src-link:hover { color: var(--rule-ink); text-decoration: underline; }

@@ -81,8 +81,9 @@ export type Meeting = {
   brain_path?: string;
 };
 
+export type WebPreview = { url: string; title: string; kind: "html" | "pdf" | "text"; chars: number; excerpt: string };
 export type Source = {
-  id: string; kind: "file" | "folder" | "note" | "meeting"; path: string; parent: string | null; title: string;
+  id: string; kind: "file" | "folder" | "note" | "meeting" | "web"; path: string; parent: string | null; title: string;
   ext: string; tags: string[]; added: number; mtime: number; size: number; chunks: number;
   status: string; error: string; watch: number;
 };
@@ -163,6 +164,8 @@ export const api = {
   addNote: (title: string, text: string, tags: string[] = []) => req<Source>("POST", "/api/notes", { title, text, tags }),
   patchSource: (id: string, fields: Partial<Source>) => req<Source>("PATCH", `/api/sources/${id}`, fields),
   deleteSource: (id: string) => req("DELETE", `/api/sources/${id}`),
+  webPreview: (url: string) => req<WebPreview>("POST", "/api/sources/web/preview", { url }),
+  addWeb: (url: string, mode: "content" | "summary", tags: string[] = []) => req<Source>("POST", "/api/sources/web", { url, mode, tags }),
   reindex: (id: string) => req("POST", `/api/sources/${id}/reindex`),
   stopRunning: (name: "llm" | "stt" | "embeddings") => req<{ running: Running }>("POST", `/api/running/${name}/stop`),
   startLlm: () => req<{ running: Running }>("POST", "/api/running/llm/start"),

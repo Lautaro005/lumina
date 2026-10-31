@@ -209,7 +209,9 @@ def gather(question: str, web: bool, meeting_id: str | None = None, query: str |
         for h in kb.search(query, k=14, min_score=0.25):
             sources.append({"kind": h.get("collection"), "title": h.get("title", ""), "text": h["text"],
                             "score": h["score"], "path": h.get("path", ""), "meeting_id": h.get("meeting_id", ""),
-                            "t0": h.get("t0", 0), "source_id": h.get("source_id", "")})
+                            "t0": h.get("t0", 0), "source_id": h.get("source_id", ""),
+                            # a saved web page is cited with its address
+                            "url": h["path"] if str(h.get("path", "")).startswith(("http://", "https://")) else ""})
     except NotReady:
         pass
     sources = select(sources)
