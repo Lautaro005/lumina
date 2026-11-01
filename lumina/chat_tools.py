@@ -92,14 +92,17 @@ def _read(aid: str) -> None:
         text = _transcribe(path) if att["kind"] == "audio" else extract(path)
         if not text.strip():
             raise ValueError("there is no text in this file" if att["kind"] == "document" else "no speech was heard")
-        db.update("attachments", aid, {"status": "ready", "text": text, "error": ""})
+        db.update("attachments", aid, {"text": text, "error": ""})
+        if att["save"] or (db.one("SELECT save FROM attachments WHERE id=?", [aid]) or {}).get("save"):
+            try:  # kept before it shows as ready; if Sources cannot take it, the chat can still read it
+                keep_in_sources(db.one("SELECT * FROM attachments WHERE id=?", [aid]))
+            except Exception:  # noqa: BLE001
+                log.exception("could not keep %s in Sources", att["name"])
+        db.update("attachments", aid, {"status": "ready"})
     except Exception as e:  # noqa: BLE001  (a damaged file, no speech model yet...)
         log.warning("could not read attachment %s: %s", att["name"], e)
         db.update("attachments", aid, {"status": "error", "error": str(e)[:300] or e.__class__.__name__})
     att = db.one("SELECT * FROM attachments WHERE id=?", [aid])
-    if att and att["status"] == "ready" and att["save"]:
-        keep_in_sources(att)
-        att = db.one("SELECT * FROM attachments WHERE id=?", [aid])
     if att:
         _publish(att)
 
