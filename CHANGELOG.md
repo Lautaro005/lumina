@@ -3,6 +3,32 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-11-01
+
+### Added
+- **Ask Lumina can act on your knowledge base** when you ask it to: create a document in Sources (a summary, a
+  draft, notes from a file), rewrite one of your notes, delete a note (it asks first: **Delete** / **Keep it**),
+  rewrite a meeting's summary the way you say, and keep an attached file in Sources. Each answer shows a card with
+  what was done, **Undo** for a new or edited note and a rewritten summary, and links to Sources or the meeting. The
+  chat only touches notes (never your files on disk) and acts only when your message asks for something to be made,
+  changed or saved.
+- **Attachments in Ask Lumina**: the paperclip (or dropping files on the chat) attaches PDF, Word, PowerPoint, Excel,
+  Markdown, text, HTML, CSV and audio or video (MP3, WAV, M4A, OGG, FLAC, MP4, MOV…, up to 200 MB); audio and video
+  are transcribed on the computer. Ask about them, have them summarized (long files are summarized in parts, or the
+  passages that match the question are used), or switch on **Keep in Sources** to save them there too (audio as a
+  transcript). A file sent without a question is summarized.
+
+### Fixed
+- **Opening Lumina after an update** no longer shows the error page until `lumina doctor` is run. The old server
+  could still be closing (or still running the previous version) when the app opened, and the new one gave up at
+  once. Now `lumina serve` asks an older Lumina on the port to close and waits up to 25 seconds for the port; the
+  desktop app does not use a server of another version, and tries again twice before showing an error; the in-app
+  update waits for the old server to let go of the port before reopening.
+- **Index again** really indexes again: a request is no longer dropped when the file was already waiting in the
+  queue (a folder scan, frequent with Google Drive folders), it is always embedded again, and it goes before
+  background work. The row shows "Waiting" at once, the icon turns while it works, and a notice confirms it.
+- **Folder file lists**: the scrollbar sits in the margin and no longer covers the files' delete buttons.
+
 ## [0.2.0] - 2026-10-31
 
 ### Added

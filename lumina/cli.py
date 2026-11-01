@@ -42,25 +42,57 @@ def _port_free(port: int) -> bool:
             return False
 
 
-def _lumina_running(port: int) -> bool:
+def _running_version(port: int) -> str | None:
+    """The version of the Lumina answering on the port, or None when nobody (or something else) answers."""
     import httpx
 
     try:
         r = httpx.get(f"http://127.0.0.1:{port}/api/status", timeout=1.5)
-        return r.status_code == 200 and "version" in r.json()
+        return str(r.json()["version"]) if r.status_code == 200 else None
     except Exception:  # noqa: BLE001
-        return False
+        return None
+
+
+def _lumina_running(port: int) -> bool:
+    return _running_version(port) is not None
+
+
+def _wait_port(port: int, seconds: float) -> bool:
+    end = time.time() + seconds
+    while time.time() < end:
+        if _port_free(port):
+            return True
+        time.sleep(0.5)
+    return _port_free(port)
+
+
+def _free_port_for_us(port: int) -> bool:
+    """After an update the old Lumina may still hold the port (closing, or still running the old version).
+    The same version is used as is; an older one is asked to close; anything shutting down gets time to go."""
+    import httpx
+
+    version = _running_version(port)
+    if version == __version__:
+        return False  # already running this version: use it
+    if version is not None:
+        print(f"Lumina {version} is still running on port {port}; closing it to start {__version__}", flush=True)
+        try:
+            httpx.post(f"http://127.0.0.1:{port}/api/quit", headers={"X-Lumina": "1"}, json={}, timeout=5)
+        except Exception:  # noqa: BLE001
+            pass
+    return _wait_port(port, 25)
 
 
 def serve(port: int, open_browser: bool) -> None:
     url = f"http://127.0.0.1:{port}/"
     if not _port_free(port):
-        if _lumina_running(port):
-            print(f"Lumina is already running at {url}")
-            if open_browser:
-                webbrowser.open(url)
-            return
-        sys.exit(f"Port {port} is busy. Try: lumina serve --port {port + 1}")
+        if not _free_port_for_us(port):
+            if _running_version(port) == __version__:
+                print(f"Lumina is already running at {url}", flush=True)
+                if open_browser:
+                    webbrowser.open(url)
+                return
+            sys.exit(f"Port {port} is busy. Try: lumina serve --port {port + 1}")
     _setup_logging()
     import uvicorn
 

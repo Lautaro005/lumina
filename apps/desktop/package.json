@@ -1,7 +1,7 @@
 {
   "name": "lumina-desktop",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "SEE LICENSE IN ../../LICENSE",
   "scripts": {
     "tauri": "tauri",

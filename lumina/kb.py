@@ -9,6 +9,7 @@ indexed can never leave its passages behind.
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import logging
 import queue
@@ -54,7 +55,10 @@ class KnowledgeBase:
     def __init__(self) -> None:
         self._client = None
         self._cols: dict[str, Any] = {}
-        self._q: queue.Queue[tuple[str, str, bool]] = queue.Queue()
+        # (priority, order, kind, id, force): what the user asks for (Index again) goes before background work
+        self._q: queue.PriorityQueue[tuple[int, int, str, str, bool]] = queue.PriorityQueue()
+        self._seq = itertools.count()
+        self._forced: set[tuple[str, str]] = set()  # queued work that must be embedded again even if unchanged
         self._ready: queue.Queue[Future] = queue.Queue(maxsize=3)  # files read and chunked, waiting for the model
         self._lock = threading.Lock()  # Chroma client and collection cache
         self._wlock = threading.RLock()  # every write to Chroma + the sources table (see the module docstring)
@@ -240,7 +244,7 @@ class KnowledgeBase:
 
     def include(self, sid: str) -> None:
         db.update("sources", sid, {"status": "pending"})
-        self.enqueue(sid, force=True)
+        self.enqueue(sid, force=True, urgent=True)
 
     def add_web(self, url: str, title: str, text: str, tags: list[str] | None = None, status: str = "pending",
                 mode: str = "content") -> dict:
@@ -346,20 +350,25 @@ class KnowledgeBase:
                 pass
         return n
 
-    def enqueue(self, sid: str, kind: str = "source", force: bool = False) -> None:
+    def enqueue(self, sid: str, kind: str = "source", force: bool = False, urgent: bool = False) -> None:
         if kind == "source":
             row = db.one("SELECT status FROM sources WHERE id=?", [sid])
             if row and row["status"] == "excluded":  # taken out of its folder by the user
                 return
         key = (kind, sid)
         with self._plock:
-            if key in self._queued:
+            if force:
+                self._forced.add(key)  # a forced request is never lost to a plain one already waiting
+            if key in self._queued and not urgent:
                 return
+            again = key in self._queued
             self._queued.add(key)
-            self._track_new()
+            if not again:
+                self._track_new()
         if kind == "source":  # never over a file the user just took out of its folder
             db.x("UPDATE sources SET status='pending', error='' WHERE id=? AND status!='excluded'", [sid])
-        self._q.put((kind, sid, force))
+        # an urgent request already waiting is queued again at the front; the later copy finds nothing to do
+        self._q.put((0 if urgent else 1, next(self._seq), kind, sid, force))
         self._progress(force=True)
         if not embedder.loaded:  # load the model while the first file is still being read
             threading.Thread(target=self._warm, daemon=True, name="kb-warm").start()
@@ -434,9 +443,14 @@ class KnowledgeBase:
     def _feeder(self) -> None:
         """Takes queued work, starts reading it on the pool and hands the futures to the worker in order."""
         while True:
-            kind, sid, force = self._q.get()
+            _, _, kind, sid, force = self._q.get()
             with self._plock:
+                if (kind, sid) not in self._queued:
+                    continue  # already taken from the front of the queue (urgent copy)
                 self._queued.discard((kind, sid))
+                if (kind, sid) in self._forced:
+                    self._forced.discard((kind, sid))
+                    force = True
             fut = self._pool.submit(self._prepare, kind, sid, force)
             self._ready.put(fut)  # blocks while three files are already waiting: bounded memory
 

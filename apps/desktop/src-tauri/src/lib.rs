@@ -63,6 +63,17 @@ fn fixed_path() -> std::ffi::OsString {
     std::env::join_paths(parts).unwrap_or_default()
 }
 
+/// The version in a `lumina/__init__.py` (`__version__ = "0.2.1"`).
+pub fn parse_version(source: &str) -> Option<String> {
+    source.lines().find_map(|line| {
+        let rest = line.trim().strip_prefix("__version__")?.trim_start();
+        let rest = rest.strip_prefix('=')?.trim();
+        let quote = rest.chars().next().filter(|c| *c == '"' || *c == '\'')?;
+        let inner = &rest[1..];
+        inner.find(quote).map(|end| inner[..end].to_string())
+    })
+}
+
 /// AppImage runtime variables must not leak into Python (it would look for its stdlib inside the AppImage).
 const APPIMAGE_VARS: [&str; 8] = [
     "APPDIR",
@@ -118,6 +129,54 @@ impl Backend {
             .is_some_and(|body| body.contains("\"stt_engine\""))
     }
 
+    /// The version of the code on disk (what an update just installed).
+    fn installed_version(&self) -> Option<String> {
+        let home = self.home.as_ref()?;
+        parse_version(&std::fs::read_to_string(home.join("lumina").join("__init__.py")).ok()?)
+    }
+
+    /// The version of the Lumina answering on the port.
+    fn running_version(&self) -> Option<String> {
+        let body = Self::agent()
+            .get(&format!("http://127.0.0.1:{}/api/status", self.port))
+            .call()
+            .ok()?
+            .into_string()
+            .ok()?;
+        let v: serde_json::Value = serde_json::from_str(&body).ok()?;
+        v.get("version")?.as_str().map(str::to_string)
+    }
+
+    /// A server left over from before an update answers with the old version: it is not ours to use.
+    fn current(&self) -> bool {
+        match (self.installed_version(), self.running_version()) {
+            (Some(disk), Some(running)) => disk == running,
+            _ => true,
+        }
+    }
+
+    /// Starts the server and waits for it; if the first try fails (right after an update the old server
+    /// can still be closing), waits a moment and tries once more before showing an error.
+    pub fn start(self: &Arc<Self>) -> Result<(), String> {
+        let mut last = String::new();
+        for attempt in 0..3 {
+            if attempt > 0 {
+                self.log(&format!("{last}; trying again"));
+                std::thread::sleep(Duration::from_secs(3));
+                self.started_here.store(false, Ordering::SeqCst);
+                *self.child.lock().unwrap() = None;
+            }
+            match self
+                .ensure_running()
+                .and_then(|_| self.wait_ready(Duration::from_secs(120)))
+            {
+                Ok(()) => return Ok(()),
+                Err(e) => last = e,
+            }
+        }
+        Err(last)
+    }
+
     fn log_path(&self) -> Option<PathBuf> {
         let data = std::env::var_os("LUMINA_DATA")
             .map(PathBuf::from)
@@ -163,8 +222,12 @@ impl Backend {
     /// Starts the server unless one already answers on the port (then it is used as is).
     pub fn ensure_running(self: &Arc<Self>) -> Result<(), String> {
         if self.healthy() {
-            self.log("server already running: using it");
-            return Ok(());
+            if self.current() {
+                self.log("server already running: using it");
+                return Ok(());
+            }
+            // the new server asks the old one to close (lumina serve does it) before it starts
+            self.log("an older Lumina is still running: starting the new version");
         }
         let home = self.home.clone().ok_or_else(|| {
             "Lumina is not installed on this computer. Install it with the command on lautaro005.github.io/lumina".to_string()
@@ -213,7 +276,7 @@ impl Backend {
     pub fn wait_ready(&self, limit: Duration) -> Result<(), String> {
         let start = Instant::now();
         while start.elapsed() < limit {
-            if self.healthy() {
+            if self.healthy() && self.current() {
                 return Ok(());
             }
             if let Some(child) = self.child.lock().unwrap().as_mut() {
@@ -267,9 +330,7 @@ impl Backend {
                 me.log("the engine stopped; starting it again");
                 me.started_here.store(false, Ordering::SeqCst);
                 *me.child.lock().unwrap() = None;
-                let result = me
-                    .ensure_running()
-                    .and_then(|_| me.wait_ready(Duration::from_secs(120)));
+                let result = me.start();
                 match result {
                     Ok(()) => {
                         if let Some(w) = app.get_webview_window("main") {
@@ -455,9 +516,7 @@ pub fn run() {
 
                 let b3 = Arc::clone(&backend);
                 std::thread::spawn(move || {
-                    let result = b3
-                        .ensure_running()
-                        .and_then(|_| b3.wait_ready(Duration::from_secs(120)));
+                    let result = b3.start();
                     match result {
                         Ok(()) => {
                             if let Some(w) = handle.get_webview_window("main") {
@@ -502,6 +561,14 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_version_of_the_code_on_disk() {
+        let src = "\"\"\"Lumina.\"\"\"\n__version__ = \"0.2.1\"\n";
+        assert_eq!(parse_version(src).as_deref(), Some("0.2.1"));
+        assert_eq!(parse_version("__version__='1.0'").as_deref(), Some("1.0"));
+        assert_eq!(parse_version("x = 1"), None);
+    }
 
     #[test]
     fn recognises_an_install_folder() {

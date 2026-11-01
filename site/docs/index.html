@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.2.0">
+<link rel="stylesheet" href="../assets/site.css?v=0.2.1">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -152,6 +152,10 @@
 <p><b>Ask Lumina</b> answers from your meetings, notes and files and cites each passage with a number; small source chips under each answer open the meeting or link. It rewrites follow-up questions into a standalone search, keeps the best passages from different files and meetings, and says plainly when your sources do not contain the answer. Chats are saved in History. <b>Ask about this meeting</b> (meeting menu) starts a chat that always includes that meeting.</p>
 <p>The <b>Web search</b> toggle adds results from DuckDuckGo, or from your own SearXNG (Settings → Knowledge). It is off by default because it sends your question to the search engine.</p>
 
+<h3>Attachments</h3>
+<p>The paperclip (or dropping files on the chat) attaches PDF, Word, PowerPoint, Excel, Markdown, text, CSV and audio or video files, up to 200 MB. Audio and video are transcribed on your computer. Ask about them or have them summarized: long files are summarized in parts, or Lumina uses the passages that match your question. With <b>Keep in Sources</b> on, they are saved in Sources too (audio as a transcript).</p>
+<h3>Ask it to do things</h3>
+<p>Ask Lumina can create a document in Sources ("make a note with the action items"), rewrite one of your notes, delete a note (it asks first), rewrite a meeting's summary the way you say, and keep an attached file in Sources. A card under the answer shows what it did, with <b>Undo</b>. It only touches notes, never your files on disk, and only when your message asks for it.</p>
 <h2 id="speech">Read aloud</h2>
 <p>Notes and answers have <b>Read aloud</b>. The system voice works with no download; Kokoro 82M (120 MB, Settings → Read aloud) sounds more natural in English, Spanish, French, Italian, Portuguese, Japanese, Chinese and Hindi.</p>
 
@@ -238,7 +242,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.2.0 · Free to use, not to sell</span>
+    <span>Lumina 0.2.1 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -246,6 +250,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.2.0" defer></script>
+<script src="../assets/site.js?v=0.2.1" defer></script>
 </body>
 </html>

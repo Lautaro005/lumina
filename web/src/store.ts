@@ -190,6 +190,9 @@ export const useStore = create<State>((set, get) => ({
       case "warning":
         get().toast(ev.text, "warn");
         break;
+      case "attachment":  // a file attached to a chat was read (or could not be)
+        window.dispatchEvent(new CustomEvent("lumina:attachment", { detail: ev.attachment }));
+        break;
       case "kb":
         if (ev.event === "progress") {
           const { type: _t, event: _e, ...index } = ev;

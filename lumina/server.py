@@ -16,11 +16,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
-from . import __version__, chat, export, integrations, llm, memory, tts
+from . import __version__, chat, chat_tools, export, integrations, llm, memory, tts
 from .audio import list_inputs, request_permission
 from .audio import permissions as audio_permissions
 from .catalog import CATALOG, EU25, installed, languages_for, stt_choice
@@ -624,19 +624,22 @@ def create_app(port: int) -> FastAPI:
 
     @app.post("/api/sources/{sid}/reindex")
     def reindex(sid: str) -> dict:
+        """Index again, asked by the user: it goes before background work and always embeds again."""
         row = db.one("SELECT * FROM sources WHERE id=?", [sid])
-        if row and row["kind"] == "folder":
+        if not row:
+            raise HTTPException(404, "not found")
+        if row["kind"] == "folder":
             def rescan() -> None:
-                for c in db.q("SELECT id FROM sources WHERE parent=?", [sid]):
-                    kb.enqueue(c["id"], force=True)
+                for c in db.q("SELECT id FROM sources WHERE parent=? AND status!='excluded'", [sid]):
+                    kb.enqueue(c["id"], force=True, urgent=True)
                 kb._scan_folder(sid, Path(row["path"]))
 
             threading.Thread(target=rescan, daemon=True).start()
-        elif row and row["status"] == "excluded":
+        elif row["status"] == "excluded":
             kb.include(sid)  # a file taken out of its folder comes back
-        elif row:
-            kb.enqueue(sid, force=True)
-        return {"ok": True}
+        else:
+            kb.enqueue(sid, force=True, urgent=True)
+        return {"ok": True, "status": (db.one("SELECT status FROM sources WHERE id=?", [sid]) or {}).get("status", "")}
 
     @app.post("/api/reindex")
     def reindex_all() -> dict:
@@ -657,6 +660,8 @@ def create_app(port: int) -> FastAPI:
         out: dict[str, int] = {}
         if what in ("chats", "all"):
             out["chats"] = len(db.q("SELECT id FROM chats"))
+            for a in db.q("SELECT id FROM attachments"):
+                chat_tools.remove_attachment(a["id"])  # files kept in Sources stay
             db.x("DELETE FROM chats")
         if what in ("sources", "all"):
             out["sources"] = kb.clear_sources()
@@ -736,7 +741,8 @@ def create_app(port: int) -> FastAPI:
         c = db.one("SELECT * FROM chats WHERE id=?", [cid])
         if not c:
             raise HTTPException(404, "chat not found")
-        return {**c, "messages": db.q("SELECT * FROM messages WHERE chat_id=? ORDER BY created", [cid])}
+        return {**c, "messages": db.q("SELECT * FROM messages WHERE chat_id=? ORDER BY created", [cid]),
+                "attachments": [chat_tools.public(a) for a in chat_tools.chat_attachments(cid)]}
 
     @app.patch("/api/chats/{cid}")
     async def rename_chat(cid: str, request: Request) -> dict:
@@ -749,8 +755,63 @@ def create_app(port: int) -> FastAPI:
 
     @app.delete("/api/chats/{cid}")
     def delete_chat(cid: str) -> dict:
+        for a in chat_tools.chat_attachments(cid):
+            chat_tools.remove_attachment(a["id"])
         db.x("DELETE FROM chats WHERE id=?", [cid])
         return {"ok": True}
+
+    @app.post("/api/chats/{cid}/attachments")
+    async def attach(cid: str, files: list[UploadFile] = File(...), save: str = Form("0")) -> list[dict]:
+        """Files for Ask Lumina to read (documents, or audio and video it transcribes); `save` also keeps them in
+        Sources."""
+        if not db.one("SELECT id FROM chats WHERE id=?", [cid]):
+            raise HTTPException(404, "chat not found")
+        chat_tools.ATTACH_DIR.mkdir(parents=True, exist_ok=True)
+        out = []
+        for f in files:
+            name = re.sub(r"[^\w.\- ]", "_", Path(f.filename or "file").name)[:150] or "file"
+            if not chat_tools.accepts(name):
+                raise HTTPException(415, f"Lumina cannot read {name}: use PDF, Word, PowerPoint, Excel, text or audio.")
+            dest = chat_tools.ATTACH_DIR / f"{new_id()}_{name}"
+            size = 0
+            with open(dest, "wb") as fh:
+                while chunk := await f.read(1 << 20):
+                    size += len(chunk)
+                    if size > chat_tools.MAX_ATTACH_BYTES:
+                        fh.close()
+                        dest.unlink(missing_ok=True)
+                        raise HTTPException(413, f"{name} is larger than 200 MB.")
+                    fh.write(chunk)
+            out.append(chat_tools.public(chat_tools.add_attachment(cid, name, dest, save in ("1", "true", "on"))))
+        return out
+
+    @app.delete("/api/chats/{cid}/attachments/{aid}")
+    def detach(cid: str, aid: str) -> dict:
+        if db.one("SELECT id FROM attachments WHERE id=? AND chat_id=?", [aid, cid]):
+            chat_tools.remove_attachment(aid)
+        return {"ok": True}
+
+    @app.post("/api/chats/{cid}/attachments/{aid}/keep")
+    def keep_attachment(cid: str, aid: str) -> dict:
+        att = db.one("SELECT * FROM attachments WHERE id=? AND chat_id=?", [aid, cid])
+        if not att:
+            raise HTTPException(404, "attachment not found")
+        if att["status"] != "ready":
+            db.update("attachments", aid, {"save": 1})  # kept as soon as it has been read
+        else:
+            chat_tools.keep_in_sources(att)
+        return chat_tools.public(db.one("SELECT * FROM attachments WHERE id=?", [aid]) or att)
+
+    @app.post("/api/chats/{cid}/messages/{mid}/actions/{index}")
+    async def chat_action(cid: str, mid: str, index: int, request: Request) -> dict:
+        """A click on an action card: confirm (a deletion), undo, or dismiss."""
+        body = await request.json()
+        try:
+            return chat_tools.apply(cid, mid, index, str(body.get("op", "")))
+        except KeyError as e:
+            raise HTTPException(404, "action not found") from e
+        except ValueError as e:
+            raise HTTPException(409, str(e)) from e
 
     @app.post("/api/chats/{cid}/messages")
     async def send(cid: str, request: Request) -> StreamingResponse:
@@ -762,7 +823,8 @@ def create_app(port: int) -> FastAPI:
         use_brain = body.get("brain")
 
         def gen():
-            inner = chat.answer(cid, text, web, bool(body.get("replace_last")), use_brain)
+            inner = chat.answer(cid, text, web, bool(body.get("replace_last")), use_brain,
+                                [str(x) for x in body.get("attachments") or []])
             try:
                 for ev in inner:
                     yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"

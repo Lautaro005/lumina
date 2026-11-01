@@ -89,7 +89,19 @@ export type Source = {
 };
 
 export type ChatT = { id: string; title: string; created: number; updated: number; meeting_id: string | null };
-export type Message = { id: string; role: "user" | "assistant"; content: string; sources: any[]; created: number };
+export type Attachment = {
+  id: string; chat_id: string; name: string; ext: string; kind: "document" | "audio"; size: number;
+  status: "reading" | "ready" | "error"; error: string; save: number; source_id: string; created: number; chars: number;
+};
+export type ChatAction = {
+  action: "create_note" | "update_note" | "delete_note" | "rewrite_summary" | "save_attachment";
+  ok: boolean; id?: string; title?: string; instructions?: string; error?: string;
+  state?: "done" | "confirm" | "dismissed" | "undone"; undo?: unknown;
+};
+export type Message = {
+  id: string; role: "user" | "assistant"; content: string; sources: any[]; created: number;
+  actions?: ChatAction[]; attachments?: Attachment[];
+};
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const init: RequestInit = { method, headers: {} };
@@ -170,6 +182,16 @@ export const api = {
   stopRunning: (name: "llm" | "stt" | "embeddings") => req<{ running: Running }>("POST", `/api/running/${name}/stop`),
   startLlm: () => req<{ running: Running }>("POST", "/api/running/llm/start"),
   reindexAll: () => req("POST", "/api/reindex"),
+  attach: (chatId: string, files: File[], save: boolean) => {
+    const f = new FormData();
+    files.forEach((x) => f.append("files", x));
+    f.append("save", save ? "1" : "0");
+    return req<Attachment[]>("POST", `/api/chats/${chatId}/attachments`, f);
+  },
+  detach: (chatId: string, id: string) => req("DELETE", `/api/chats/${chatId}/attachments/${id}`),
+  keepAttachment: (chatId: string, id: string) => req<Attachment>("POST", `/api/chats/${chatId}/attachments/${id}/keep`),
+  chatAction: (chatId: string, messageId: string, index: number, op: "confirm" | "undo" | "dismiss") =>
+    req<ChatAction>("POST", `/api/chats/${chatId}/messages/${messageId}/actions/${index}`, { op }),
   deleteData: (what: "chats" | "sources" | "meetings" | "all") =>
     req<{ deleted: Record<string, number>; kb: Status["kb"] }>("DELETE", `/api/data/${what}`),
   reveal: (id: string) => req("POST", "/api/open", { id }),
@@ -179,7 +201,7 @@ export const api = {
 
   chats: () => req<ChatT[]>("GET", "/api/chats"),
   newChat: (meeting_id?: string) => req<ChatT>("POST", "/api/chats", meeting_id ? { meeting_id } : {}),
-  chat: (id: string) => req<ChatT & { messages: Message[] }>("GET", `/api/chats/${id}`),
+  chat: (id: string) => req<ChatT & { messages: Message[]; attachments: Attachment[] }>("GET", `/api/chats/${id}`),
   deleteChat: (id: string) => req("DELETE", `/api/chats/${id}`),
   renameChat: (id: string, title: string) => req<ChatT>("PATCH", `/api/chats/${id}`, { title }),
   retranscribe: (id: string) => req("POST", `/api/meetings/${id}/retranscribe`),
@@ -190,11 +212,12 @@ export const api = {
 /** POST a chat message and read the server-sent events it streams back. */
 /** Sends a question and streams the answer. `signal` stops it; `replace` replaces the last question and its answer. */
 export async function sendChat(chatId: string, text: string, web: boolean, onEvent: (ev: any) => void,
-  opts: { signal?: AbortSignal; replace?: boolean; brain?: boolean } = {}) {
+  opts: { signal?: AbortSignal; replace?: boolean; brain?: boolean; attachments?: string[] } = {}) {
   const r = await fetch(`/api/chats/${chatId}/messages`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, web, replace_last: !!opts.replace, ...(opts.brain === undefined ? {} : { brain: opts.brain }) }),
+    body: JSON.stringify({ text, web, replace_last: !!opts.replace, attachments: opts.attachments || [],
+      ...(opts.brain === undefined ? {} : { brain: opts.brain }) }),
     signal: opts.signal,
   });
   if (!r.ok || !r.body) throw new Error(await r.text());

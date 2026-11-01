@@ -124,14 +124,19 @@ if sh {q(str(root / "lumina.sh"))} update; then
   }}
   echo "Restarting Lumina"
   rm -f {q(str(STATUS))}
+  # wait until the old server has really let go of the port (up to 30 s), so the new one can start
+  gone() {{
+    i=0
+    while [ $i -lt 60 ] && curl -s -m 1 -o /dev/null http://127.0.0.1:{port}/api/status; do sleep 0.5; i=$((i+1)); done
+  }}
   if [ {app_pid} -gt 0 ]; then
     kill -TERM {app_pid} 2>/dev/null
     quit
-    sleep 2
+    gone
     nohup sh {q(str(root / "lumina.sh"))} app >/dev/null 2>&1 &
   else
     quit
-    sleep 2
+    gone
     nohup sh {q(str(root / "lumina.sh"))} serve --port {port} >/dev/null 2>&1 &
   fi
 else
@@ -159,7 +164,12 @@ if ($LASTEXITCODE -eq 0) {{
     Invoke-RestMethod -Method Post -Uri http://127.0.0.1:{port}/api/quit -Headers @{{'X-Lumina'='1'}} `
       -ContentType 'application/json' -Body '{{}}' -TimeoutSec 5 | Out-Null
   }} catch {{}}
-  Start-Sleep -Seconds 2
+  # wait until the old server has let go of the port (up to 30 s)
+  for ($i = 0; $i -lt 60; $i++) {{
+    try {{ Invoke-WebRequest -Uri http://127.0.0.1:{port}/api/status -TimeoutSec 1 -UseBasicParsing | Out-Null
+           Start-Sleep -Milliseconds 500 }}
+    catch {{ break }}
+  }}
   if ({app_pid} -gt 0) {{ & powershell -NoProfile -ExecutionPolicy Bypass -File '{ps}' app }}
   else {{
     Start-Process powershell -WindowStyle Hidden `

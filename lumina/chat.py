@@ -10,7 +10,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import httpx
 
-from . import llm
+from . import chat_tools, llm
 from .config import settings
 from .db import db
 from .embed import NotReady
@@ -59,6 +59,8 @@ steps, with owners and dates when the sources give them. Use a short table only 
 it ready to paste.
 - If the question is ambiguous and the sources do not settle it, ask one short clarifying question instead of \
 guessing."""
+
+SYSTEM_PROMPT += chat_tools.ACTIONS_PROMPT  # create, edit and delete notes, rewrite summaries, keep attachments
 
 # size limits (characters) keep the prompt inside small local models' context
 SOURCE_CHARS = 1600  # per source
@@ -256,7 +258,7 @@ def _clean_attr(v: str) -> str:
 
 def _clean_body(v: str) -> str:
     # a source must not be able to close its own tag or open a new one
-    return re.sub(r"</?\s*(source|sources|context|question)\b", "(tag removed", v, flags=re.I)
+    return re.sub(r"</?\s*(source|sources|context|question|notes)\b", "(tag removed", v, flags=re.I)
 
 
 def format_sources(sources: list[dict]) -> str:
@@ -267,14 +269,18 @@ def format_sources(sources: list[dict]) -> str:
         f'{_clean_body(s["text"])}\n</source>' for i, s in enumerate(sources))
 
 
-def format_context(chat_row: dict, web: bool, sources: list[dict]) -> str:
+def format_context(chat_row: dict, web: bool, sources: list[dict], notes: list[dict] | None = None,
+                   attachments: list[dict] | None = None) -> str:
     scope = "everything the user has kept"
     if chat_row.get("meeting_id"):
         scope = "one meeting (its notes come first among the sources)"
     counts = kb.counts()
     return (f"Today is {time.strftime('%A %Y-%m-%d')}. Scope: {scope}. Web search: {'on' if web else 'off'}. "
             f"Indexed: {counts.get('meetings', 0)} meeting chunks, {counts.get('documents', 0)} document chunks, "
-            f"{counts.get('notes', 0)} note chunks.")
+            f"{counts.get('notes', 0)} note chunks."
+            + ("\nAttachments in this chat (they come first among the sources): "
+               + "; ".join(f"{i + 1}. {a['name']}" for i, a in enumerate(attachments)) if attachments else "")
+            + f"\n<notes>\n{chat_tools.format_notes(notes or [])}\n</notes>")
 
 
 def trim_history(history: list[dict]) -> list[dict]:
@@ -300,7 +306,7 @@ def clean_answer(text: str, n_sources: int) -> str:
 
     text = re.sub(r"\[(\d+(?:\s*[,;]\s*\d+)+)\]", split, text)
     text = re.sub(r"\[(\d+)\]", lambda m: m.group(0) if 0 < int(m.group(1)) <= n_sources else "", text)
-    text = re.sub(r"</?\s*(source|sources|context|question)\b[^>]*>", "", text, flags=re.I)
+    text = re.sub(r"</?\s*(source|sources|context|question|notes)\b[^>]*>", "", text, flags=re.I)
     text = re.sub(r"[ \t]+([.,;:!?])", r"\1", text)
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
@@ -320,7 +326,7 @@ def drop_last_turn(chat_id: str) -> None:
 
 
 def answer(chat_id: str, question: str, web: bool | None = None, replace_last: bool = False,
-           use_brain: bool | None = None) -> Iterator[dict]:
+           use_brain: bool | None = None, attachment_ids: list[str] | None = None) -> Iterator[dict]:
     web = settings.get("web_search") if web is None else web
     use_brain = settings.get("brain_chat") if use_brain is None else use_brain
     chat = db.one("SELECT * FROM chats WHERE id=?", [chat_id])
@@ -329,29 +335,43 @@ def answer(chat_id: str, question: str, web: bool | None = None, replace_last: b
     if replace_last:
         drop_last_turn(chat_id)
     history = db.q("SELECT role, content FROM messages WHERE chat_id=? ORDER BY created", [chat_id])[-HISTORY_TURNS:]
-    db.add_message(chat_id, "user", question)
+    atts = chat_tools.chat_attachments(chat_id)
+    carried = [chat_tools.public(a) for a in atts if a["id"] in set(attachment_ids or [])]
+    db.add_message(chat_id, "user", question, attachments=carried)
     if not chat["title"]:
         db.update("chats", chat_id, {"title": question[:80]})
     yield {"type": "status", "text": "searching"}
     query = rewrite_query(question, history)
-    sources = gather(question, bool(web), chat.get("meeting_id"), query, bool(use_brain))
+    attached = chat_tools.as_sources(chat_id, question)  # the files attached to this chat come first
+    sources = attached + gather(question, bool(web), chat.get("meeting_id"), query, bool(use_brain))
     yield {"type": "sources", "sources": [public(s) for s in sources]}
-    messages = build_messages(question, history, sources, format_context(chat, bool(web), sources))
+    notes = chat_tools.notes_list()
+    ready = [a for a in atts if a["status"] == "ready"]
+    messages = build_messages(question, history, sources,
+                              format_context(chat, bool(web), sources, notes, ready))
     full = []
     try:
-        for piece in llm.stream(messages, temperature=0.2, max_tokens=1500):
+        for piece in llm.stream(messages, temperature=0.2, max_tokens=2500):
             full.append(piece)
             yield {"type": "delta", "text": piece}
     except llm.LLMError as e:
         yield {"type": "error", "text": str(e)}
         return
-    except GeneratorExit:  # the user pressed Stop: keep what was written so far
-        partial = clean_answer("".join(full), len(sources))
+    except GeneratorExit:  # the user pressed Stop: keep what was written so far (no actions run)
+        partial = clean_answer(chat_tools.split_actions("".join(full))[0], len(sources))
         if partial:
             db.add_message(chat_id, "assistant", partial, [])
         raise
-    text = clean_answer("".join(full), len(sources))
+    text, asked = chat_tools.split_actions("".join(full))
+    actions: list[dict] = []
+    if asked and chat_tools.asked_to_act(question):
+        actions = chat_tools.run(asked, {"notes": notes, "sources": sources, "attachments": ready, "chat_id": chat_id})
+    elif asked:
+        log.info("dropped %d action(s): the question did not ask for one", len(asked))
+    text = clean_answer(text, len(sources))
+    if not text and actions:
+        text = "Done."
     used = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text)})
     kept = [public(sources[n - 1]) | {"n": n} for n in used]
-    msg = db.add_message(chat_id, "assistant", text, kept)
+    msg = db.add_message(chat_id, "assistant", text, kept, actions)
     yield {"type": "done", "message": msg}

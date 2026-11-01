@@ -44,6 +44,18 @@ export default function Sources() {
     load();
     refresh();
   };
+  // Index again: the row says "Waiting" at once and a notice confirms it; the server sends the rest as it goes
+  const reindex = async (src: Source) => {
+    setRows((rs) => rs.map((r) => (r.id === src.id || (src.kind === "folder" && r.parent === src.id && r.status !== "excluded")
+      ? { ...r, status: "pending", error: "" } : r)));
+    try {
+      await api.reindex(src.id);
+      toast(t("sources.reindexing", { name: src.title }));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+    load();
+  };
   const rel = (folder: Source, k: Source) => (k.path.startsWith(folder.path) ? k.path.slice(folder.path.length).replace(/^[\\/]+/, "") : k.title);
 
   // a web page: read it first, then ask whether to keep its text or a summary
@@ -244,7 +256,7 @@ export default function Sources() {
                       </td>
                       <td className="act-col">
                         <div className="row-actions">
-                          <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={t("sources.reindex")} onClick={() => api.reindex(s.id).then(load)}><RefreshCw size={15} /></button>
+                          <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={t("sources.reindex")} onClick={() => reindex(s)}><RefreshCw size={15} /></button>
                           {s.path && s.kind !== "web" && <button className="btn sm ghost icon" title={t("sources.reveal")} aria-label={t("sources.reveal")} onClick={() => api.reveal(s.id)}><FolderOpen size={15} /></button>}
                           <button className="btn sm ghost icon danger" title={t("common.remove")} aria-label={t("common.remove")} onClick={() => remove(s.id)}><Trash2 size={15} /></button>
                         </div>
@@ -262,7 +274,9 @@ export default function Sources() {
                                   <FileText size={14} />
                                   <span className="ff-name">{rel(s, k)}</span>
                                   <span className="ff-actions">
-                                    <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={`${t("sources.reindex")} ${k.title}`} onClick={() => api.reindex(k.id).then(load)}><RefreshCw size={14} /></button>
+                                    <button className="btn sm ghost icon" title={t("sources.reindex")} aria-label={`${t("sources.reindex")} ${k.title}`} onClick={() => reindex(k)}>
+                                      <RefreshCw size={14} className={k.status === "pending" || k.status === "indexing" ? "spin" : ""} />
+                                    </button>
                                     <button className="btn sm ghost icon danger" title={t("sources.removeFile")} aria-label={`${t("sources.removeFile")} ${k.title}`} onClick={() => remove(k.id)}><Trash2 size={14} /></button>
                                   </span>
                                 </div>

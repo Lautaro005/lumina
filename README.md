@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-20242c">
+  <img alt="Version 0.2.1" src="https://img.shields.io/badge/version-0.2.1-20242c">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -54,7 +54,7 @@ plus the notes model). After that it works offline.
 | 🧩 **Works with your apps** | [brain](https://lautaro005.github.io/brain/): save a meeting to your vault (or every meeting, automatically) and search brain from Ask Lumina. [OpenCue](https://lautaro005.github.io/opencue/): send a meeting to an agent and read its reply under the summary. [AI WorkStudio](https://lautaro005.github.io/workstudio/): it opens Lumina inside and gives your agents Lumina's tools. Settings → Connected apps. |
 | 💡 **Helps live** | When someone asks a real question on the meeting's subject, a short answer appears beside your notes, from your documents or, when they do not have it, from the web (only the question is searched). A switch next to the title turns it off. |
 | 📚 **Knows your files** | Add PDFs, Word, PowerPoint, Excel, Markdown, text, HTML or code, whole folders it keeps up to date, or web pages (their text or a summary). A progress bar shows the indexing, a folder opens like a dropdown to list its files, and your finished meetings are listed there too. |
-| 💬 **Answers questions** | Ask "what did we decide about pricing?" across every meeting and file. Every answer cites its sources. Web search in the chat is optional and off by default. |
+| 💬 **Answers questions** | Ask "what did we decide about pricing?" across every meeting and file. Every answer cites its sources. Attach files (PDF, Office, text, audio) to ask about them or have them summarized, and ask it to create, edit or delete notes in Sources or rewrite a meeting's summary. Web search in the chat is optional and off by default. |
 | 🤖 **Works with your agents** | Claude, Cursor, Codex or any MCP client can search your meetings and files through Lumina's MCP server. |
 | 🔊 **Reads aloud** | Notes and answers can be read with a natural voice (Kokoro) or your system voice. |
 

@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.2.x` (latest: `0.2.0`) | ✅ |
+| `0.2.x` (latest: `0.2.1`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -89,6 +89,19 @@ being exploited).
   `/api/meetings/{id}/opencue`) are behind the same host and origin checks as the rest of the API.
 - **Summary instructions.** What you type to shape a summary goes to your notes model inside a `<request>` block, with
   a rule that it only changes the summary; it is stored with the summary so you can see how it was written.
+- **Ask Lumina's actions (0.2.1).** The chat can create, edit and delete notes, rewrite a meeting's summary and
+  keep an attachment in Sources. It asks for an action in a block at the end of its answer; Lumina runs it only when
+  the user's own message asks for something to be made, changed or saved, so text inside a source or an attachment
+  cannot trigger one on its own. Only notes can be edited or deleted (never files or folders on disk); deleting
+  waits for the user's click; an edited note, a new note and a rewritten summary can be undone from the card. The
+  endpoint for those clicks (`POST /api/chats/{id}/messages/{id}/actions/{n}`) is behind the same host and origin
+  checks as the rest of the API.
+- **Chat attachments (0.2.1).** Files attached in Ask Lumina are copied to `data/uploads/chat/` (up to 200 MB each,
+  only document, text, audio and video types) and read on the computer; audio and video are transcribed with the
+  local speech model. Their text goes to your notes model as a source marked as data. They are deleted with the
+  chat (or with Settings → Delete data → chats) unless they were kept in Sources.
+- **Starting after an update (0.2.1).** `lumina serve` asks a Lumina of another version that still answers on its
+  port to close (`POST /api/quit`, with the same header the desktop app uses) before starting.
 - **Web pages as sources (0.2.0).** A page is fetched only when you paste its address in Sources and press
   **Read page**, or an agent calls the `add_web_page` MCP tool. Only `http` and `https` are accepted; addresses that
   point to this computer (`localhost`, loopback), link-local addresses (such as the cloud metadata address

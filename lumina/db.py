@@ -64,6 +64,23 @@ CREATE TABLE IF NOT EXISTS messages (
   created REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS msg_chat ON messages(chat_id, created);
+CREATE TABLE IF NOT EXISTS attachments (
+  id TEXT PRIMARY KEY,
+  chat_id TEXT NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  path TEXT NOT NULL DEFAULT '',
+  ext TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'document',     -- document | audio
+  size INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'reading',    -- reading | ready | error
+  error TEXT NOT NULL DEFAULT '',
+  text TEXT NOT NULL DEFAULT '',             -- what Lumina read (a transcript for audio)
+  digest TEXT NOT NULL DEFAULT '',           -- a summary of a long attachment, written once
+  save INTEGER NOT NULL DEFAULT 0,           -- also keep it in Sources
+  source_id TEXT NOT NULL DEFAULT '',
+  created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS att_chat ON attachments(chat_id, created);
 CREATE TABLE IF NOT EXISTS sources (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,                        -- file | folder | note | meeting
@@ -85,7 +102,7 @@ CREATE TABLE IF NOT EXISTS sources (
 CREATE INDEX IF NOT EXISTS src_path ON sources(path);
 """
 
-JSON_COLS = {"tags", "enhanced", "summary", "sources"}
+JSON_COLS = {"tags", "enhanced", "summary", "sources", "actions", "attachments"}
 
 
 def new_id() -> str:
@@ -108,6 +125,10 @@ class DB:
             if "brain_path" not in mcols:  # 0.1.7: where the meeting was saved in brain's vault, and when
                 c.execute("ALTER TABLE meetings ADD COLUMN brain_path TEXT NOT NULL DEFAULT ''")
                 c.execute("ALTER TABLE meetings ADD COLUMN brain_saved REAL")
+            msgcols = {r[1] for r in c.execute("PRAGMA table_info(messages)")}
+            if "actions" not in msgcols:  # 0.2.1: what the chat did (notes, summaries) and the files a question carried
+                c.execute("ALTER TABLE messages ADD COLUMN actions TEXT NOT NULL DEFAULT '[]'")
+                c.execute("ALTER TABLE messages ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'")
 
     def conn(self) -> sqlite3.Connection:
         c = getattr(self._local, "c", None)
@@ -206,11 +227,13 @@ class DB:
                [cid, title, now, now, meeting_id])
         return self.one("SELECT * FROM chats WHERE id=?", [cid])  # type: ignore[return-value]
 
-    def add_message(self, chat_id: str, role: str, content: str, sources: list | None = None) -> dict:
+    def add_message(self, chat_id: str, role: str, content: str, sources: list | None = None,
+                    actions: list | None = None, attachments: list | None = None) -> dict:
         mid = new_id()
         now = time.time()
-        self.x("INSERT INTO messages(id,chat_id,role,content,sources,created) VALUES(?,?,?,?,?,?)",
-               [mid, chat_id, role, content, json.dumps(sources or [], ensure_ascii=False), now])
+        self.x("INSERT INTO messages(id,chat_id,role,content,sources,actions,attachments,created) VALUES(?,?,?,?,?,?,?,?)",
+               [mid, chat_id, role, content, json.dumps(sources or [], ensure_ascii=False),
+                json.dumps(actions or [], ensure_ascii=False), json.dumps(attachments or [], ensure_ascii=False), now])
         self.x("UPDATE chats SET updated=? WHERE id=?", [now, chat_id])
         return self.one("SELECT * FROM messages WHERE id=?", [mid])  # type: ignore[return-value]
 
