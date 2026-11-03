@@ -53,9 +53,15 @@ server.run("stdio")
 @pytest.fixture
 def fake_openblocks(tmp_path, monkeypatch):
     log = tmp_path / "calls.log"
-    exe = tmp_path / "openblocks"
-    exe.write_text(FAKE.format(python=sys.executable, log=str(log)))
-    exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
+    script = tmp_path / "openblocks_fake.py"
+    script.write_text(FAKE.format(python=sys.executable, log=str(log)))
+    if sys.platform == "win32":  # no shebangs on Windows: a .cmd that runs the script with this Python
+        exe = tmp_path / "openblocks.cmd"
+        exe.write_text(f'@"{sys.executable}" "{script}" %*\r\n')
+    else:
+        exe = tmp_path / "openblocks"
+        script.rename(exe)
+        exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
     monkeypatch.setattr(integrations, "openblocks_cli", lambda: str(exe))
 
     def calls():
