@@ -3,6 +3,32 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] - 2026-11-03
+
+### Added
+- **OpenBlocks joins the family.** [OpenBlocks](https://lautaro005.github.io/openblocks/) keeps your notes as Markdown
+  pages in a folder you choose; Lumina now works with it the way it does with brain, through OpenBlocks' own MCP server
+  (`openblocks mcp`), with nothing new to install:
+  - **Save to OpenBlocks** (⋯ menu of a finished meeting) writes the meeting as a page,
+    `Lumina/<date> <title>.md`, in the Markdown OpenBlocks reads: properties (`tags`, `date`, `lumina_meeting`), the
+    overview as a callout, decisions and open questions as lists, **action items as `- [ ]` tasks**, and your shorthand
+    and the transcript folded in `<details>`. A meeting saved once has the same page updated when its summary changes
+    (and written again if you deleted it). Settings → Connected apps can save every finished meeting automatically and
+    include the transcript.
+  - **Ask Lumina searches your OpenBlocks pages**: a new **OpenBlocks** pill next to Web search and brain adds the
+    best matching pages as sources, cited like any other.
+  - **Save an answer as a page**: every answer of Ask Lumina has an OpenBlocks button that saves the question, the
+    answer and its sources as a page. You can also ask in the chat ("save this in OpenBlocks"): it creates the page
+    and the card links to OpenBlocks (the chat never edits or deletes your pages).
+  - MCP tool `save_meeting_to_openblocks`, so agents can do the same.
+  - Settings → Connected apps shows whether OpenBlocks is installed or open, opens it, and takes an optional vault
+    folder (empty: the one OpenBlocks opened last).
+- **The family's logos** (brain, OpenCue, OpenBlocks and AI WorkStudio) in Settings → Connected apps, the ⋯ menu of a
+  meeting, the chat sources and the chat's pills.
+
+### Changed
+- Connected apps are listed in the order brain, OpenBlocks, OpenCue, AI WorkStudio.
+
 ## [0.2.1] - 2026-11-01
 
 ### Added

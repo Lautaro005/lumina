@@ -7,6 +7,11 @@ import { useT } from "./i18n";
 import { useStore } from "./store";
 
 /** The Lumina mark: an L, and a dot of light. */
+/** The logo of one app of the family (brain, OpenCue, OpenBlocks, AI WorkStudio), served from /apps/<id>.svg. */
+export function AppLogo({ id, size = 18 }: { id: "brain" | "opencue" | "openblocks" | "workstudio"; size?: number }) {
+  return <img className="app-logo" src={`/apps/${id}.svg`} width={size} height={size} alt="" aria-hidden="true" draggable={false} />;
+}
+
 export function Logo({ size = 28 }: { size?: number; onCover?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">

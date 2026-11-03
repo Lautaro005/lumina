@@ -1,10 +1,13 @@
-"""Lumina's family of apps: brain (memory), OpenCue (agents) and AI WorkStudio (the workspace that holds them).
+"""Lumina's family of apps: brain (memory), OpenCue (agents), OpenBlocks (notes) and AI WorkStudio (the workspace that
+holds them).
 
 Lumina talks to each one the way they already talk to each other, with nothing new to install:
 - brain: its dashboard API on 127.0.0.1:8765 to search (the same search its MCP tool uses), and its MCP server
   (`uv run --directory ~/.brain python server.py`, the one WorkStudio starts) to write a meeting into the vault.
 - OpenCue: its agents are read from opencue.db, and a message reaches one through `opencue mcp-serve` and the
   `send_to_agent` tool (what WorkStudio's chat does).
+- OpenBlocks: its own MCP server (`openblocks mcp`, the one WorkStudio and Claude Code use) to search the vault and to
+  write a meeting or a chat answer as a Markdown page; its dashboard on 127.0.0.1:47880 only to see if it is open.
 - AI WorkStudio: it detects Lumina on its port, reads /api/status for its notices and serves `lumina mcp` in its
   hub; Lumina only reports whether WorkStudio is installed and opens it.
 Everything stays on this computer: these are local programs, reached on 127.0.0.1 or through a child process.
@@ -193,6 +196,276 @@ def brain_write(path: str, content: str) -> str:
     return path
 
 
+# ---------- OpenBlocks --------------------------------------------------------------------------------------------
+
+OPENBLOCKS_PORT = int(os.environ.get("OPENBLOCKS_PORT") or 47880)
+OPENBLOCKS_URL = f"http://127.0.0.1:{OPENBLOCKS_PORT}"
+OPENBLOCKS_FOLDER = "Lumina"  # where Lumina's pages go inside the OpenBlocks vault
+
+
+def openblocks_cli() -> str | None:
+    """The `openblocks` command: on the PATH, or the binary inside OpenBlocks.app (the app answers `mcp` itself)."""
+    found = _which("openblocks")
+    if found:
+        return found
+    for base in (Path("/Applications"), HOME / "Applications"):
+        binary = base / "OpenBlocks.app" / "Contents" / "MacOS" / "openblocks"
+        if binary.exists():
+            return str(binary)
+    return None
+
+
+def openblocks_status() -> dict[str, Any]:
+    cli = openblocks_cli()
+    version, running = "", False
+    try:
+        r = httpx.get(f"{OPENBLOCKS_URL}/api/status", timeout=0.8)
+        if r.status_code == 200 and "openblocks" in r.text.lower():
+            running = True
+            try:
+                version = str(r.json().get("version", ""))
+            except (ValueError, AttributeError):
+                pass
+    except httpx.HTTPError:
+        pass
+    home = Path(os.environ.get("OPENBLOCKS_HOME", HOME / ".openblocks"))
+    installed = bool(cli or _mac_app("OpenBlocks.app") or home.exists() or running)
+    return {"id": "openblocks", "installed": installed, "running": running, "version": version,
+            "url": f"{OPENBLOCKS_URL}/", "can_write": bool(cli)}
+
+
+def _ob_server() -> tuple[str, list[str]]:
+    from .config import settings
+
+    cli = openblocks_cli()
+    if not cli:
+        raise IntegrationError("OpenBlocks is not installed. Install it from https://lautaro005.github.io/openblocks/")
+    args = ["mcp"]
+    vault = str(settings.get("openblocks_vault") or "").strip()
+    if vault:
+        args += ["--vault", vault]
+    return cli, args
+
+
+def mcp_run(command: str, args: list[str], work, timeout: float = 60) -> Any:  # noqa: ANN001
+    """Open one MCP session over stdio and run `work(session)` (a coroutine) in it. Raises IntegrationError."""
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import get_default_environment, stdio_client
+
+    env = get_default_environment()
+    env["PATH"] = os.pathsep.join([env.get("PATH", ""), str(HOME / ".local" / "bin"), "/opt/homebrew/bin",
+                                   "/usr/local/bin"])
+
+    async def run() -> Any:
+        with open(LOGS / "integrations-mcp.log", "a", encoding="utf-8") as errlog:
+            params = StdioServerParameters(command=command, args=args, env=env)
+            async with stdio_client(params, errlog=errlog) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await asyncio.wait_for(session.initialize(), 30)
+                    return await asyncio.wait_for(work(session), timeout)
+
+    try:
+        return asyncio.run(run())
+    except IntegrationError:
+        raise
+    except TimeoutError as e:
+        raise IntegrationError("OpenBlocks took too long to answer") from e
+    except Exception as e:  # noqa: BLE001 - a missing program, a server that crashed...
+        log.warning("mcp run %s failed: %s", command, e)
+        raise IntegrationError(str(e) or e.__class__.__name__) from e
+
+
+def _result_text(res: Any) -> str:
+    text = "\n".join(getattr(c, "text", "") for c in getattr(res, "content", None) or [] if getattr(c, "text", ""))
+    if getattr(res, "isError", None) or getattr(res, "is_error", False):
+        raise IntegrationError(text or "OpenBlocks refused the request")
+    return text
+
+
+# OpenBlocks names its tools' arguments itself; Lumina reads each tool's schema and fills the ones it has, so a
+# renamed argument (content / markdown / text) does not break the link.
+_ALIASES = {
+    "query": ("query", "q", "text", "search"),
+    "limit": ("limit", "k", "top_k", "max_results"),
+    "path": ("path", "page", "file", "name", "title"),
+    "title": ("title", "name"),
+    "content": ("content", "markdown", "text", "body"),
+    "folder": ("folder", "dir", "directory", "parent"),
+    "mode": ("mode", "op", "operation", "action", "position"),
+}
+
+
+def _ob_args(schema: dict, **wanted: Any) -> dict[str, Any]:
+    props = set((schema or {}).get("properties") or {})
+    out: dict[str, Any] = {}
+    for key, value in wanted.items():
+        name = next((a for a in _ALIASES.get(key, (key,)) if a in props and a not in out), None)
+        if name:
+            out[name] = value
+    return out
+
+
+def _tool_schemas(tools: Any) -> dict[str, dict]:
+    # mcp 1.x names the field inputSchema, mcp 2.x input_schema
+    return {t.name: (getattr(t, "inputSchema", None) or getattr(t, "input_schema", None) or {})
+            for t in getattr(tools, "tools", [])}
+
+
+def _ob_hits(text: str) -> list[dict]:
+    """The pages a search returned, whatever shape OpenBlocks printed them in (JSON, or one block per page)."""
+    text = text.strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except ValueError:
+        data = None
+    if isinstance(data, dict):
+        data = next((v for v in data.values() if isinstance(v, list)), [])
+    out: list[dict] = []
+    if isinstance(data, list):
+        for h in data:
+            if isinstance(h, str):
+                out.append({"path": h, "title": Path(h).stem, "text": ""})
+            elif isinstance(h, dict):
+                path = str(h.get("path") or h.get("file") or h.get("id") or "")
+                title = str(h.get("title") or h.get("name") or Path(path).stem or "OpenBlocks")
+                body = str(h.get("snippet") or h.get("excerpt") or h.get("text") or h.get("content") or
+                           h.get("preview") or "")
+                out.append({"path": path, "title": title, "text": body})
+        return out
+    for block in re.split(r"\n\s*\n|\n(?=[-*] )", text):
+        block = block.strip()
+        if not block:
+            continue
+        m = re.search(r"[\w./ \-]+\.md", block)
+        path = m.group(0).strip(" -*") if m else ""
+        first = re.sub(r"^[-*#\d.\s]+", "", block.splitlines()[0]).strip()
+        out.append({"path": path, "title": Path(path).stem if path else first[:80], "text": block})
+    return out
+
+
+def openblocks_search(query: str, k: int = 4) -> list[dict]:
+    """Pages of the user's OpenBlocks vault that match, with their text (search, then read the best ones)."""
+    try:
+        cli, args = _ob_server()
+    except IntegrationError:
+        return []
+
+    async def work(session) -> list[dict]:  # noqa: ANN001
+        schemas = _tool_schemas(await session.list_tools())
+        if "search_pages" not in schemas:
+            return []
+        hits = _ob_hits(_result_text(await session.call_tool(
+            "search_pages", _ob_args(schemas["search_pages"], query=query, limit=k))))[:k]
+        if "read_page" in schemas:
+            for h in hits:
+                if h["path"] and len(h["text"]) < 400:
+                    try:
+                        h["text"] = _result_text(await session.call_tool(
+                            "read_page", _ob_args(schemas["read_page"], path=h["path"])))
+                    except IntegrationError:
+                        pass
+        return hits
+
+    try:
+        hits = mcp_run(cli, args, work, timeout=30)
+    except IntegrationError as e:
+        log.info("OpenBlocks search unavailable: %s", e)
+        return []
+    return [h for h in hits if h["text"].strip()]
+
+
+def clean_name(text: str) -> str:
+    text = re.sub(r"[\\/:*?\"<>|#\[\]^]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip(" .")[:90] or "Untitled"
+
+
+def openblocks_write(path: str, content: str, body_only: str = "", update: bool = False) -> str:
+    """Create the page `path` (Folder/Name.md) in the OpenBlocks vault; with `update`, replace the body of the page
+    that is already there (a meeting saved once is kept in step) and create it again if it was deleted."""
+    cli, args = _ob_server()
+
+    async def work(session) -> str:  # noqa: ANN001
+        schemas = _tool_schemas(await session.list_tools())
+        if update and body_only and "edit_page" in schemas:
+            try:
+                return _result_text(await session.call_tool("edit_page", _ob_args(
+                    schemas["edit_page"], path=path, mode="replace", content=body_only)))
+            except IntegrationError:
+                pass  # the page was deleted or moved: write it again below
+        if "create_page" not in schemas:
+            raise IntegrationError("this OpenBlocks has no create_page tool; update it with `openblocks update`")
+        schema = schemas["create_page"]
+        props = set(schema.get("properties") or {})
+        folder, _, name = path.rpartition("/")
+        name = name.removesuffix(".md")
+        wanted: dict[str, Any] = {"content": content}
+        if props & set(_ALIASES["folder"]) and props & set(_ALIASES["title"]):
+            wanted |= {"title": name, "folder": folder}
+        elif props & {"path", "file"}:
+            wanted["path"] = path
+        else:
+            wanted["title"] = f"{folder}/{name}" if folder else name
+        return _result_text(await session.call_tool("create_page", _ob_args(schema, **wanted)))
+
+    out = mcp_run(cli, args, work, timeout=60)
+    if re.match(r"(?i)\s*(error|failed|cannot|could not)", out):
+        raise IntegrationError(out.strip()[:300])
+    return path
+
+
+def openblocks_meeting_note(m: dict, segments_text: str = "") -> tuple[str, str, str]:
+    """(path, whole page, body without properties) for a meeting, in the Markdown OpenBlocks reads: properties,
+    a callout for the overview, `- [ ]` tasks for the action items, and folds for the long parts."""
+    when = time.localtime(m.get("started") or m.get("created") or time.time())
+    day = time.strftime("%Y-%m-%d", when)
+    title = (m.get("title") or "Meeting").strip()
+    s = m.get("summary") or {}
+    path = m.get("openblocks_path") or f"{OPENBLOCKS_FOLDER}/{day} {clean_name(title)}.md"
+    tags = ["lumina", "meeting", *[slug(t, 32) for t in m.get("tags") or []]]
+    fm = ["---", f"title: {json.dumps(title, ensure_ascii=False)}", f"date: {day}",
+          f"tags: [{', '.join(dict.fromkeys(tags))}]", "source: lumina", f"lumina_meeting: {m['id']}", "---", ""]
+    body = [f"{time.strftime('%Y-%m-%d %H:%M', when)} · {round((m.get('duration') or 0) / 60)} min · "
+            "recorded with Lumina", ""]
+    overview = (s.get("overview") or "").strip()
+    if s.get("text"):
+        body += ["## Summary", "", s["text"].strip(), ""]
+    elif overview:
+        body += ["> [!info] Overview", *[f"> {line}" if line else ">" for line in overview.splitlines()], ""]
+    for key, label in (("decisions", "Decisions"), ("action_items", "Action items"),
+                       ("open_questions", "Open questions"), ("topics", "Topics")):
+        if s.get(key):
+            mark = "- [ ] " if key == "action_items" else "- "
+            body += [f"## {label}", "", *[f"{mark}{x}" for x in s[key]], ""]
+    notes = [b for b in m.get("enhanced") or [] if b.get("text")]
+    if notes:
+        body += ["## Notes", ""]
+        for b in notes:
+            body += [f"### {b.get('cue', '')}", "", b["text"].strip(), ""]
+    if (m.get("cues") or "").strip():
+        body += ["<details><summary>My shorthand</summary>", "", m["cues"].strip(), "", "</details>", ""]
+    if segments_text:
+        body += ["<details><summary>Transcript</summary>", "", segments_text.strip(), "", "</details>", ""]
+    text = "\n".join(body).rstrip() + "\n"
+    return path, "\n".join(fm) + "\n" + text, text
+
+
+def openblocks_chat_note(question: str, answer: str, sources: list[dict] | None = None) -> tuple[str, str]:
+    """A chat answer as an OpenBlocks page: the question, the answer and where it came from."""
+    day = time.strftime("%Y-%m-%d")
+    title = clean_name(question.splitlines()[0] if question.strip() else "Ask Lumina")[:60]
+    fm = ["---", f"title: {json.dumps(title, ensure_ascii=False)}", f"date: {day}", "tags: [lumina, chat]",
+          "source: lumina", "---", ""]
+    body = ["> [!question] " + (question.strip().splitlines()[0] if question.strip() else "Ask Lumina")[:300], "",
+            answer.strip(), ""]
+    names = [str(s.get("title") or "").strip() for s in sources or [] if s.get("title")]
+    if names:
+        body += ["## Sources", "", *[f"- {n}" for n in dict.fromkeys(names)][:12], ""]
+    path = f"{OPENBLOCKS_FOLDER}/{day} {title}.md"
+    return path, "\n".join(fm + body).rstrip() + "\n"
+
+
 # ---------- OpenCue -----------------------------------------------------------------------------------------------
 
 def opencue_db() -> Path:
@@ -316,7 +589,7 @@ def workstudio_status() -> dict[str, Any]:
 
 
 def open_app(app_id: str) -> None:
-    """Open brain, OpenCue or AI WorkStudio in its own window."""
+    """Open brain, OpenCue, OpenBlocks or AI WorkStudio in its own window."""
     system = platform.system()
     if app_id == "brain":
         target = _mac_app("brain.app") if system == "Darwin" else None
@@ -335,6 +608,18 @@ def open_app(app_id: str) -> None:
                              stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
         else:
             raise IntegrationError("OpenCue is not installed.")
+        return
+    if app_id == "openblocks":
+        app = _mac_app("OpenBlocks.app")
+        if app:
+            subprocess.Popen(["open", str(app)])
+        elif openblocks_cli() and not openblocks_status()["running"]:
+            subprocess.Popen([openblocks_cli()], start_new_session=True, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+        elif openblocks_status()["running"]:
+            _open_url(f"{OPENBLOCKS_URL}/")
+        else:
+            raise IntegrationError("OpenBlocks is not installed.")
         return
     if app_id == "workstudio":
         app = _mac_app("AI WorkStudio.app")
@@ -356,4 +641,5 @@ def _open_url(url: str) -> None:
 
 
 def status() -> dict[str, Any]:
-    return {"brain": brain_status(), "opencue": opencue_status(), "workstudio": workstudio_status()}
+    return {"brain": brain_status(), "opencue": opencue_status(), "openblocks": openblocks_status(),
+            "workstudio": workstudio_status()}

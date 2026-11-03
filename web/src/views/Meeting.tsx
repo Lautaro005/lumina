@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  Bot, Brain, Download, FileAudio, Highlighter, Loader2, MessageSquareText, MoreHorizontal, Pause, Play,
+  Bot, Download, FileAudio, Highlighter, Loader2, MessageSquareText, MoreHorizontal, Pause, Play,
   RotateCw, ScrollText, Search, Send, Sparkles, Square, Trash2, Volume2, Wand2, X,
 } from "lucide-react";
 import { api, fmtClock, type Block, type Integrations, type Meeting as M, type Segment, type SummaryPreset } from "../api";
-import { CopyButton, Markdown, Meter, Popover, guessLang, speak, stopSpeaking, useSetting } from "../components";
+import { AppLogo, CopyButton, Markdown, Meter, Popover, guessLang, speak, stopSpeaking, useSetting } from "../components";
 import { langName, useT } from "../i18n";
 import { useStore } from "../store";
 
@@ -198,6 +198,11 @@ export default function MeetingView({ id }: { id: string }) {
   const [apps, setApps] = useState<Integrations | null>(null);
   useEffect(() => { api.integrations().then(setApps).catch(() => {}); }, [id]);
   const [toBrain, setToBrain] = useState(false);
+  const [toBlocks, setToBlocks] = useState(false);
+  const saveToOpenBlocks = async () => {
+    setToBlocks(true);
+    try { await api.toOpenBlocks(id); } catch { /* the notice comes as an event */ } finally { setToBlocks(false); }
+  };
   const saveToBrain = async () => {
     setToBrain(true);
     try { await api.toBrain(id); } catch { /* the notice comes as an event */ } finally { setToBrain(false); }
@@ -305,11 +310,16 @@ export default function MeetingView({ id }: { id: string }) {
                     )}
                     {m.status === "done" && apps?.brain.can_write && (
                       <button role="menuitem" disabled={toBrain} onClick={() => { setMenu(""); saveToBrain(); }}>
-                        {toBrain ? <Loader2 size={16} className="spin" /> : <Brain size={16} />} {m.brain_path ? t("brain.update") : t("brain.save")}
+                        {toBrain ? <Loader2 size={16} className="spin" /> : <AppLogo id="brain" size={16} />} {m.brain_path ? t("brain.update") : t("brain.save")}
+                      </button>
+                    )}
+                    {m.status === "done" && apps?.openblocks?.can_write && (
+                      <button role="menuitem" disabled={toBlocks} onClick={() => { setMenu(""); saveToOpenBlocks(); }}>
+                        {toBlocks ? <Loader2 size={16} className="spin" /> : <AppLogo id="openblocks" size={16} />} {m.openblocks_path ? t("openblocks.update") : t("openblocks.save")}
                       </button>
                     )}
                     {m.status === "done" && apps?.opencue.installed && (
-                      <button role="menuitem" onClick={() => { setMenu(""); setAgentDialog(true); }}><Bot size={16} /> {t("opencue.send")}</button>
+                      <button role="menuitem" onClick={() => { setMenu(""); setAgentDialog(true); }}><AppLogo id="opencue" size={16} /> {t("opencue.send")}</button>
                     )}
                     <hr />
                     {confirmDel ? (

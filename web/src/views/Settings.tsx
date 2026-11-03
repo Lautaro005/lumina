@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Columns2, Download, Info, Loader2, Play, Rows3, RefreshCw, Square, StickyNote, Trash2 } from "lucide-react";
-import { api, type Integrations, type Job, type Model, type UpdateInfo } from "../api";
-import { ConfirmDialog, CopyButton, ModelRow, PermissionsPanel, Switch, useModels, useSetting } from "../components";
+import { api, type AppId, type Integrations, type Job, type Model, type UpdateInfo } from "../api";
+import { AppLogo, ConfirmDialog, CopyButton, ModelRow, PermissionsPanel, Switch, useModels, useSetting } from "../components";
 import { langName, useT, type Key } from "../i18n";
 import { useStore } from "../store";
 
@@ -290,6 +290,12 @@ function ConnectedApps() {
   const [brainChat, setBrainChat] = useSetting<boolean>("brain_chat");
   const [brainAuto, setBrainAuto] = useSetting<boolean>("brain_autosave");
   const [brainTr, setBrainTr] = useSetting<boolean>("brain_transcript");
+  const [obChat, setObChat] = useSetting<boolean>("openblocks_chat");
+  const [obAuto, setObAuto] = useSetting<boolean>("openblocks_autosave");
+  const [obTr, setObTr] = useSetting<boolean>("openblocks_transcript");
+  const [obVault, setObVault] = useSetting<string>("openblocks_vault");
+  const [vaultDraft, setVaultDraft] = useState("");
+  useEffect(() => { setVaultDraft(obVault || ""); }, [obVault]);
   useEffect(() => {
     const load = () => api.integrations().then(setApps).catch(() => {});
     load();
@@ -297,19 +303,19 @@ function ConnectedApps() {
     return () => window.removeEventListener("focus", load);
   }, []);
   if (!apps) return null;
-  const open = (id: "brain" | "opencue" | "workstudio") => api.openApp(id).catch((e) => toast((e as Error).message, "error"));
+  const open = (id: AppId) => api.openApp(id).catch((e) => toast((e as Error).message, "error"));
   const state = (a: { installed: boolean; running?: boolean }) =>
     a.running ? <span className="chip ok">{t("apps.running")}</span>
       : a.installed ? <span className="chip">{t("apps.installed")}</span>
       : <span className="chip">{t("apps.missing")}</span>;
-  const action = (id: "brain" | "opencue" | "workstudio", installed: boolean, site: string) => installed
+  const action = (id: AppId, installed: boolean, site: string) => installed
     ? <button className="btn sm" onClick={() => open(id)}>{t("apps.open")}</button>
     : <a className="btn sm" href={site} target="_blank" rel="noopener">{t("apps.install")}</a>;
   return (
     <div className="app-links">
       <div className="app-link">
         <header>
-          <span className="app-mark brain" aria-hidden="true">b</span>
+          <span className="app-mark logo" aria-hidden="true"><AppLogo id="brain" size={30} /></span>
           <div><b>brain</b>{apps.brain.version && <small> · {apps.brain.version}</small>}<p>{t("apps.brain")}</p></div>
           <span className="app-act">{state(apps.brain)}{action("brain", apps.brain.installed, "https://lautaro005.github.io/brain/")}</span>
         </header>
@@ -324,14 +330,35 @@ function ConnectedApps() {
       </div>
       <div className="app-link">
         <header>
-          <span className="app-mark opencue" aria-hidden="true">o</span>
+          <span className="app-mark logo" aria-hidden="true"><AppLogo id="openblocks" size={30} /></span>
+          <div><b>OpenBlocks</b>{apps.openblocks.version && <small> · {apps.openblocks.version}</small>}<p>{t("apps.openblocks")}</p></div>
+          <span className="app-act">{state(apps.openblocks)}{action("openblocks", apps.openblocks.installed, "https://lautaro005.github.io/openblocks/")}</span>
+        </header>
+        {apps.openblocks.installed && (
+          <div className="app-opts">
+            <Switch checked={obChat !== false} onChange={setObChat} label={t("apps.obChat")} />
+            <Switch checked={!!obAuto} onChange={setObAuto} label={t("apps.obAuto")} />
+            <Switch checked={!!obTr} onChange={setObTr} label={t("apps.obTranscript")} />
+            <label className="app-field">
+              <span className="hint" style={{ margin: 0 }}>{t("apps.obVault")}</span>
+              <input value={vaultDraft} placeholder={t("apps.obVaultPlaceholder")} spellCheck={false}
+                onChange={(e) => setVaultDraft(e.target.value)}
+                onBlur={() => { if (vaultDraft.trim() !== (obVault || "")) setObVault(vaultDraft.trim()); }} />
+            </label>
+            <p className="hint">{t("apps.obWhere")}</p>
+          </div>
+        )}
+      </div>
+      <div className="app-link">
+        <header>
+          <span className="app-mark logo" aria-hidden="true"><AppLogo id="opencue" size={30} /></span>
           <div><b>OpenCue</b>{apps.opencue.agents.length > 0 && <small> · {t("apps.agents", { n: apps.opencue.agents.length })}</small>}<p>{t("apps.opencue")}</p></div>
           <span className="app-act">{state(apps.opencue)}{action("opencue", apps.opencue.installed, "https://lautaro005.github.io/opencue/")}</span>
         </header>
       </div>
       <div className="app-link">
         <header>
-          <span className="app-mark workstudio" aria-hidden="true">w</span>
+          <span className="app-mark logo" aria-hidden="true"><AppLogo id="workstudio" size={30} /></span>
           <div><b>AI WorkStudio</b><p>{t("apps.workstudio")}</p>
             {apps.workstudio.installed && <p className="hint">{apps.workstudio.hub ? t("apps.hubOn") : t("apps.hubOff")}</p>}</div>
           <span className="app-act">{state(apps.workstudio)}{action("workstudio", apps.workstudio.installed, "https://lautaro005.github.io/workstudio/")}</span>

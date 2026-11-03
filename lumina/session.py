@@ -327,6 +327,8 @@ def finish_meeting(meeting_id: str, summary: bool = True, instructions: str = ""
     if auto_brain and m and (settings.get("brain_autosave") or m.get("brain_path")):
         # kept in step: a meeting already in brain is updated there when its summary changes
         save_to_brain(meeting_id, quiet=True)
+    if auto_brain and m and (settings.get("openblocks_autosave") or m.get("openblocks_path")):
+        save_to_openblocks(meeting_id, quiet=True)
 
 
 def save_to_brain(meeting_id: str, quiet: bool = False) -> str | None:
@@ -345,6 +347,25 @@ def save_to_brain(meeting_id: str, quiet: bool = False) -> str | None:
         return None
     db.update("meetings", meeting_id, {"brain_path": path, "brain_saved": time.time()})
     hub.publish({"type": "brain", "meeting_id": meeting_id, "ok": True, "path": path, "quiet": quiet})
+    return path
+
+
+def save_to_openblocks(meeting_id: str, quiet: bool = False) -> str | None:
+    """Writes the meeting as a page in the OpenBlocks vault (Lumina/<date> <title>.md) and remembers where."""
+    from . import integrations
+
+    m = db.meeting(meeting_id)
+    if not m:
+        return None
+    transcript = db.transcript_text(meeting_id) if settings.get("openblocks_transcript") else ""
+    path, content, body = integrations.openblocks_meeting_note(m, transcript)
+    try:
+        integrations.openblocks_write(path, content, body_only=body, update=bool(m.get("openblocks_path")))
+    except integrations.IntegrationError as e:
+        hub.publish({"type": "openblocks", "meeting_id": meeting_id, "ok": False, "text": str(e), "quiet": quiet})
+        return None
+    db.update("meetings", meeting_id, {"openblocks_path": path})
+    hub.publish({"type": "openblocks", "meeting_id": meeting_id, "ok": True, "path": path, "quiet": quiet})
     return path
 
 

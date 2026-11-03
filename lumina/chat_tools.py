@@ -249,6 +249,8 @@ so keep what should stay.
 - rewrite_summary {source, instructions}: rewrite the summary of the meeting that is source number `source`, the way \
 `instructions` says.
 - save_attachment {attachment}: keep attachment number `attachment` in the user's Sources.
+- save_openblocks {title, text}: a new page in the user's OpenBlocks vault (only when they ask for it there: \
+"save it in OpenBlocks"); `text` is the whole page in Markdown (Obsidian style: [[links]], - [ ] tasks).
 Write the full content in the block (never "see above"). Use at most 3 actions. Outside the block, say in one short \
 sentence what you did; the app shows the result to the user."""
 
@@ -258,7 +260,7 @@ _ASKED = re.compile(
     r"summar|redact|generate|"
     r"cre[aá]|crear|hac[eé]|hacer|escrib|guard|agreg|añad|actualiz|edit|cambi|modific|reescrib|renombr|borr|elimin|"
     r"quit[aá]|sac[aá]|resum|redact|gener|arm[aá]|pas[aá]lo|anot)", re.I)
-KINDS = {"create_note", "update_note", "delete_note", "rewrite_summary", "save_attachment"}
+KINDS = {"create_note", "update_note", "delete_note", "rewrite_summary", "save_attachment", "save_openblocks"}
 
 
 def asked_to_act(question: str) -> bool:
@@ -351,6 +353,19 @@ def run(actions: list[dict], ctx: dict) -> list[dict]:
                                  daemon=True).start()
                 res |= {"ok": True, "id": mid, "title": m["title"] or "Meeting", "instructions": instructions,
                         "state": "done", "undo": {"summary": m["summary"] or {}}}
+            elif kind == "save_openblocks":
+                from . import integrations
+
+                title = str(a.get("title") or "Note").strip()[:150]
+                text = str(a.get("text") or "").strip()
+                if not text:
+                    raise ValueError("the page had no text")
+                day = time.strftime("%Y-%m-%d")
+                page = f"{integrations.OPENBLOCKS_FOLDER}/{day} {integrations.clean_name(title)}.md"
+                head = ["---", f"title: {json.dumps(title, ensure_ascii=False)}", f"date: {day}",
+                        "tags: [lumina, chat]", "source: lumina", "---", "", ""]
+                integrations.openblocks_write(page, "\n".join(head) + text + "\n")
+                res |= {"ok": True, "id": page, "title": title, "state": "done"}
             elif kind == "save_attachment":
                 n = _int(a.get("attachment"))
                 atts = ctx["attachments"]

@@ -810,6 +810,8 @@ tr:hover .row-actions, .row-actions:focus-within { opacity: 1; }
 .app-link header b { font-size: 14.5px; }
 .app-link header small { color: var(--ink-3); font-size: 12.5px; }
 .app-link header p { color: var(--ink-3); font-size: 13px; margin-top: 2px; }
+.app-logo { display: block; flex: none; border-radius: 22%; object-fit: contain; }
+.app-mark.logo { background: none; width: 30px; height: 30px; }
 .app-mark { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font: 700 15px var(--serif); color: #fff; }
 .app-mark.brain { background: #c2410c; }
 .app-mark.opencue { background: #3f6212; }
@@ -942,3 +944,10 @@ tr:hover .row-actions, .row-actions:focus-within { opacity: 1; }
 .act-text { flex: 1; min-width: 180px; display: grid; gap: 2px; font-weight: 600; }
 .act-text small { font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
 .act-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+
+/* 0.2.2: the family's logos inside menus and chips, and the OpenBlocks vault field */
+.web-toggle .app-logo { width: 15px; height: 15px; }
+[role="menuitem"] .app-logo { width: 16px; height: 16px; }
+.app-field { display: grid; gap: 4px; }
+.app-field input { height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); font: inherit; font-size: 13.5px; }
+.app-field input:focus-visible { outline: 2px solid var(--accent, currentColor); outline-offset: 1px; }

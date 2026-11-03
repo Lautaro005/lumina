@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, BookOpen, Brain, Check, Copy, FileAudio, FilePlus2, FileText, Globe, Loader2, Paperclip, Pencil, Plus, RotateCw, Square, StickyNote, Trash2, Undo2, Volume2, X } from "lucide-react";
+import { ArrowUp, BookOpen, Check, Copy, FileAudio, FilePlus2, FileText, Globe, Loader2, Paperclip, Pencil, Plus, RotateCw, Square, StickyNote, Trash2, Undo2, Volume2, X } from "lucide-react";
 import { api, fmtBytes, sendChat, type Attachment, type ChatAction, type ChatT, type Message } from "../api";
-import { ConfirmDialog, ContextMenu, Markdown, RenameInput, guessLang, speak, useSetting } from "../components";
+import { AppLogo, ConfirmDialog, ContextMenu, Markdown, RenameInput, guessLang, speak, useSetting } from "../components";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 
@@ -36,7 +36,7 @@ function ActionCard({ a, onOp }: { a: ChatAction; onOp: (op: "confirm" | "undo" 
   if (!a.ok) {
     return <div className="act-card err"><X size={15} /><span>{t(`act.fail.${a.action}`)}{a.error ? `: ${a.error}` : ""}</span></div>;
   }
-  const Icon = a.action === "delete_note" ? Trash2 : a.action === "rewrite_summary" ? BookOpen : a.action === "save_attachment" ? Paperclip : a.action === "update_note" ? Pencil : FilePlus2;
+  const Icon = a.action === "delete_note" ? Trash2 : a.action === "rewrite_summary" ? BookOpen : a.action === "save_attachment" ? Paperclip : a.action === "save_openblocks" ? FilePlus2 : a.action === "update_note" ? Pencil : FilePlus2;
   const text = a.state === "undone" ? t("act.undone", { name })
     : a.state === "dismissed" ? t("act.kept", { name })
     : a.state === "confirm" ? t("act.confirmDelete", { name })
@@ -55,10 +55,13 @@ function ActionCard({ a, onOp }: { a: ChatAction; onOp: (op: "confirm" | "undo" 
         {a.state === "done" && (a.action === "create_note" || a.action === "update_note" || a.action === "save_attachment") && (
           <button className="btn sm ghost" onClick={() => go("/sources")}>{t("act.openSources")}</button>
         )}
+        {a.state === "done" && a.action === "save_openblocks" && (
+          <button className="btn sm ghost" onClick={() => api.openApp("openblocks").catch(() => {})}>{t("act.openBlocks")}</button>
+        )}
         {a.state === "done" && a.action === "rewrite_summary" && a.id && (
           <button className="btn sm ghost" onClick={() => go(`/meeting/${a.id}`)}>{t("act.openMeeting")}</button>
         )}
-        {a.state === "done" && a.action !== "delete_note" && a.action !== "save_attachment" && (
+        {a.state === "done" && a.action !== "delete_note" && a.action !== "save_attachment" && a.action !== "save_openblocks" && (
           <button className="btn sm ghost" disabled={busy} onClick={() => run("undo")}><Undo2 size={14} /> {t("act.undo")}</button>
         )}
       </span>
@@ -68,7 +71,7 @@ function ActionCard({ a, onOp }: { a: ChatAction; onOp: (op: "confirm" | "undo" 
 
 function SourceChip({ s, n }: { s: any; n: number }) {
   const go = useStore((st) => st.go);
-  const Icon = s.kind === "web" ? Globe : s.kind === "brain" ? Brain : s.kind === "meetings" || s.kind === "meeting" ? BookOpen : s.kind === "notes" ? StickyNote : FileText;
+  const Icon = s.kind === "web" ? Globe : s.kind === "brain" ? BrainIcon : s.kind === "openblocks" ? BlocksIcon : s.kind === "meetings" || s.kind === "meeting" ? BookOpen : s.kind === "notes" ? StickyNote : FileText;
   const open = () => {
     if (s.url) window.open(s.url, "_blank", "noopener");
     else if (s.meeting_id) go(`/meeting/${s.meeting_id}`);
@@ -98,9 +101,13 @@ function Sources({ list, numbers }: { list: any[]; numbers?: number[] }) {
   );
 }
 
-function AnswerTools({ text, kokoro }: { text: string; kokoro: boolean }) {
+const BrainIcon = ({ size = 15 }: { size?: number }) => <AppLogo id="brain" size={size} />;
+const BlocksIcon = ({ size = 15 }: { size?: number }) => <AppLogo id="openblocks" size={size} />;
+
+function AnswerTools({ text, kokoro, onBlocks }: { text: string; kokoro: boolean; onBlocks?: () => Promise<void> }) {
   const t = useT();
   const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -116,6 +123,12 @@ function AnswerTools({ text, kokoro }: { text: string; kokoro: boolean }) {
       <button type="button" className="tool" onClick={() => speak(text, guessLang(text, t.lang), kokoro)} aria-label={t("common.readAloud")} title={t("common.readAloud")}>
         <Volume2 size={15} />
       </button>
+      {onBlocks && (
+        <button type="button" className="tool" disabled={saving} aria-label={t("openblocks.answer")} title={t("openblocks.answer")}
+          onClick={async () => { setSaving(true); try { await onBlocks(); } finally { setSaving(false); } }}>
+          {saving ? <Loader2 size={15} className="spin" /> : <AppLogo id="openblocks" size={15} />}
+        </button>
+      )}
     </div>
   );
 }
@@ -132,7 +145,12 @@ export default function Chat({ chatId }: { chatId?: string }) {
   // brain as a source: offered while the brain app is open (its search runs there)
   const [brainOpen, setBrainOpen] = useState(false);
   const [useBrain, setUseBrain] = useState<boolean>(status.settings.brain_chat !== false);
-  useEffect(() => { api.integrations().then((x) => setBrainOpen(!!x.brain.running)).catch(() => {}); }, []);
+  // OpenBlocks as a source and a place to save answers: offered when it is installed (its MCP server answers)
+  const [blocksOk, setBlocksOk] = useState(false);
+  const [useBlocks, setUseBlocks] = useState<boolean>(status.settings.openblocks_chat !== false);
+  useEffect(() => {
+    api.integrations().then((x) => { setBrainOpen(!!x.brain.running); setBlocksOk(!!x.openblocks?.can_write); }).catch(() => {});
+  }, []);
   const [live, setLive] = useState<Live>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState("");
@@ -201,6 +219,15 @@ export default function Chat({ chatId }: { chatId?: string }) {
       }
     }
   };
+  const saveAnswer = async (m: Message) => {
+    if (!chatId) return;
+    try {
+      const r = await api.answerToOpenBlocks(chatId, m.id);
+      toast(t("openblocks.saved", { path: r.path }));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
   const actOn = async (m: Message, i: number, op: "confirm" | "undo" | "dismiss") => {
     if (!chatId) return;
     try {
@@ -252,7 +279,7 @@ export default function Chat({ chatId }: { chatId?: string }) {
         else if (ev.type === "delta") setLive((l) => (l ? { ...l, text: l.text + ev.text } : l));
         else if (ev.type === "error") toast(ev.text, "error");
         else if (ev.type === "done") setMessages((m) => [...m, ev.message]);
-      }, { signal: ctl.signal, replace, brain: brainOpen && useBrain, attachments: carried.map((a) => a.id) });
+      }, { signal: ctl.signal, replace, brain: brainOpen && useBrain, openblocks: blocksOk && useBlocks, attachments: carried.map((a) => a.id) });
     } catch (e) {
       if ((e as Error).name === "AbortError") {
         // stopped by the user: the server kept what was written so far
@@ -312,7 +339,12 @@ export default function Chat({ chatId }: { chatId?: string }) {
           </button>
           {brainOpen && (
             <button type="button" className="web-toggle" aria-pressed={useBrain} title={t("brain.chatHint")} onClick={() => setUseBrain(!useBrain)}>
-              <Brain size={15} /> brain
+              <AppLogo id="brain" size={15} /> brain
+            </button>
+          )}
+          {blocksOk && (
+            <button type="button" className="web-toggle" aria-pressed={useBlocks} title={t("openblocks.chatHint")} onClick={() => setUseBlocks(!useBlocks)}>
+              <AppLogo id="openblocks" size={15} /> OpenBlocks
             </button>
           )}
           <span className="send-wrap">
@@ -407,7 +439,7 @@ export default function Chat({ chatId }: { chatId?: string }) {
                       <div className="act-list">{m.actions.map((a, i) => <ActionCard key={i} a={a} onOp={(op) => actOn(m, i, op)} />)}</div>
                     )}
                     <Sources list={m.sources} numbers={m.sources.map((s: any) => s.n)} />
-                    <AnswerTools text={m.content} kokoro={kokoro} />
+                    <AnswerTools text={m.content} kokoro={kokoro} onBlocks={blocksOk && chatId ? () => saveAnswer(m) : undefined} />
                   </article>
                 ))}
                 {live && (

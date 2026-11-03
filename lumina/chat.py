@@ -22,7 +22,8 @@ SYSTEM_PROMPT = """\
 You are Lumina, the assistant inside a private, local-first app for meeting notes and personal knowledge. Everything \
 you know about the user comes from material they chose to keep on their own computer: meeting notes and \
 transcripts, summaries, saved notes and indexed files, and, when the user's brain app is open, notes from their \
-brain vault (type "brain": their profile, projects and saved pages). Nothing leaves their machine unless web results \
+brain vault (type "brain": their profile, projects and saved pages) and, from their OpenBlocks app, pages they \
+write in their own vault (type "openblocks"). Nothing leaves their machine unless web results \
 appear among the sources.
 
 # How you work
@@ -204,7 +205,7 @@ def select(hits: list[dict]) -> list[dict]:
 
 
 def gather(question: str, web: bool, meeting_id: str | None = None, query: str | None = None,
-           use_brain: bool = False) -> list[dict]:
+           use_brain: bool = False, use_openblocks: bool = False) -> list[dict]:
     sources: list[dict] = []
     query = query or question
     try:
@@ -233,6 +234,13 @@ def gather(question: str, web: bool, meeting_id: str | None = None, query: str |
         for b in integrations.brain_search(query, k=4):
             sources.append({"kind": "brain", "title": b["title"], "text": b["text"], "path": b["path"],
                             "url": b["url"], "score": 0})
+    if use_openblocks and not meeting_id:
+        # the user's notes in OpenBlocks (their vault of pages), while OpenBlocks is installed
+        from . import integrations
+
+        for o in integrations.openblocks_search(query, k=4):
+            sources.append({"kind": "openblocks", "title": o["title"], "text": o["text"], "path": o["path"],
+                            "url": "", "score": 0})
     if web:
         for w in web_search(query):
             sources.append({"kind": "web", "title": w["title"], "text": w["text"], "url": w["url"], "score": 0})
@@ -326,9 +334,11 @@ def drop_last_turn(chat_id: str) -> None:
 
 
 def answer(chat_id: str, question: str, web: bool | None = None, replace_last: bool = False,
-           use_brain: bool | None = None, attachment_ids: list[str] | None = None) -> Iterator[dict]:
+           use_brain: bool | None = None, attachment_ids: list[str] | None = None,
+           use_openblocks: bool | None = None) -> Iterator[dict]:
     web = settings.get("web_search") if web is None else web
     use_brain = settings.get("brain_chat") if use_brain is None else use_brain
+    use_openblocks = settings.get("openblocks_chat") if use_openblocks is None else use_openblocks
     chat = db.one("SELECT * FROM chats WHERE id=?", [chat_id])
     if not chat:
         raise KeyError(chat_id)
@@ -343,7 +353,8 @@ def answer(chat_id: str, question: str, web: bool | None = None, replace_last: b
     yield {"type": "status", "text": "searching"}
     query = rewrite_query(question, history)
     attached = chat_tools.as_sources(chat_id, question)  # the files attached to this chat come first
-    sources = attached + gather(question, bool(web), chat.get("meeting_id"), query, bool(use_brain))
+    sources = attached + gather(question, bool(web), chat.get("meeting_id"), query, bool(use_brain),
+                                   bool(use_openblocks))
     yield {"type": "sources", "sources": [public(s) for s in sources]}
     notes = chat_tools.notes_list()
     ready = [a for a in atts if a["status"] == "ready"]

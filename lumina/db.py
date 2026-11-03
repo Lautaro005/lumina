@@ -125,6 +125,8 @@ class DB:
             if "brain_path" not in mcols:  # 0.1.7: where the meeting was saved in brain's vault, and when
                 c.execute("ALTER TABLE meetings ADD COLUMN brain_path TEXT NOT NULL DEFAULT ''")
                 c.execute("ALTER TABLE meetings ADD COLUMN brain_saved REAL")
+            if "openblocks_path" not in mcols:  # 0.2.2: the page of this meeting in the OpenBlocks vault
+                c.execute("ALTER TABLE meetings ADD COLUMN openblocks_path TEXT NOT NULL DEFAULT ''")
             msgcols = {r[1] for r in c.execute("PRAGMA table_info(messages)")}
             if "actions" not in msgcols:  # 0.2.1: what the chat did (notes, summaries) and the files a question carried
                 c.execute("ALTER TABLE messages ADD COLUMN actions TEXT NOT NULL DEFAULT '[]'")
@@ -184,8 +186,8 @@ class DB:
         return self.one("SELECT * FROM meetings WHERE id=?", [mid])
 
     def meetings(self, q: str = "", tag: str = "", since: float = 0, until: float = 0) -> list[dict]:
-        sql = ("SELECT id,title,created,started,ended,status,language,tags,duration,summary,indexed,audio,brain_path "
-               "FROM meetings WHERE 1=1")
+        sql = ("SELECT id,title,created,started,ended,status,language,tags,duration,summary,indexed,audio,brain_path,"
+               "openblocks_path FROM meetings WHERE 1=1")
         args: list[Any] = []
         if q:
             sql += " AND (title LIKE ? OR cues LIKE ? OR id IN (SELECT meeting_id FROM segments WHERE text LIKE ?))"

@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.2.x` (latest: `0.2.1`) | ✅ |
+| `0.2.x` (latest: `0.2.2`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -87,6 +87,18 @@ being exploited).
   brain is open and can be switched off. An OpenCue agent that uses an online model sends what it receives to that
   provider; the dialog says so. The new endpoints (`/api/integrations`, `/api/meetings/{id}/brain`,
   `/api/meetings/{id}/opencue`) are behind the same host and origin checks as the rest of the API.
+- **OpenBlocks (0.2.2).** Lumina starts OpenBlocks' own MCP server (`openblocks mcp`, the command or the binary inside
+  OpenBlocks.app) as a child process with a minimal environment, and asks it for its tools' schemas before calling
+  them. It uses only `search_pages` and `read_page` (when Ask Lumina's OpenBlocks pill is on) and `create_page` and
+  `edit_page` (when you press **Save to OpenBlocks**, save an answer, ask the chat to save a page, or turn on
+  automatic saving). Lumina writes only inside the `Lumina/` folder of the vault it names, and the chat's action
+  can only create pages there: it never edits or deletes a page of yours. The optional `openblocks_vault` setting
+  is passed as `--vault` and is never read from a source, a transcript or a model answer. Page names are stripped
+  of path separators and other special characters. Text read from your pages reaches the notes model as a numbered
+  `<source>` marked as data, like every other source. Nothing is sent anywhere else; the dashboard on
+  `127.0.0.1:47880` is only asked whether OpenBlocks is running. New endpoints
+  (`/api/meetings/{id}/openblocks`, `/api/chats/{id}/messages/{id}/openblocks`) are behind the same host and origin
+  checks as the rest of the API.
 - **Summary instructions.** What you type to shape a summary goes to your notes model inside a `<request>` block, with
   a rule that it only changes the summary; it is stored with the summary so you can see how it was written.
 - **Ask Lumina's actions (0.2.1).** The chat can create, edit and delete notes, rewrite a meeting's summary and

@@ -176,6 +176,14 @@ export const useStore = create<State>((set, get) => ({
           get().toast(`brain: ${ev.text}`, "warn");
         }
         break;
+      case "openblocks":
+        if (ev.ok) {
+          if (mine(ev.meeting_id) && s.meeting) set({ meeting: { ...s.meeting, openblocks_path: ev.path } });
+          if (!ev.quiet) get().toast(translate(uiLang(s.status?.settings.ui_language), "openblocks.saved", { path: ev.path }));
+        } else {
+          get().toast(`OpenBlocks: ${ev.text}`, "warn");
+        }
+        break;
       case "opencue":
         set({ replies: { ...s.replies, [ev.meeting_id]: { agent: ev.agent, state: ev.state, text: ev.text } } });
         break;

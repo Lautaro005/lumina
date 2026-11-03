@@ -37,6 +37,7 @@ from .session import (
     finish_meeting,
     run_enhance,
     save_to_brain,
+    save_to_openblocks,
     sessions,
     transcribe_meeting_audio,
 )
@@ -432,6 +433,32 @@ def create_app(port: int) -> FastAPI:
             raise HTTPException(409, "brain could not save the meeting (see the notice).")
         return {"ok": True, "path": path}
 
+    @app.post("/api/meetings/{mid}/openblocks")
+    def meeting_to_openblocks(mid: str) -> dict:
+        """Saves (or updates) the meeting as a page in the OpenBlocks vault. Answers when it is written."""
+        if not db.meeting(mid):
+            raise HTTPException(404, "meeting not found")
+        path = save_to_openblocks(mid)
+        if not path:
+            raise HTTPException(409, "OpenBlocks could not save the meeting (see the notice).")
+        return {"ok": True, "path": path}
+
+    @app.post("/api/chats/{cid}/messages/{mid}/openblocks")
+    def answer_to_openblocks(cid: str, mid: str) -> dict:
+        """Saves one answer of Ask Lumina (with its question and sources) as a page in the OpenBlocks vault."""
+        msg = db.one("SELECT * FROM messages WHERE id=? AND chat_id=? AND role='assistant'", [mid, cid])
+        if not msg:
+            raise HTTPException(404, "answer not found")
+        asked = db.one("SELECT content FROM messages WHERE chat_id=? AND role='user' AND created<=? "
+                       "ORDER BY created DESC LIMIT 1", [cid, msg["created"]])
+        path, content = integrations.openblocks_chat_note((asked or {}).get("content", ""), msg["content"],
+                                                          msg.get("sources") or [])
+        try:
+            integrations.openblocks_write(path, content)
+        except integrations.IntegrationError as e:
+            raise HTTPException(409, str(e)) from e
+        return {"ok": True, "path": path}
+
     @app.post("/api/meetings/{mid}/opencue")
     async def meeting_to_opencue(mid: str, request: Request) -> dict:
         """Sends the meeting (summary, decisions, action items) to an OpenCue agent. The reply arrives as an
@@ -821,10 +848,11 @@ def create_app(port: int) -> FastAPI:
             raise HTTPException(400, "empty message")
         web = body.get("web")
         use_brain = body.get("brain")
+        use_openblocks = body.get("openblocks")
 
         def gen():
             inner = chat.answer(cid, text, web, bool(body.get("replace_last")), use_brain,
-                                [str(x) for x in body.get("attachments") or []])
+                                [str(x) for x in body.get("attachments") or []], use_openblocks)
             try:
                 for ev in inner:
                     yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"

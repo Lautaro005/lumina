@@ -195,7 +195,7 @@ def test_sending_a_meeting_to_an_agent_reports_its_reply(monkeypatch):
 def test_integrations_endpoint_reports_each_app(monkeypatch):
     with client() as c:
         r = c.get("/api/integrations").json()
-    assert set(r) == {"brain", "opencue", "workstudio"}
+    assert set(r) == {"brain", "opencue", "openblocks", "workstudio"}
     assert {"installed", "running", "can_write"} <= set(r["brain"])
     assert isinstance(r["opencue"]["agents"], list) and "hub" in r["workstudio"]
 

@@ -58,10 +58,12 @@ export type Summary = {
   request?: string;
 };
 export type SummaryPreset = "expand" | "shorten" | "simplify" | "formal" | "actions";
+export type AppId = "brain" | "opencue" | "openblocks" | "workstudio";
 export type AppLink = { id: string; installed: boolean; running?: boolean; version?: string; url?: string };
 export type Integrations = {
   brain: AppLink & { can_write: boolean };
   opencue: AppLink & { agents: { id: string; name: string }[]; can_send: boolean };
+  openblocks: AppLink & { can_write: boolean };
   workstudio: AppLink & { hub: boolean };
 };
 export type Segment = { id: number; meeting_id?: string; source: string; t0: number; t1: number; text: string; language?: string };
@@ -79,6 +81,8 @@ export type Meeting = {
   segments?: Segment[]; assists?: Assist[];
   /** where the meeting was saved in brain's vault, if it was */
   brain_path?: string;
+  /** where the meeting was saved in the OpenBlocks vault, if it was */
+  openblocks_path?: string;
 };
 
 export type WebPreview = { url: string; title: string; kind: "html" | "pdf" | "text"; chars: number; excerpt: string };
@@ -94,7 +98,7 @@ export type Attachment = {
   status: "reading" | "ready" | "error"; error: string; save: number; source_id: string; created: number; chars: number;
 };
 export type ChatAction = {
-  action: "create_note" | "update_note" | "delete_note" | "rewrite_summary" | "save_attachment";
+  action: "create_note" | "update_note" | "delete_note" | "rewrite_summary" | "save_attachment" | "save_openblocks";
   ok: boolean; id?: string; title?: string; instructions?: string; error?: string;
   state?: "done" | "confirm" | "dismissed" | "undone"; undo?: unknown;
 };
@@ -155,8 +159,11 @@ export const api = {
   summarize: (id: string, opts: { instructions?: string; preset?: SummaryPreset } = {}) =>
     req("POST", `/api/meetings/${id}/summarize`, opts),
   integrations: () => req<Integrations>("GET", "/api/integrations"),
-  openApp: (app: "brain" | "opencue" | "workstudio") => req("POST", `/api/integrations/${app}/open`),
+  openApp: (app: AppId) => req("POST", `/api/integrations/${app}/open`),
   toBrain: (id: string) => req<{ ok: boolean; path: string }>("POST", `/api/meetings/${id}/brain`),
+  toOpenBlocks: (id: string) => req<{ ok: boolean; path: string }>("POST", `/api/meetings/${id}/openblocks`),
+  answerToOpenBlocks: (chatId: string, messageId: string) =>
+    req<{ ok: boolean; path: string }>("POST", `/api/chats/${chatId}/messages/${messageId}/openblocks`),
   toOpenCue: (id: string, agent: string, message: string) => req("POST", `/api/meetings/${id}/opencue`, { agent, message }),
   assistSeen: (mid: string, aid: string) => req("POST", `/api/meetings/${mid}/assists/${aid}/seen`),
   importRecording: (file: File) => {
@@ -212,12 +219,13 @@ export const api = {
 /** POST a chat message and read the server-sent events it streams back. */
 /** Sends a question and streams the answer. `signal` stops it; `replace` replaces the last question and its answer. */
 export async function sendChat(chatId: string, text: string, web: boolean, onEvent: (ev: any) => void,
-  opts: { signal?: AbortSignal; replace?: boolean; brain?: boolean; attachments?: string[] } = {}) {
+  opts: { signal?: AbortSignal; replace?: boolean; brain?: boolean; openblocks?: boolean; attachments?: string[] } = {}) {
   const r = await fetch(`/api/chats/${chatId}/messages`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ text, web, replace_last: !!opts.replace, attachments: opts.attachments || [],
-      ...(opts.brain === undefined ? {} : { brain: opts.brain }) }),
+      ...(opts.brain === undefined ? {} : { brain: opts.brain }),
+      ...(opts.openblocks === undefined ? {} : { openblocks: opts.openblocks }) }),
     signal: opts.signal,
   });
   if (!r.ok || !r.body) throw new Error(await r.text());

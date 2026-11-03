@@ -11,7 +11,7 @@
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
 <meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.2.1">
+<link rel="stylesheet" href="../assets/site.css?v=0.2.2">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -163,6 +163,7 @@
 <p>Settings → Connected apps shows the rest of the family on this computer and what Lumina does with each one.</p>
 <ul>
 <li><b>brain</b>: <b>Save to brain</b> (⋯ menu of a finished meeting) writes it to <code>knowledge/lumina-&lt;date&gt;-&lt;title&gt;.md</code> in your vault through brain's MCP server; a switch saves every finished meeting, another adds the transcript. While brain is open, Ask Lumina has a <b>brain</b> pill that also searches your vault.</li>
+<li><b>OpenBlocks</b>: <b>Save to OpenBlocks</b> (⋯ menu of a finished meeting) writes it as <code>Lumina/&lt;date&gt; &lt;title&gt;.md</code> in your vault through OpenBlocks' MCP server, with properties, action items as <code>- [ ]</code> tasks and the transcript folded; saving again updates the same page. Every answer of Ask Lumina has an OpenBlocks button, and while OpenBlocks is installed the chat has an <b>OpenBlocks</b> pill that also searches your pages. Switches save every finished meeting and add the transcript; a field sets the vault folder (empty: the last one OpenBlocks opened).</li>
 <li><b>OpenCue</b>: <b>Send to an OpenCue agent…</b> sends the summary, decisions and action items to the agent you pick, with what you want done; the reply appears under the summary. If that agent uses an online model, its provider sees the message.</li>
 <li><b>AI WorkStudio</b>: opens Lumina inside its window, shows its notices and includes Lumina's tools in its single MCP server.</li>
 </ul>
@@ -181,6 +182,7 @@
 <tr><td><code>get_meeting</code></td><td>Notes, enhanced notes, summary and transcript of one meeting</td></tr>
 <tr><td><code>rewrite_summary</code></td><td>Rewrite a meeting's summary the way you ask (or expand, shorten, simplify, formal, actions)</td></tr>
 <tr><td><code>save_meeting_to_brain</code></td><td>Save a meeting as a note in your brain vault</td></tr>
+<tr><td><code>save_meeting_to_openblocks</code></td><td>Save a meeting as a page in your OpenBlocks vault</td></tr>
 </tbody>
 </table>
 <p><b>Claude Code:</b></p>
@@ -242,7 +244,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.2.1 · Free to use, not to sell</span>
+    <span>Lumina 0.2.2 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -250,6 +252,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.2.1" defer></script>
+<script src="../assets/site.js?v=0.2.2" defer></script>
 </body>
 </html>

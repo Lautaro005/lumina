@@ -84,6 +84,10 @@ DEFAULTS: dict[str, Any] = {
     "brain_chat": True,        # Ask Lumina also searches brain's vault when brain is open
     "brain_autosave": False,   # save every finished meeting in brain's vault
     "brain_transcript": False, # include the transcript in the note saved in brain
+    "openblocks_chat": True,   # Ask Lumina also searches the OpenBlocks vault
+    "openblocks_autosave": False,    # save every finished meeting as a page in OpenBlocks
+    "openblocks_transcript": False,  # include the transcript in the page saved in OpenBlocks
+    "openblocks_vault": "",    # a vault folder for `openblocks mcp --vault` (empty: the one OpenBlocks opened last)
     "opencue_agent": "",       # the OpenCue agent last used for "Send to an agent"
     "search_provider": "duckduckgo",  # duckduckgo | searxng
     "searxng_url": "http://127.0.0.1:8888",

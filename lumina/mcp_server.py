@@ -174,5 +174,22 @@ def save_meeting_to_brain(meeting_id: str) -> dict[str, Any]:
     return {"path": r.get("path")}
 
 
+@server.tool(description="Save a meeting (summary, decisions, action items as tasks, notes) as a page in the user's "
+                        "OpenBlocks vault (Lumina/<date> <title>.md), or update it if it was saved before.")
+def save_meeting_to_openblocks(meeting_id: str) -> dict[str, Any]:
+    if not db.meeting(meeting_id):
+        return {"error": "not found"}
+    try:
+        r = _api("POST", f"/api/meetings/{meeting_id}/openblocks", timeout=150)
+    except ValueError as e:
+        return {"error": str(e)}
+    if r is None:  # the app is closed: write it from here
+        from .session import save_to_openblocks
+
+        path = save_to_openblocks(meeting_id)
+        return {"path": path} if path else {"error": "OpenBlocks could not save the meeting (is it installed?)"}
+    return {"path": r.get("path")}
+
+
 def run_stdio() -> None:
     server.run("stdio")
