@@ -13,7 +13,7 @@
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="SECURITY.md">Security</a>
   <br><br>
-  <img alt="Version 0.2.2" src="https://img.shields.io/badge/version-0.2.2-20242c">
+  <img alt="Version 0.2.3" src="https://img.shields.io/badge/version-0.2.3-20242c">
   <img alt="macOS, Windows, Linux" src="https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-3a6fd8">
   <img alt="Runs on CPU" src="https://img.shields.io/badge/runs%20on-any%20CPU-23885b">
   <img alt="License: Apache-2.0 with Commons Clause" src="https://img.shields.io/badge/license-Apache--2.0%20%2B%20Commons%20Clause-d9453b">
@@ -87,7 +87,7 @@ downloads.
 | Transcription, experimental | **EmbeddingGemma 2 speech** (community reader on EmbeddingGemma 2's audio encoder) | 980 MB | English only, about 4 % WER on read speech, no punctuation, CPU through `ai-edge-litert`. Opt-in; "Automatic" never picks it. |
 | Speech detection | **Silero VAD** | 2 MB | Knows when someone is speaking. |
 | Search | **EmbeddingGemma 2** (Google, 8-bit) | 350 MB | The same embedding model Google Foresight uses, 100+ languages. |
-| Notes and answers | **Gemma 4 E2B / E4B / 12B** (Google, 4-bit) | 2.8 / 4.6 / 7.2 GB | Choose by how much memory you have. Or use **Ollama** or **LM Studio** instead. |
+| Notes and answers | **Gemma 4 E2B / E4B / 12B** (Google, 4-bit) | 2.8 / 4.6 / 7.2 GB | Choose by how much memory you have. Or use **Ollama**, **LM Studio** or **llama.cpp** instead. |
 | Read aloud (optional) | **Kokoro 82M** | 120 MB | Natural voices in 8 languages. |
 
 **Transcription language.** Settings → Transcription has **Automatic** and the full list of languages the chosen model
@@ -101,8 +101,9 @@ and Whisper for any other language.
 
 Settings → Models lists everything grouped by what it does: chat and notes, transcription, embeddings and read aloud, and a **Running now** panel with a Stop button to free the memory of the local model whenever you want.
 
-**Already use Ollama or LM Studio?** Lumina finds them on their usual ports and lists their models. Any other
-OpenAI-compatible server works too.
+**Already use Ollama, LM Studio or llama.cpp?** Lumina finds them on their usual ports and lists their models; for
+llama.cpp that is the [Llama](https://llama.app) desktop app (`127.0.0.1:9931`) or a plain `llama-server` (`127.0.0.1:8080`).
+Any other OpenAI-compatible server works too.
 
 ## Connect your agents (MCP)
 
@@ -148,7 +149,7 @@ flowchart LR
   sys[Computer audio] --> vad
   vad --> stt[Parakeet · Canary · Whisper]
   stt --> tr[(Transcript)]
-  cues[Your cues] --> llm[Gemma 4 / Ollama / LM Studio]
+  cues[Your cues] --> llm[Gemma 4 / Ollama / LM Studio / llama.cpp]
   tr --> llm
   llm --> notes[Enhanced notes + summary]
   files[Files and folders] --> emb[EmbeddingGemma 2]
@@ -188,7 +189,7 @@ Tests: `uv run pytest` · `cd apps/desktop/src-tauri && cargo test`.
 **Does it need a GPU?** No. Every default runs on the CPU. On Apple Silicon, Gemma 4 uses the GPU automatically.
 
 **How much memory?** Transcription and search fit in about 2 GB. Gemma 4 E2B wants 8 GB of RAM in total, E4B 12 GB,
-12B 16 GB. With less, connect a smaller model through Ollama or LM Studio.
+12B 16 GB. With less, connect a smaller model through Ollama, LM Studio or llama.cpp.
 
 **Does it identify who is speaking?** It separates **You** (your microphone) from **Others** (the computer's audio).
 Telling apart several people in the same stream is planned.

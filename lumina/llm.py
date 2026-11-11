@@ -130,10 +130,42 @@ class BuiltinServer:
 builtin = BuiltinServer()
 
 
+PROVIDER_NAMES = {"ollama": "Ollama", "lmstudio": "LM Studio", "llamacpp": "llama.cpp"}
+LOCAL_SERVERS = ("ollama", "lmstudio", "llamacpp")
+# The Llama desktop app (llama.app, from the llama.cpp team) serves on 9931; a plain `llama-server` uses 8080.
+LLAMACPP_PORTS = ("http://127.0.0.1:9931", "http://127.0.0.1:8080")
+_llamacpp_seen: tuple[float, str] = (0.0, "")
+
+
+def _llamacpp_headers() -> dict[str, str]:
+    key = str(settings.get("llamacpp_key") or "").strip()
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
+
+def llamacpp_base() -> str:
+    """The address of the llama.cpp server: the one in Settings if it answers, otherwise the Llama app's or a plain
+    llama-server's usual address (so it connects with nothing to type). Remembered for a few seconds."""
+    global _llamacpp_seen
+    now = time.time()
+    if now - _llamacpp_seen[0] < 5 and _llamacpp_seen[1]:
+        return _llamacpp_seen[1]
+    configured = str(settings.get("llamacpp_url") or "").rstrip("/") or LLAMACPP_PORTS[0]
+    for url in dict.fromkeys([configured, *LLAMACPP_PORTS]):
+        base = url.removesuffix("/v1")
+        try:
+            r = httpx.get(base + "/v1/models", headers=_llamacpp_headers(), timeout=0.8)
+            if r.status_code in (200, 401):  # 401: it is there and wants the API key
+                _llamacpp_seen = (now, base)
+                return base
+        except httpx.HTTPError:
+            continue
+    return configured.removesuffix("/v1")
+
+
 def _available(p: str) -> bool:
     if p == "builtin":
         return installed("llama-server") and installed(settings.get("builtin_model"))
-    if p in ("ollama", "lmstudio"):
+    if p in LOCAL_SERVERS:
         return bool(list_models(p))
     return p == "openai" and bool(settings.get("openai_url"))
 
@@ -144,7 +176,7 @@ def effective_provider() -> str:
     chosen = settings.get("llm_provider")
     if _available(chosen):
         return chosen
-    for p in ("builtin", "ollama", "lmstudio"):
+    for p in ("builtin", "ollama", "lmstudio", "llamacpp"):
         if p != chosen and _available(p):
             log.info("%s is not available; using %s", chosen, p)
             return p
@@ -166,6 +198,9 @@ def provider_config(provider: str | None = None) -> tuple[str, str, dict[str, st
         url = settings.get("lmstudio_url").rstrip("/")
         model = settings.get("lmstudio_model") or _first_model("lmstudio")
         return url + "/v1", model, {}
+    if p == "llamacpp":
+        model = settings.get("llamacpp_model") or _first_model("llamacpp")
+        return llamacpp_base() + "/v1", model, _llamacpp_headers()
     if p == "openai":
         url = settings.get("openai_url").rstrip("/")
         if not url:
@@ -188,6 +223,13 @@ def list_models(provider: str) -> list[str]:
             r = httpx.get(settings.get("lmstudio_url").rstrip("/") + "/v1/models", timeout=3)
             r.raise_for_status()
             return [m["id"] for m in r.json().get("data", []) if "embed" not in m["id"]]
+        if provider == "llamacpp":
+            r = httpx.get(llamacpp_base() + "/v1/models", headers=_llamacpp_headers(), timeout=4)
+            r.raise_for_status()
+            data = r.json()
+            items = data.get("data") or data.get("models") or []  # router mode lists every model it can load
+            ids = [str(m.get("id") or m.get("model") or m.get("name") or "") for m in items if isinstance(m, dict)]
+            return [i for i in dict.fromkeys(ids) if i and not re.search(r"embed|rerank", i, re.I)]
         if provider == "openai":
             url = settings.get("openai_url").rstrip("/")
             if not url:
@@ -208,7 +250,7 @@ def list_models(provider: str) -> list[str]:
 def _first_model(provider: str) -> str:
     models = list_models(provider)
     if not models:
-        name = "Ollama" if provider == "ollama" else "LM Studio"
+        name = PROVIDER_NAMES.get(provider, provider)
         raise LLMError(f"{name} is not running or has no models. Start it, or pick another engine in Settings.")
     return models[0]
 
@@ -223,6 +265,11 @@ def detect() -> dict[str, Any]:
             out[name] = r.status_code == 200
         except httpx.HTTPError:
             out[name] = False
+    try:
+        r = httpx.get(llamacpp_base() + "/v1/models", headers=_llamacpp_headers(), timeout=0.8)
+        out["llamacpp"] = r.status_code == 200
+    except httpx.HTTPError:
+        out["llamacpp"] = False
     out["builtin"] = installed("llama-server") and any(installed(i) for i in ("gemma-4-e2b", "gemma-4-e4b", "gemma-4-12b"))
     out["builtin_running"] = builtin.running()
     out["effective"] = effective_provider()
@@ -233,10 +280,10 @@ def ready() -> tuple[bool, str]:
     p = effective_provider()
     if p == "builtin":
         if not installed("llama-server") or not installed(settings.get("builtin_model")):
-            return False, "Download Gemma 4 in Settings → Models, or connect Ollama or LM Studio."
+            return False, "Download Gemma 4 in Settings → Models, or connect Ollama, LM Studio or llama.cpp."
         return True, ""
-    if p in ("ollama", "lmstudio") and not list_models(p):
-        return False, f"{'Ollama' if p == 'ollama' else 'LM Studio'} is not reachable or has no models."
+    if p in LOCAL_SERVERS and not list_models(p):
+        return False, f"{PROVIDER_NAMES[p]} is not reachable or has no models."
     if p == "openai" and not settings.get("openai_url"):
         return False, "Set the server address in Settings → Models."
     return True, ""
@@ -253,7 +300,7 @@ def stream(messages: list[dict[str, str]], temperature: float | None = None, max
         "model": model, "messages": messages, "stream": True, "max_tokens": max_tokens,
         "temperature": settings.get("temperature") if temperature is None else temperature,
     }
-    if (provider or effective_provider()) == "builtin":
+    if (provider or effective_provider()) in ("builtin", "llamacpp"):
         body["cache_prompt"] = True  # llama.cpp reuses the part of the prompt that did not change
     if json_mode:
         body["response_format"] = {"type": "json_object"}

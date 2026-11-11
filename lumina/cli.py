@@ -145,7 +145,8 @@ def doctor() -> int:
             print("  (macOS keeps them for the helper app in the data folder: bin/LuminaAudio.app)")
     d = detect()
     print(f"\nGenerators: built-in {'ready' if d['builtin'] else 'not downloaded'} · "
-          f"Ollama {'running' if d['ollama'] else 'off'} · LM Studio {'running' if d['lmstudio'] else 'off'}")
+          f"Ollama {'running' if d['ollama'] else 'off'} · LM Studio {'running' if d['lmstudio'] else 'off'} · "
+          f"llama.cpp {'running' if d['llamacpp'] else 'off'}")
     print(f"Active: {settings.get('llm_provider')}")
     return 0 if ok else 1
 

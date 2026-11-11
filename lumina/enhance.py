@@ -13,6 +13,65 @@ LANG_RULE = ("Write in the same language as the user's notes and the transcript 
              "notes). Never translate names, numbers or quotes.")
 
 
+LANG_NAMES = {"es": "Spanish", "en": "English", "pt": "Portuguese", "fr": "French", "de": "German", "it": "Italian",
+              "ca": "Catalan", "nl": "Dutch", "pl": "Polish", "ru": "Russian", "uk": "Ukrainian", "tr": "Turkish"}
+# the most common function words of each language: enough to tell Spanish from English in a sentence or two
+_STOP = {
+    "es": "el la los las de del que y en un una es se no por con para su al lo como más pero sus le ya o este sí "
+          "porque esta entre cuando muy sin sobre también me hasta hay donde quien desde todo nos durante qué cómo "
+          "cuál cuáles dónde cuándo quién por qué puede son está están fue ser tiene hacer".split(),
+    "en": "the of and to in is that it for as was with be by on not he this are or his from at which but have an had "
+          "they you were their one all we can her has there been if more when will would who so no what how why does "
+          "do did where which should could about into than them".split(),
+    "pt": "o a os as de do da que e em um uma é se não por com para seu ao como mais mas dos das você nos está são "
+          "foi ser tem fazer também quando muito sem sobre onde quem porque qual quais".split(),
+    "fr": "le la les de des du que et en un une est se ne pas pour avec son au comme plus mais sur dans qui ce cette "
+          "sont être a fait aussi quand très sans où pourquoi quel quelle comment".split(),
+}
+
+
+def guess_language(text: str) -> str:
+    """'es', 'en', 'pt' or 'fr' when the words clearly say so, otherwise '' (too short or mixed)."""
+    words = re.findall(r"[a-záéíóúñüàâçèêëîïôûùœãõ]+", text.lower())
+    if len(words) < 4:
+        return ""
+    scores = {lang: sum(1 for w in words if w in set(stop)) / len(words) for lang, stop in _STOP.items()}
+    best = max(scores, key=lambda k: scores[k])
+    rest = sorted(v for k, v in scores.items() if k != best)[-1]
+    return best if scores[best] >= 0.18 and scores[best] > rest * 1.5 else ""
+
+
+def language_name(code: str) -> str:
+    return LANG_NAMES.get((code or "").lower()[:2], "")
+
+
+def language_rule(code: str) -> str:
+    """The sentence that keeps the question and the answer in the language of the meeting."""
+    name = language_name(code)
+    if not name:
+        return ""
+    return (f" The meeting is in {name}: write the question and the answer in {name}, even when a source is in "
+            f"another language (translate what you take from it; keep names, numbers and quotes as they are).")
+
+
+def in_language(text: str, code: str) -> str:
+    """`text` in the language of the meeting: unchanged when it already is (or cannot be told), translated once
+    when it is clearly another language, and "" when the translation still is not."""
+    name = language_name(code)
+    got = guess_language(text)
+    if not name or not got or got == code[:2].lower():
+        return text
+    try:
+        out = llm.complete([{"role": "system", "content": f"Translate the text into {name}. Keep names, numbers, "
+                             "[1]-style citations and quotes as they are. Answer with the translation only."},
+                            {"role": "user", "content": text}], temperature=0.0, max_tokens=500)
+    except llm.LLMError:
+        return ""
+    out = re.sub(r"<think>.*?(</think>|$)", "", out, flags=re.S).strip()
+    again = guess_language(out)
+    return out if out and again in ("", code[:2].lower()) else ""
+
+
 def cue_lines(cues: str) -> list[str]:
     out = []
     for line in cues.splitlines():
@@ -264,7 +323,7 @@ def extract_question(text: str) -> str:
     return (qs[-1] if qs else parts[-1]).strip()
 
 
-def assist_triage(candidate: str, conversation: str, topic: str = "") -> str:
+def assist_triage(candidate: str, conversation: str, topic: str = "", lang: str = "") -> str:
     """Is this a real question worth answering for the user right now? Returns it as a complete, standalone
     question, or "" (rhetorical, cut off, small talk, about someone's own plans or opinion, off topic...)."""
     system = (
@@ -276,6 +335,7 @@ def assist_triage(candidate: str, conversation: str, topic: str = "") -> str:
         "the conversation. If yes, write it as one complete question that makes sense on its own (fill in what "
         "'it' or 'that' refers to from the conversation), in the language it was asked. "
         'Answer with JSON only: {"ask": true, "question": "..."} or {"ask": false, "question": ""}.'
+        + language_rule(lang)
     )
     user = (f"Meeting subject: {topic or '(unknown)'}\n\nRecent conversation:\n{conversation[-1800:]}\n\n"
             f"Line to check: {candidate}")
@@ -284,7 +344,9 @@ def assist_triage(candidate: str, conversation: str, topic: str = "") -> str:
     if not isinstance(data, dict) or data.get("ask") not in (True, "true", "yes"):
         return ""
     q = str(data.get("question") or "").strip()
-    return q if len(q.split()) >= 3 else ""
+    if len(q.split()) < 3:
+        return ""
+    return in_language(q, lang) if lang else q
 
 
 # small reasoning models sometimes think out loud instead of answering; that is never shown
@@ -293,7 +355,7 @@ _REASONING = re.compile(
     r"el usuario|la usuaria|debo|tengo que|necesito|revisando|voy a|seg[uú]n las fuentes)\b", re.IGNORECASE)
 
 
-def assist_answer(question: str, hits: list[dict], context: str) -> tuple[str, list[int]]:
+def assist_answer(question: str, hits: list[dict], context: str, lang: str = "") -> tuple[str, list[int]]:
     """A short answer from the sources, and which sources it used (1-based). ("", []) when they do not answer."""
     sources = "\n\n".join(f"[{i + 1}] {h.get('title', '')}\n{h['text'][:1200]}" for i, h in enumerate(hits))
     system = (
@@ -301,7 +363,7 @@ def assist_answer(question: str, hits: list[dict], context: str) -> tuple[str, l
         "sources: the answer itself, in 1-3 short sentences they could say out loud, citing like [1]. Do not "
         "describe the sources, the question or your reasoning. If the sources do not answer this exact question, "
         'give an empty answer. Answer with JSON only: {"answer": "...", "used": [1]}. '
-        + LANG_RULE.replace("user's notes and the transcript", "question")
+        + (language_rule(lang).strip() or LANG_RULE.replace("user's notes and the transcript", "question"))
     )
     user = f"Question: {question}\n\nRecent conversation:\n{context[-1500:]}\n\nSources:\n{sources}"
     data = llm.complete_json([{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -321,6 +383,10 @@ def assist_answer(question: str, hits: list[dict], context: str) -> tuple[str, l
             used.append(n)
     if not used:  # an answer that cites nothing is not from the sources
         return "", []
+    if lang:  # a card in another language than the meeting is translated, or left out
+        ans = in_language(ans, lang)
+        if not ans:
+            return "", []
     return ans, used
 
 

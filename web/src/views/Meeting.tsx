@@ -524,6 +524,15 @@ function NotesPanels({ view, tab, setTab, raw, onRaw, blocks, recording, paused,
   );
 }
 
+/** The summary as Markdown, to paste into an email, a chat or a document. */
+function summaryMarkdown(s: NonNullable<M["summary"]>, labels: [string, string[] | undefined][]): string {
+  if (s.text) return s.text.trim();
+  const out: string[] = [];
+  if (s.overview) out.push(s.overview.trim());
+  for (const [label, items] of labels) if (items?.length) out.push(`## ${label}\n${items.map((x) => `- ${x}`).join("\n")}`);
+  return out.join("\n\n");
+}
+
 const PRESETS: SummaryPreset[] = ["expand", "shorten", "simplify", "formal", "actions"];
 
 function Summary({ m, canWrite, onWrite }: {
@@ -561,7 +570,10 @@ function Summary({ m, canWrite, onWrite }: {
     <section className="summary-band" aria-label={t("meeting.summary")}>
       <div className="summary-head">
         <h2>{t("meeting.summary")}</h2>
-        {writing && <span className="chip blue"><Loader2 size={13} className="spin" /> {t("meeting.summarizing")}</span>}
+        <div className="summary-head-tools">
+          {writing && <span className="chip blue"><Loader2 size={13} className="spin" /> {t("meeting.summarizing")}</span>}
+          {has && !writing && <CopyButton text={summaryMarkdown(s, cols)} label={t("summary.copy")} />}
+        </div>
       </div>
       {has ? (
         <>

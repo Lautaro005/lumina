@@ -41,10 +41,11 @@ export default function Onboarding() {
   const [wsize] = useSetting<string>("whisper_size");
 
   useEffect(() => {
-    // if Ollama or LM Studio is already running and the user has nothing downloaded, suggest it
+    // if Ollama, LM Studio or llama.cpp is already running and the user has nothing downloaded, suggest it
     if (provider === "builtin" && !status.models[gemma]) {
       if (status.llm.ollama) setProvider("ollama");
       else if (status.llm.lmstudio) setProvider("lmstudio");
+      else if (status.llm.llamacpp) setProvider("llamacpp");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -140,6 +141,7 @@ export default function Onboarding() {
                   </select>)}
                 {choice("ollama", "Ollama", "ollama.com · 127.0.0.1:11434")}
                 {choice("lmstudio", "LM Studio", "lmstudio.ai · 127.0.0.1:1234")}
+                {choice("llamacpp", "llama.cpp", "llama.app · 127.0.0.1:9931")}
               </div>
             </div>
           )}

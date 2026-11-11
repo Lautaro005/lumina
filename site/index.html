@@ -17,9 +17,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="assets/fonts/source-serif-4-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/site.css?v=0.2.2">
+<link rel="stylesheet" href="assets/site.css?v=0.2.3">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Lumina","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Linux","softwareVersion":"0.2.2","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Local-first meeting notes and knowledge base: live transcription, enhanced notes, summaries, RAG chat and an MCP server, all on your device.","url":"https://lautaro005.github.io/lumina/","downloadUrl":"https://github.com/Lautaro005/lumina/releases/latest","license":"https://github.com/Lautaro005/lumina/blob/main/LICENSE"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Lumina","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Linux","softwareVersion":"0.2.3","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Local-first meeting notes and knowledge base: live transcription, enhanced notes, summaries, RAG chat and an MCP server, all on your device.","url":"https://lautaro005.github.io/lumina/","downloadUrl":"https://github.com/Lautaro005/lumina/releases/latest","license":"https://github.com/Lautaro005/lumina/blob/main/LICENSE"}
 </script>
 </head>
 <body>
@@ -77,7 +77,7 @@
           <div class="facts">
             <span class="chip ok">Transcribed on this device</span>
             <span class="chip blue">No account</span>
-            <span class="chip">Version 0.2.2</span>
+            <span class="chip">Version 0.2.3</span>
           </div>
         </div>
       </div>
@@ -143,7 +143,7 @@
           <div><h3 class="never">Never</h3><p>Audio, transcripts, notes, summaries, embeddings, chats, your files. No telemetry.</p></div>
           <div><h3>Once</h3><p>Model downloads from Hugging Face and GitHub, with the size and license shown first.</p></div>
           <div><h3>When you turn it on</h3><p>Web search sends your question to DuckDuckGo or your own SearXNG. Off by default.</p></div>
-          <div><h3>When you point it there</h3><p>If you connect a model server that is not on this computer, prompts go to it. Ollama and LM Studio run locally.</p></div>
+          <div><h3>When you point it there</h3><p>If you connect a model server that is not on this computer, prompts go to it. Ollama, LM Studio and llama.cpp run locally.</p></div>
         </div>
       </article>
     </div>
@@ -154,7 +154,7 @@
       <article class="page">
         <header class="page-head">
           <h2 id="m-title">Small open models, picked to run on an ordinary laptop</h2>
-          <p>Choose Gemma 4 inside Lumina, or the Ollama and LM Studio models you already have.</p>
+          <p>Choose Gemma 4 inside Lumina, or the Ollama, LM Studio and llama.cpp models you already have.</p>
         </header>
         <div class="scroll-x">
           <table class="ledger">
@@ -164,7 +164,7 @@
               <tr><td>Fixed language</td><td><b>Canary 1B v2</b><small>Same 25 languages, follows the language you choose</small></td><td class="n">1.0 GB</td><td class="n">CC-BY-4.0</td></tr>
               <tr><td>Any language</td><td><b>Whisper</b> tiny → large-v3-turbo<small>99 languages; tiny for very small machines</small></td><td class="n">75 MB – 1.6 GB</td><td class="n">MIT</td></tr>
               <tr><td>Search</td><td><b>EmbeddingGemma 2</b><small>100+ languages, 768 dimensions</small></td><td class="n">350 MB</td><td class="n">Apache-2.0</td></tr>
-              <tr><td>Notes and answers</td><td><b>Gemma 4</b> E2B · E4B · 12B<small>Pick by memory: 8, 12 or 16 GB. Or use Ollama or LM Studio</small></td><td class="n">2.8 / 4.6 / 7.2 GB</td><td class="n">Apache-2.0</td></tr>
+              <tr><td>Notes and answers</td><td><b>Gemma 4</b> E2B · E4B · 12B<small>Pick by memory: 8, 12 or 16 GB. Or use Ollama, LM Studio or llama.cpp</small></td><td class="n">2.8 / 4.6 / 7.2 GB</td><td class="n">Apache-2.0</td></tr>
               <tr><td>Read aloud</td><td><b>Kokoro 82M</b><small>Optional; 8 languages</small></td><td class="n">120 MB</td><td class="n">Apache-2.0</td></tr>
             </tbody>
           </table>
@@ -201,7 +201,7 @@
             <thead><tr><th scope="col"></th><th scope="col">Lumina</th><th scope="col">Foresight</th></tr></thead>
             <tbody>
               <tr><td>Systems</td><td><b>macOS, Windows, Linux</b></td><td>macOS</td></tr>
-              <tr><td>Who writes the notes</td><td><b>Gemma 4, or your Ollama / LM Studio model</b></td><td>Gemma 4</td></tr>
+              <tr><td>Who writes the notes</td><td><b>Gemma 4, or your Ollama / LM Studio / llama.cpp model</b></td><td>Gemma 4</td></tr>
               <tr><td>Agents</td><td><b>MCP server included</b></td><td>—</td></tr>
               <tr><td>Source code</td><td><b>On GitHub</b></td><td>Closed</td></tr>
             </tbody>
@@ -247,7 +247,7 @@
 
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.2.2 · Free to use, not to sell · Made by Lautaro Silva Sikora</span>
+    <span>Lumina 0.2.3 · Free to use, not to sell · Made by Lautaro Silva Sikora</span>
     <nav aria-label="Footer">
       <a href="docs/">Docs</a>
       <a href="changelog/">Changelog</a>
@@ -259,6 +259,6 @@
     </nav>
   </div>
 </footer>
-<script src="assets/site.js?v=0.2.2" defer></script>
+<script src="assets/site.js?v=0.2.3" defer></script>
 </body>
 </html>

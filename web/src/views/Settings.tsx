@@ -444,6 +444,9 @@ export default function Settings() {
   const [ollamaModel, setOllamaModel] = useSetting<string>("ollama_model");
   const [lmsUrl, setLmsUrl] = useSetting<string>("lmstudio_url");
   const [lmsModel, setLmsModel] = useSetting<string>("lmstudio_model");
+  const [lcUrl, setLcUrl] = useSetting<string>("llamacpp_url");
+  const [lcModel, setLcModel] = useSetting<string>("llamacpp_model");
+  const [lcKey, setLcKey] = useSetting<string>("llamacpp_key");
   const [oaiUrl, setOaiUrl] = useSetting<string>("openai_url");
   const [oaiModel, setOaiModel] = useSetting<string>("openai_model");
   const [oaiKey, setOaiKey] = useSetting<string>("openai_key");
@@ -585,7 +588,7 @@ export default function Settings() {
             <div className="field">
               <label htmlFor="provider">{t("settings.provider")}</label>
               <select id="provider" className="input" style={{ maxWidth: 420 }} value={provider} onChange={(e) => setProvider(e.target.value)}>
-                {(["builtin", "ollama", "lmstudio", "openai"] as const).map((p) => (
+                {(["builtin", "ollama", "lmstudio", "llamacpp", "openai"] as const).map((p) => (
                   <option key={p} value={p}>{t(`settings.provider.${p}`)}{p !== "builtin" && p !== "openai" && status.llm[p] ? ` · ${t("setup.detected")}` : ""}</option>
                 ))}
               </select>
@@ -605,25 +608,30 @@ export default function Settings() {
                 <div className="models">{row(byId(gemma))}{row(byId("llama-server"))}</div>
               </>
             )}
-            {(provider === "ollama" || provider === "lmstudio") && (
+            {(provider === "ollama" || provider === "lmstudio" || provider === "llamacpp") && (
               <div className="grid2">
                 <div className="field">
                   <label htmlFor="url">{t("settings.url")}</label>
-                  <input id="url" className="input" value={provider === "ollama" ? ollamaUrl : lmsUrl}
-                    onChange={(e) => (provider === "ollama" ? setOllamaUrl : setLmsUrl)(e.target.value)} onBlur={loadRemote} />
+                  <input id="url" className="input" value={provider === "ollama" ? ollamaUrl : provider === "llamacpp" ? lcUrl : lmsUrl}
+                    onChange={(e) => (provider === "ollama" ? setOllamaUrl : provider === "llamacpp" ? setLcUrl : setLmsUrl)(e.target.value)} onBlur={loadRemote} />
+                  {provider === "llamacpp" && <p className="hint">{t("settings.llamacppHint")}</p>}
                 </div>
                 <div className="field">
                   <label htmlFor="model">{t("settings.model")}</label>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <select id="model" className="input" value={provider === "ollama" ? ollamaModel : lmsModel}
-                      onChange={(e) => (provider === "ollama" ? setOllamaModel : setLmsModel)(e.target.value)}>
+                    <select id="model" className="input" value={provider === "ollama" ? ollamaModel : provider === "llamacpp" ? lcModel : lmsModel}
+                      onChange={(e) => (provider === "ollama" ? setOllamaModel : provider === "llamacpp" ? setLcModel : setLmsModel)(e.target.value)}>
                       <option value="">{remote[0] ? `${t("common.auto")} (${remote[0]})` : "—"}</option>
                       {remote.map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
                     <button className="btn icon" aria-label={t("settings.refresh")} onClick={loadRemote}>{loadingModels ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />}</button>
                   </div>
-                  {!loadingModels && remote.length === 0 && <p className="hint">{t("settings.notRunning", { name: provider === "ollama" ? "Ollama" : "LM Studio" })}</p>}
+                  {!loadingModels && remote.length === 0 && <p className="hint">{t("settings.notRunning", { name: provider === "ollama" ? "Ollama" : provider === "llamacpp" ? "llama.cpp" : "LM Studio" })}</p>}
                 </div>
+                {provider === "llamacpp" && (
+                  <div className="field"><label htmlFor="lckey">{t("settings.apiKeyOptional")}</label>
+                    <input id="lckey" className="input" type="password" value={lcKey} onChange={(e) => setLcKey(e.target.value)} onBlur={loadRemote} /></div>
+                )}
               </div>
             )}
             {provider === "openai" && (

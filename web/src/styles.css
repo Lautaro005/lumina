@@ -734,6 +734,7 @@ tr:hover .row-actions, .row-actions:focus-within { opacity: 1; }
 .q-edit .actions { justify-content: flex-end; }
 .summary-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .summary-head h2 { margin: 0; }
+.summary-head-tools { display: flex; align-items: center; gap: 8px; flex: none; }
 .import-audio { width: 100%; margin: 6px 0 4px; }
 .import-transcript { margin-top: 22px; }
 .import-transcript > header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -951,3 +952,12 @@ tr:hover .row-actions, .row-actions:focus-within { opacity: 1; }
 .app-field { display: grid; gap: 4px; }
 .app-field input { height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); font: inherit; font-size: 13.5px; }
 .app-field input:focus-visible { outline: 2px solid var(--accent, currentColor); outline-offset: 1px; }
+
+/* 0.2.3: the assistance column never scrolls sideways: long words, links and source titles wrap or are cut */
+.gutter { overflow-x: hidden; min-width: 0; }
+.gutter > * { min-width: 0; }
+.assist { grid-template-columns: minmax(0, 1fr); min-width: 0; overflow-wrap: anywhere; }
+.assist q, .assist .ans, .assist .ans * { overflow-wrap: anywhere; }
+.assist .ans pre, .assist .ans code { white-space: pre-wrap; word-break: break-word; }
+.assist .ans img, .assist .ans table { max-width: 100%; }
+.assist .src span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

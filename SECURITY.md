@@ -8,7 +8,7 @@ handled privately.
 
 | Version | Supported |
 |---|---|
-| `0.2.x` (latest: `0.2.2`) | ✅ |
+| `0.2.x` (latest: `0.2.3`) | ✅ |
 | Older | ❌ — please update with `lumina update` |
 
 ## Reporting a vulnerability
@@ -23,7 +23,7 @@ Please include:
 - What is affected (server, web UI, desktop app, MCP server, install scripts, website) and the version or commit
 - Your operating system and how you installed Lumina (`install.sh`, `install.ps1`, from source)
 - Which features are involved (recording, system audio, sources and folder watching, chat and web search, MCP over stdio
-  or HTTP, model downloads, Ollama / LM Studio / OpenAI-compatible server)
+  or HTTP, model downloads, Ollama / LM Studio / llama.cpp / OpenAI-compatible server)
 - Steps to reproduce, a proof of concept or logs (remove transcripts, tokens and personal data first)
 - The impact you expect (what an attacker can do)
 
@@ -49,7 +49,7 @@ being exploited).
   (ChromaDB's telemetry is turned off).
 - **What leaves the computer:** a version check (`raw.githubusercontent.com`, one small file, when Lumina starts and every
   6 hours; Settings → About turns it off), and, only when you ask, model downloads from Hugging Face and GitHub, web search queries
-  when the chat's Web search toggle is on (DuckDuckGo or your SearXNG), and prompts sent to an Ollama, LM Studio or
+  when the chat's Web search toggle is on (DuckDuckGo or your SearXNG), and prompts sent to an Ollama, LM Studio, llama.cpp or
   OpenAI-compatible server you configure (which may be remote if you point it at one).
 - **Untrusted text.** Transcripts, files, web results and MCP inputs are data. The chat and assistance prompts tell the
   model so, and Lumina's models cannot run commands or tools: the worst a prompt injection can do is change what an answer
@@ -87,6 +87,15 @@ being exploited).
   brain is open and can be switched off. An OpenCue agent that uses an online model sends what it receives to that
   provider; the dialog says so. The new endpoints (`/api/integrations`, `/api/meetings/{id}/brain`,
   `/api/meetings/{id}/opencue`) are behind the same host and origin checks as the rest of the API.
+- **llama.cpp (0.2.3).** Lumina talks to the llama.cpp server (the Llama app or `llama-server`) over HTTP on this
+  computer: the address in Settings, then `127.0.0.1:9931` and `127.0.0.1:8080`, asking only `GET /v1/models` to find
+  it and the OpenAI-style chat endpoint to write. Nothing is started or installed by Lumina. The optional API key is
+  stored in `settings.json` (`0600`), shown masked in the UI and sent only to that server as a Bearer token. If you
+  point the address at another machine, prompts go there, like any other model server you configure.
+- **Live assistance language (0.2.3).** The language of a meeting is derived from your setting, the speech model's
+  detection or the words of the transcript, and is put into the assistance prompts as a fixed sentence (a language name
+  from a short built-in list, never text taken from a source). A card in another language is translated by the same
+  local model or dropped.
 - **OpenBlocks (0.2.2).** Lumina starts OpenBlocks' own MCP server (`openblocks mcp`, the command or the binary inside
   OpenBlocks.app) as a child process with a minimal environment, and asks it for its tools' schemas before calling
   them. It uses only `search_pages` and `read_page` (when Ask Lumina's OpenBlocks pill is on) and `create_page` and
@@ -154,7 +163,7 @@ In scope:
 Out of scope:
 
 - Answers that are wrong, incomplete or manipulated by the content you indexed (model quality, not a vulnerability)
-- Problems in third-party servers you connect (Ollama, LM Studio, SearXNG, OpenAI-compatible APIs) or in the models
+- Problems in third-party servers you connect (Ollama, LM Studio, llama.cpp, SearXNG, OpenAI-compatible APIs) or in the models
 - Attacks that need an already compromised user account or administrator access to the computer
 - Installers not being code-signed or notarized by Apple or Microsoft (known; tracked in the changelog)
 - Hardening suggestions without a concrete impact

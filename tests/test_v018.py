@@ -77,7 +77,7 @@ def _live(monkeypatch, title="Derecho penal económico", cues="smart contracts")
 
 def test_a_rhetorical_or_off_topic_line_gets_no_card(monkeypatch):
     live, events = _live(monkeypatch)
-    monkeypatch.setattr(enhance, "assist_triage", lambda q, c, t: "")
+    monkeypatch.setattr(enhance, "assist_triage", lambda q, c, t, lang="": "")
     monkeypatch.setattr(session.kb, "search", lambda *a, **k: (_ for _ in ()).throw(AssertionError("searched")))
     live._assist("¿Entienden lo que les digo, chicos?")
     assert not [e for e in events if e["type"] == "assist"]
@@ -87,7 +87,7 @@ def test_the_card_lists_only_the_sources_the_answer_used(monkeypatch):
     live, events = _live(monkeypatch)
     seen = {}
 
-    def triage(q, conversation, topic):
+    def triage(q, conversation, topic, lang=""):
         seen["topic"] = topic
         return "¿Qué es un smart contract?"
 
@@ -108,7 +108,7 @@ def test_the_card_lists_only_the_sources_the_answer_used(monkeypatch):
 
 def test_the_web_answers_when_the_sources_do_not(monkeypatch):
     live, events = _live(monkeypatch)
-    monkeypatch.setattr(enhance, "assist_triage", lambda q, c, t: "¿Qué es un smart contract?")
+    monkeypatch.setattr(enhance, "assist_triage", lambda q, c, t, lang="": "¿Qué es un smart contract?")
     monkeypatch.setattr(session.kb, "search", lambda *a, **k: [{"title": "Fallo", "text": "otra cosa", "score": 0.5}])
     monkeypatch.setattr(chat, "web_search", lambda q, n=5: [
         {"title": "Smart contract - Wikipedia", "url": "https://es.wikipedia.org/wiki/Contrato_inteligente",
@@ -132,7 +132,7 @@ def test_no_web_when_the_user_turned_it_off(monkeypatch):
     live, events = _live(monkeypatch)
     real_get = session.settings.get
     monkeypatch.setattr(session.settings, "get", lambda k, d=None: False if k == "assist_web" else real_get(k, d))
-    monkeypatch.setattr(enhance, "assist_triage", lambda q, c, t: "¿Qué es un smart contract?")
+    monkeypatch.setattr(enhance, "assist_triage", lambda q, c, t, lang="": "¿Qué es un smart contract?")
     monkeypatch.setattr(session.kb, "search", lambda *a, **k: [])
     monkeypatch.setattr(chat, "web_search", lambda *a, **k: (_ for _ in ()).throw(AssertionError("web")))
     live._assist("¿Qué es un smart contract y se ejecuta solo?")

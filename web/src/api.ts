@@ -1,7 +1,7 @@
 export type Settings = Record<string, any> & {
   ui_language: string;
   theme: string;
-  llm_provider: "builtin" | "ollama" | "lmstudio" | "openai";
+  llm_provider: "builtin" | "ollama" | "lmstudio" | "llamacpp" | "openai";
   builtin_model: string;
   stt_engine: string;
   stt_language: string;
@@ -21,7 +21,7 @@ export type Status = {
   settings: Settings;
   models: Record<string, boolean>;
   downloads: Record<string, Job>;
-  llm: { ollama: boolean; lmstudio: boolean; builtin: boolean; builtin_running: boolean; effective: string };
+  llm: { ollama: boolean; lmstudio: boolean; llamacpp: boolean; builtin: boolean; builtin_running: boolean; effective: string };
   llm_ready: boolean;
   stt_model: string;
   stt_loaded: string;

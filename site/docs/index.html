@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lumina docs · Install, meetings, languages, models, MCP</title>
-<meta name="description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
+<meta name="description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama, LM Studio and llama.cpp, sources, chat, MCP and your data.">
 <link rel="canonical" href="https://lautaro005.github.io/lumina/docs/">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#f7f8fa">
 <meta property="og:title" content="Lumina docs · Install, meetings, languages, models, MCP">
-<meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama and LM Studio, sources, chat, MCP and your data.">
+<meta property="og:description" content="How to install and use Lumina: recording, enhanced notes, transcription languages, Gemma 4, Ollama, LM Studio and llama.cpp, sources, chat, MCP and your data.">
 <meta property="og:image" content="https://lautaro005.github.io/lumina/assets/og.png">
-<link rel="stylesheet" href="../assets/site.css?v=0.2.2">
+<link rel="stylesheet" href="../assets/site.css?v=0.2.3">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -64,7 +64,7 @@
 <ol>
 <li><b>Interface language</b>: English or Spanish (automatic follows your system).</li>
 <li><b>Meeting language</b>: the language people speak in your meetings, or <i>Automatic</i>. See <a href="#languages">Languages</a>.</li>
-<li><b>Notes model</b>: Gemma 4 inside Lumina (E2B, E4B or 12B), or Ollama or LM Studio if you already use them.</li>
+<li><b>Notes model</b>: Gemma 4 inside Lumina (E2B, E4B or 12B), or Ollama, LM Studio or llama.cpp if you already use them.</li>
 <li><b>Downloads</b>: each model shows its size and license. You can start using Lumina while they finish.</li>
 </ol>
 
@@ -123,6 +123,7 @@
 <li><b>Gemma 4 on this computer.</b> Choose E2B (2.8 GB, for 8 GB of memory), E4B (4.6 GB, 12 GB) or 12B (7.2 GB, 16 GB). Lumina downloads the model and a pinned llama.cpp server and starts it when needed. On Apple Silicon it uses the GPU.</li>
 <li><b>Ollama.</b> Lumina finds it on <code>127.0.0.1:11434</code> and lists your models.</li>
 <li><b>LM Studio.</b> Start its local server; Lumina finds it on <code>127.0.0.1:1234</code>.</li>
+<li><b>llama.cpp.</b> Open the <a href="https://llama.app">Llama</a> desktop app (it serves on <code>127.0.0.1:9931</code>) or run <code>llama-server</code> (<code>127.0.0.1:8080</code>); Lumina tries the address in Settings, then those two, and lists the models the server has. An API key is optional.</li>
 <li><b>Another OpenAI-compatible server.</b> Any address and model name, with an optional API key.</li>
 </ul>
 <p><b>Test</b> sends a one-word prompt and shows how long it took. <b>Stop</b> frees the memory of the built-in model; it starts again by itself the next time Lumina needs it.</p>
@@ -225,7 +226,7 @@
 <h3>macOS keeps asking for the microphone</h3>
 <p>Lumina asks for the microphone and the computer's audio once, in the last step of the first-run setup (or Settings → Permissions). Starting a meeting never opens a permission window: if one is missing, the meeting tells you and links to Settings. The permissions belong to Lumina's audio helper (<code>data/bin/LuminaAudio.app</code>), which updates do not replace, so updating does not ask again. On macOS 14.2+ the computer's audio needs only System Audio Recording. <code>lumina doctor</code> prints both permissions as macOS reports them.</p>
 <h3>Enhanced notes do not appear</h3>
-<p>Check Settings → Notes model → <b>Test</b>. For Gemma 4, the first start loads the model (up to a minute on slow disks). For Ollama or LM Studio, make sure the server is running and has a model.</p>
+<p>Check Settings → Notes model → <b>Test</b>. For Gemma 4, the first start loads the model (up to a minute on slow disks). For Ollama, LM Studio or llama.cpp, make sure the server is running and has a model.</p>
 <h3>Update says the same version</h3>
 <p>Installs made before 0.1.2 had no git history and were never refreshed. Run the install command above once more (or <code>lumina update</code>): since 0.1.3 it downloads the current code, keeps your <code>data/</code> folder and from then on <code>lumina update</code> works. The version is printed by <code>lumina version</code>.</p>
 <h3>Port 47770 is busy</h3>
@@ -244,7 +245,7 @@ uv run lumina</pre>
 </main>
 <footer class="site">
   <div class="wrap">
-    <span>Lumina 0.2.2 · Free to use, not to sell</span>
+    <span>Lumina 0.2.3 · Free to use, not to sell</span>
     <nav aria-label="Footer">
       <a href="../">Home</a><a href="../docs/">Docs</a><a href="../changelog/">Changelog</a><a href="../privacy/">Privacy</a>
       <a href="../security/">Security</a><a href="../llms.txt">llms.txt</a><a href="https://github.com/Lautaro005/lumina">GitHub</a>
@@ -252,6 +253,6 @@ uv run lumina</pre>
     </nav>
   </div>
 </footer>
-<script src="../assets/site.js?v=0.2.2" defer></script>
+<script src="../assets/site.js?v=0.2.3" defer></script>
 </body>
 </html>

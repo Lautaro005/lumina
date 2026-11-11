@@ -3,6 +3,27 @@
 All notable changes to Lumina are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.3] - 2026-11-11
+
+### Added
+- **llama.cpp as a notes model.** Settings → Notes model → **llama.cpp** connects Lumina to the [Llama](https://llama.app)
+  desktop app from the llama.cpp team (it serves on `127.0.0.1:9931`) or to a plain `llama-server` (`127.0.0.1:8080`).
+  Lumina tries the address in Settings first and then those two, lists the models the server offers (embedding models
+  are left out; in router mode, every model it can load) and uses the one you pick, or the first. An optional API key is
+  sent when the server was started with `--api-key`. It is also offered in the first-run setup and chosen by itself when
+  it is the only generator running; `lumina doctor` reports it.
+- **Copy summary**: a button on the same row as the **Summary** title of a meeting copies the summary as Markdown (the
+  summary you asked for in your own words, or the overview and its decisions, action items, open questions and topics).
+
+### Fixed
+- **Live assistance no longer scrolls sideways.** A long link, a long word or a long source title in a card made the
+  assistance column wider than its space; text now wraps and source names are cut with an ellipsis.
+- **Live assistance answers in the language of the meeting.** In a Spanish meeting it sometimes wrote the question and
+  the answer in English (the prompts were in English and the sources, mostly web pages, were too). Lumina now works out
+  the meeting's language (the one fixed in Settings, else the one the speech model heard most, else a guess from the
+  words), tells the model to write the question and the answer in it, translates a card that still comes out in
+  another language and leaves it out if it cannot.
+
 ## [0.2.2] - 2026-11-03
 
 ### Added

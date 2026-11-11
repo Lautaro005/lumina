@@ -1,7 +1,7 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, Download, Info, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { Check, Copy, Download, Info, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { api, fmtBytes, type Job, type Model, type Permissions, type PermState } from "./api";
 import { useT } from "./i18n";
 import { useStore } from "./store";
@@ -428,16 +428,18 @@ export function Meter({ level, on }: { level: number; on: boolean }) {
   );
 }
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, label }: { text: string; label?: string }) {
   const t = useT();
   const [done, setDone] = useState(false);
   return (
     <button className="btn sm" onClick={async () => {
-      await navigator.clipboard.writeText(text);
-      setDone(true);
-      setTimeout(() => setDone(false), 1500);
+      try {
+        await navigator.clipboard.writeText(text);
+        setDone(true);
+        setTimeout(() => setDone(false), 1500);
+      } catch { /* clipboard blocked */ }
     }}>
-      {done ? <Check size={14} /> : null} {done ? t("common.copied") : t("common.copy")}
+      {done ? <Check size={14} /> : label ? <Copy size={14} /> : null} {done ? t("common.copied") : label || t("common.copy")}
     </button>
   );
 }

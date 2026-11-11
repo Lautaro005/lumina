@@ -162,6 +162,22 @@ class LiveSession:
         finally:
             self.enhancing.release()
 
+    def language(self, text: str = "") -> str:
+        """The language of this meeting ('es', 'en'...): the one the user fixed, else the one the speech model
+        detected most in the transcript, else a guess from the words (the question's and the recent talk)."""
+        fixed = (settings.get("stt_language") or "auto").lower()
+        if fixed not in ("", "auto") and enhance.language_name(fixed):
+            return fixed[:2]
+        counts: dict[str, int] = {}
+        for row in db.q("SELECT language, COUNT(*) AS n FROM segments WHERE meeting_id=? AND language!='' "
+                        "GROUP BY language", [self.meeting_id]):
+            code = str(row["language"]).lower()[:2]
+            if enhance.language_name(code):
+                counts[code] = counts.get(code, 0) + int(row["n"])
+        if counts:
+            return max(counts, key=lambda k: counts[k])
+        return enhance.guess_language(text + " " + db.transcript_text(self.meeting_id, max(0, self.clock() - 150)))
+
     def _assist(self, text: str) -> None:
         """Live assistance: a question from the meeting, on its subject, answered from the user's sources or,
         when they do not have it and the user allows it, from the web."""
@@ -176,15 +192,16 @@ class LiveSession:
             m = db.meeting(self.meeting_id) or {}
             topic = " · ".join(x for x in (m.get("title", ""), " / ".join(enhance.cue_lines(m.get("cues", ""))[:8])) if x)
             context = db.transcript_text(self.meeting_id, max(0, self.clock() - 150))
+            lang = self.language(text)
             try:
-                question = enhance.assist_triage(enhance.extract_question(text), context, topic)
+                question = enhance.assist_triage(enhance.extract_question(text), context, topic, lang=lang)
             except llm.LLMError as e:
                 log.warning("assist triage failed: %s", e)
                 return
             key = re.sub(r"\W+", " ", question.lower()).strip()
             if not question or key in self.asked:
                 return
-            card = self._answer(question, context)
+            card = self._answer(question, context, lang)
             if not card:
                 return
             self.asked.add(key)
@@ -199,7 +216,7 @@ class LiveSession:
         finally:
             self.assisting.release()
 
-    def _answer(self, question: str, context: str) -> dict | None:
+    def _answer(self, question: str, context: str, lang: str = "") -> dict | None:
         """Your sources first (only the ones the answer uses are listed), then the web."""
         hits: list[dict] = []
         try:
@@ -220,7 +237,7 @@ class LiveSession:
                 if not found:
                     continue
             try:
-                answer, used = enhance.assist_answer(question, found, context)
+                answer, used = enhance.assist_answer(question, found, context, lang=lang)
             except llm.LLMError as e:
                 log.warning("assist failed: %s", e)
                 return None

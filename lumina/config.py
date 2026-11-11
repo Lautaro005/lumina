@@ -47,12 +47,15 @@ DEFAULTS: dict[str, Any] = {
     "ui_language": "auto",  # auto | en | es
     "theme": "system",  # system | light | dark
     # generation
-    "llm_provider": "builtin",  # builtin | ollama | lmstudio | openai
+    "llm_provider": "builtin",  # builtin | ollama | lmstudio | llamacpp | openai
     "builtin_model": "gemma-4-e2b",  # gemma-4-e2b | gemma-4-e4b | gemma-4-12b
     "ollama_url": "http://127.0.0.1:11434",
     "ollama_model": "",
     "lmstudio_url": "http://127.0.0.1:1234",
     "lmstudio_model": "",
+    "llamacpp_url": "http://127.0.0.1:9931",  # the Llama app (llama.app); a plain llama-server is tried on 8080 too
+    "llamacpp_model": "",
+    "llamacpp_key": "",
     "openai_url": "",
     "openai_model": "",
     "openai_key": "",
@@ -99,6 +102,9 @@ DEFAULTS: dict[str, Any] = {
 }
 
 
+SECRET_KEYS = ("openai_key", "llamacpp_key")  # shown to the UI masked
+
+
 class Settings:
     """Thread-safe JSON settings with defaults."""
 
@@ -141,8 +147,9 @@ class Settings:
     def public(self) -> dict[str, Any]:
         """Settings safe to send to the UI (API keys masked)."""
         d = self.all()
-        if d.get("openai_key"):
-            d["openai_key"] = "••••" + d["openai_key"][-4:]
+        for key in SECRET_KEYS:
+            if d.get(key):
+                d[key] = "••••" + d[key][-4:]
         return d
 
     def update(self, changes: dict[str, Any]) -> dict[str, Any]:
@@ -150,7 +157,7 @@ class Settings:
             for k, v in changes.items():
                 if k not in DEFAULTS or k == "mcp_token":
                     continue
-                if k == "openai_key" and isinstance(v, str) and v.startswith("••••"):
+                if k in SECRET_KEYS and isinstance(v, str) and v.startswith("••••"):
                     continue
                 self._data[k] = v
             self._save()
